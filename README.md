@@ -11,6 +11,21 @@ A comprehensive Mastra-based AI agent system featuring Sone, an advanced persona
 
 ### Installation
 
+#### 🚀 Super Quick Setup (One Command)
+```bash
+git clone https://github.com/LavonTMCQ/M-I-S-T-E-R.git && cd M-I-S-T-E-R && ./quick-start.sh
+```
+
+#### 📋 Automated Setup (Recommended)
+```bash
+git clone https://github.com/LavonTMCQ/M-I-S-T-E-R.git
+cd M-I-S-T-E-R
+./setup.sh          # Linux/Mac
+# OR
+setup.bat           # Windows
+```
+
+#### 🛠 Manual Setup
 1. **Clone the repository:**
 ```bash
 git clone https://github.com/LavonTMCQ/M-I-S-T-E-R.git
@@ -52,6 +67,18 @@ Advanced personal assistant with:
 
 ## 🛠 Available Scripts
 
+### Quick Start Scripts (After Setup)
+```bash
+./start.sh           # Start Mastra development server (Linux/Mac)
+./test-sone.sh       # Test Sone agent with voice (Linux/Mac)
+./test-trading.sh    # Test trading monitor (Linux/Mac)
+
+start.bat            # Start Mastra development server (Windows)
+test-sone.bat        # Test Sone agent with voice (Windows)
+test-trading.bat     # Test trading monitor (Windows)
+```
+
+### NPM Scripts
 ```bash
 npm run dev          # Start Mastra development server
 npm run build        # Build the project
