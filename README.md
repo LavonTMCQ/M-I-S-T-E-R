@@ -1,4 +1,4 @@
-# M-I-S-T-E-R - Sydney's AI Agent System
+# M-I-S-T-E-R
 
 A comprehensive Mastra-based AI agent system featuring Sone, an advanced personal assistant with voice capabilities, trading analysis, and financial integration.
 
