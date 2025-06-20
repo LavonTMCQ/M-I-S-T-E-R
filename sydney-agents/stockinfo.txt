@@ -1,0 +1,40 @@
+That's a great question. The answer is yes, the architectural design contains all the necessary logic and components to implement this in Mastra, and I can guide you on how to approach that "translation."
+Think of the document I provided as the detailed blueprint for a house. You now need to use the specific tools and materials provided by your builder (Mastra) to construct it.
+Since I can't know the exact syntax of the Mastra framework, here is a conceptual guide on how to map the components from our architecture to what you'll likely find or need to build within Mastra:
+How to "Mastra" the Architecture
+You'll essentially be creating a set of Mastra "tools" or "agents" that correspond to the different layers of the design.
+1. Create a "Data Fetcher" Tool/Agent
+ * Architectural Component: The fetchIntradayData function.
+ * Your Task in Mastra: Create a Mastra tool, let's call it alphaVantageFetcher.
+   * This tool's job is to take symbol, month, interval, and your apiKey as input.
+   * It will then execute the API call to Alpha Vantage as outlined in the function.
+   * Crucially, its output should be the clean, standardized, and chronologically-sorted OHLVC[] array. You'll use this data structure throughout your system.
+   * Create a similar tool for loading from a CSV, e.g., csvDataLoader.
+2. Define Your Strategies as TypeScript Classes/Objects
+ * Architectural Component: The Strategy interface and its implementations (e.g., SwingTradeSMACrossover).
+ * Your Task in Mastra: This is pure TypeScript logic. You can likely copy the Strategy interface and the example strategy classes directly into your Mastra project's codebase. The Mastra agent will instantiate these classes to run the backtest.
+3. Implement the "Backtest Engine" as the Core Agent Logic
+ * Architectural Component: The Backtester class. This is the heart of the operation.
+ * Your Task in Mastra: The main logic of your Mastra agent will be to instantiate and run this Backtester class.
+   * The agent's primary task or "goal" will be to execute a backtest.
+   * It will first call your alphaVantageFetcher tool to get the historical data.
+   * It will then instantiate the Strategy you want to test (e.g., new SwingTradeSMACrossover(...)).
+   * It will then instantiate the Backtester with the strategy and the data: new Backtester(myStrategy, historicalData).
+   * Finally, it will call the .run() method and get the results.
+4. Create a "Results Processor" Tool/Agent
+ * Architectural Component: The generateResults() method and the saveProfitableStrategy function.
+ * Your Task in Mastra: After the main agent gets the results from the Backtester, it should pass them to another specialized tool.
+   * Let's call this tool strategyAnalyzer.
+   * Input: The tradeLog and final portfolio status from the backtest.
+   * Logic: It calculates all the key metrics (Hit Rate, P/L, Profit Factor, etc.).
+   * Action: It compares the results against your HIT_RATE_THRESHOLD. If the strategy is successful, this tool is responsible for saving the strategy's name and its winning parameters to your designated storage (a database, a JSON file, etc.).
+Summary: Your Workflow in Mastra
+ * User Input: You tell your main Mastra agent: "Backtest SPY using the 'SwingTradeSMACrossover' strategy with a 20/50 window over the last 3 months."
+ * Mastra Agent (Orchestrator):
+   * Calls the alphaVantageFetcher tool to get the data for SPY.
+   * Instantiates the SwingTradeSMACrossover class with the specified parameters.
+   * Instantiates and runs the Backtester class.
+   * Takes the raw results from the backtest.
+   * Calls the strategyAnalyzer tool with the results.
+ * Output: The strategyAnalyzer reports the final performance metrics and confirms whether the strategy was saved.
+The architectural document provides the "what to do" and the "why." Your Mastra documentation will provide the "how to do it" (the specific syntax for defining tools and orchestrating agents). The combination of the two is your complete solution.

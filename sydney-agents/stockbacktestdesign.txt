@@ -1,0 +1,220 @@
+Architectural Design: Event-Driven Backtesting System
+1. Introduction & Core Philosophy
+This document outlines the architecture for an event-driven backtesting system designed for both day-trading and swing-trading strategies. The core philosophy is to simulate trading as realistically as possible by processing historical data sequentially—candle by candle—and strictly enforcing market-hour execution rules.
+The system is composed of four primary layers:
+ * Data Layer: Responsible for fetching, loading, and standardizing market data from sources like Alpha Vantage or local CSV files.
+ * Strategy Layer: Where the trading logic resides. This is where you'll define the algorithms for your day-trading and swing-trading strategies (e.g., moving average crossovers, RSI indicators, opening range breakouts).
+ * Engine Layer: The heart of the system. It orchestrates the entire backtest, managing the "clock," handling trade execution, tracking the portfolio, and, most importantly, respecting market hours.
+ * Analysis & Storage Layer: Responsible for calculating performance metrics from a completed backtest and saving successful strategy configurations for future use.
+2. The Data Layer: Acquiring and Preparing Data
+The first step is to get clean, standardized data. The system should be able to handle data from your Alpha Vantage API and local files.
+Data Fetching (Alpha Vantage)
+You'll need functions to interact with the Alpha Vantage API. Since you are focused on SPY and QQQ, intraday data is essential.
+Key Endpoint: TIME_SERIES_INTRADAY
+ * interval: Use 1min, 5min, or 15min for the highest resolution and most realistic trade execution simulation.
+ * outputsize: Use full.
+ * month: Loop through historical months to build a comprehensive dataset for a specific period (e.g., the last 2 years).
+ * extended_hours: Set to true so you have pre-market and post-market data. Your engine will use this to know when the market is closed.
+ * apikey: Use your premium key.
+Conceptual TypeScript Function (fetchIntradayData):
+interface OHLVC {
+  timestamp: Date;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+async function fetchIntradayData(symbol: string, month: string, interval: '1min' | '5min', apiKey: string): Promise<OHLVC[]> {
+  // 1. Construct the Alpha Vantage URL with the provided parameters.
+  const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=${interval}&month=${month}&outputsize=full&apikey=${apiKey}`;
+
+  // 2. Make the HTTP GET request.
+  const response = await fetch(url);
+  const data = await response.json();
+
+  // 3. Parse the JSON response. The data is nested under a key like "Time Series (5min)".
+  const timeSeriesKey = Object.keys(data).find(k => k.includes('Time Series'));
+  const rawData = data[timeSeriesKey];
+
+  // 4. Transform the raw data into a standardized OHLVC array.
+  //    - Convert string timestamps to Date objects.
+  //    - Convert string prices/volume to numbers.
+  //    - The data from the API comes in reverse chronological order, so you MUST reverse it to be chronological.
+  const parsedData = Object.entries(rawData).map(([timestamp, values]) => ({
+    timestamp: new Date(timestamp),
+    open: parseFloat(values['1. open']),
+    high: parseFloat(values['2. high']),
+    low: parseFloat(values['3. low']),
+    close: parseFloat(values['4. close']),
+    volume: parseInt(values['5. volume'], 10)
+  }));
+
+  return parsedData.reverse(); // Ensure chronological order.
+}
+
+Data Loading (CSV)
+You also need a way to ingest your own data.
+Conceptual TypeScript Function (loadCsvData):
+async function loadCsvData(filePath: string): Promise<OHLVC[]> {
+  // 1. Read the CSV file content from the given path.
+  // 2. Use a CSV parsing library to convert the text into rows.
+  // 3. Map each row to your standard OHLVC interface.
+  // 4. Ensure the data is sorted chronologically.
+  // This is a placeholder for your specific file reading and parsing logic.
+  console.log(`Loading data from ${filePath}...`);
+  // return parsedData;
+  return [];
+}
+
+3. The Strategy Layer: Defining Your Logic
+A strategy is simply a set of rules that, given market data, decides when to buy or sell. You need a standardized way to define these.
+Strategy Interface:
+// A signal can be to enter a long/short position, or to exit any current position.
+type TradeSignal = 'BUY' | 'SELL' | 'HOLD' | 'EXIT';
+
+interface Strategy {
+  name: string;
+  parameters: Record<string, any>;
+  // This is the core method. It looks at the historical data up to the current candle.
+  generateSignal(historicalData: OHLVC[]): TradeSignal;
+}
+
+Example 1: Day Trading Strategy (Opening Range Breakout)
+ * Logic: If the price breaks above the high of the first 30 minutes of trading, buy. If it breaks below the low, sell. Exit all positions at the end of the day.
+ * Parameters: rangeMinutes (e.g., 30).
+Example 2: Swing Trading Strategy (Moving Average Crossover)
+ * Logic: When a short-term moving average crosses above a long-term moving average, buy. When it crosses below, sell.
+ * Parameters: shortWindow (e.g., 10), longWindow (e.g., 30).
+4. The Engine Layer: Orchestrating the Backtest
+This is the most complex and important part.
+The Backtester Class:
+class Backtester {
+  private tradeLog: any[] = [];
+  private portfolio = { cash: 100000, position: null }; // Starting with $100k
+  private pendingOrder: 'BUY' | 'SELL' | null = null;
+
+  constructor(private strategy: Strategy, private historicalData: OHLVC[]) {}
+
+  public run() {
+    // The main event loop.
+    for (let i = 0; i < this.historicalData.length; i++) {
+      const currentCandle = this.historicalData[i];
+      const dataUpToNow = this.historicalData.slice(0, i + 1);
+
+      // CRITICAL: Market Hours Logic
+      const isMarketOpen = this.isMarketHours(currentCandle.timestamp);
+      const wasMarketOpen = (i > 0) ? this.isMarketHours(this.historicalData[i-1].timestamp) : false;
+
+      // 1. Handle Pending Orders at Market Open
+      if (isMarketOpen && !wasMarketOpen && this.pendingOrder) {
+        this.executeTrade(this.pendingOrder, currentCandle.open); // Execute at opening price
+        this.pendingOrder = null;
+      }
+
+      // 2. Generate Signals & Execute Trades (only if market is open)
+      if (isMarketOpen) {
+        const signal = this.strategy.generateSignal(dataUpToNow);
+        if (signal === 'BUY' || signal === 'SELL') {
+          this.executeTrade(signal, currentCandle.close); // Execute at closing price of the candle
+        } else if (signal === 'EXIT') {
+          this.closePosition(currentCandle.close);
+        }
+      }
+
+      // 3. Generate Signal outside market hours (queues trade for next open)
+      if (!isMarketOpen) {
+          const signal = this.strategy.generateSignal(dataUpToNow);
+          if(signal === 'BUY' || signal === 'SELL') {
+              // This is a swing trading signal generated overnight.
+              // We queue it to be executed at the next market open.
+              this.pendingOrder = signal;
+          }
+      }
+
+      // 4. Force EOD position closing for Day Traders
+      if (this.strategy.name.includes("DayTrade") && this.isEndofDay(currentCandle.timestamp) && this.portfolio.position) {
+          this.closePosition(currentCandle.close);
+      }
+    }
+    return this.generateResults();
+  }
+
+  // Helper to check if a timestamp is within regular trading hours (9:30 AM - 4:00 PM ET)
+  private isMarketHours(timestamp: Date): boolean {
+    const hours = timestamp.getUTCHours() - 4; // Assuming EST is UTC-4. Adjust for EDT.
+    const minutes = timestamp.getUTCMinutes();
+    if (hours < 9 || (hours === 9 && minutes < 30) || hours >= 16) {
+        return false;
+    }
+    return true;
+  }
+
+  // ... other methods like executeTrade, closePosition, isEndOfDay, generateResults
+}
+
+How the Market Hours Logic Works:
+ * Pending Orders: If a trading signal (BUY or SELL) is generated outside of market hours (e.g., from a swing trading strategy analyzing daily charts overnight), the system does not execute the trade. Instead, it places a pendingOrder.
+ * Market Open Execution: The engine constantly checks if the market has just opened (i.e., the current candle is "in-hours" but the previous one was not). If so, it executes any pendingOrder at the opening price of the day.
+ * Intra-day Execution: If the market is open, signals are generated and executed on the close price of the current candle.
+ * Day Trader EOD Close: For strategies identified as "Day Trading," the engine must automatically close any open position at or near the 4:00 PM closing bell to ensure no positions are held overnight.
+5. Analysis & Storage Layer
+After the backtest loop finishes, you need to make sense of the results.
+generateResults() Method:
+This method will iterate through the tradeLog created by the engine and calculate:
+ * Total P/L: Sum of all trade profits and losses.
+ * Hit Rate (Win Rate): (Number of winning trades / Total number of trades) * 100
+ * Profit Factor: Gross Profit / Gross Loss
+ * Max Drawdown: The largest percentage drop from a portfolio peak to a subsequent trough.
+ * And many others (Sharpe Ratio, Average Win/Loss, etc.)
+Storage Logic:
+interface BacktestResult {
+  strategyName: string;
+  parameters: Record<string, any>;
+  performance: {
+    hitRate: number;
+    profitFactor: number;
+    totalPL: number;
+  };
+}
+
+function saveProfitableStrategy(result: BacktestResult, hitRateThreshold: number) {
+  if (result.performance.hitRate > hitRateThreshold) {
+    // Save the result to a database or a JSON file.
+    // This allows you to build a library of proven strategies.
+    console.log(`SUCCESS: Strategy ${result.strategyName} with params ${JSON.stringify(result.parameters)} exceeded threshold. Saving...`);
+    // fs.writeFileSync(`./proven_strategies/${result.strategyName}.json`, JSON.stringify(result, null, 2));
+  }
+}
+
+6. Putting It All Together: The Execution Flow
+Here’s how you would use these components in your main script.
+async function main() {
+  // 1. CONFIGURATION
+  const SYMBOL = 'SPY';
+  const API_KEY = 'YOUR_PREMIUM_KEY';
+  const HIT_RATE_THRESHOLD = 60; // We only care about strategies with >60% win rate
+
+  // 2. DATA GATHERING
+  // Fetch the last 3 months of data for SPY
+  const data_month1 = await fetchIntradayData(SYMBOL, '2025-06', '5min', API_KEY);
+  const data_month2 = await fetchIntradayData(SYMBOL, '2025-05', '5min', API_KEY);
+  const data_month3 = await fetchIntradayData(SYMBOL, '2025-04', '5min', API_KEY);
+  const allData = [...data_month3, ...data_month2, ...data_month1];
+
+  // 3. STRATEGY DEFINITION
+  const mySwingStrategy = new SwingTradeSMACrossover({ shortWindow: 20, longWindow: 50 });
+
+  // 4. BACKTEST EXECUTION
+  const backtester = new Backtester(mySwingStrategy, allData);
+  const results = backtester.run();
+
+  // 5. ANALYSIS & STORAGE
+  console.log(results.performance);
+  saveProfitableStrategy(results, HIT_RATE_THRESHOLD);
+}
+
+main();
+
+This architecture provides a solid, scalable, and realistic foundation for your backtesting system. By separating the concerns of data, strategy, and execution, you can easily add new strategies or data sources in the future. The key is the engine's strict adherence to market hours, which will give you much more trustworthy results.
