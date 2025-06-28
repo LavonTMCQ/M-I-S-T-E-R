@@ -46,16 +46,16 @@ export class MovingAverageCrossoverStrategy extends BaseStrategy {
   readonly requiredHistory = 50; // Need sufficient history for slow MA
 
   readonly parameters: MovingAverageCrossoverParameters = {
-    fastPeriod: 10,
-    slowPeriod: 20,
+    fastPeriod: 5,               // Very short for frequent signals
+    slowPeriod: 10,              // Short for frequent crossovers
     maType: 'EMA',
     confirmationBars: 1,
-    stopLossPercent: 0.02,        // 2%
-    takeProfitPercent: 0.04,      // 4%
-    minTrendStrength: 0.3,
-    volumeConfirmation: true,
-    volumeMultiplier: 1.2,
-    maxPositionTime: 480,         // 8 hours
+    stopLossPercent: 0.01,       // 1% stop loss
+    takeProfitPercent: 0.02,     // 2% take profit
+    minTrendStrength: 0.001,     // Very low threshold to allow more trades
+    volumeConfirmation: false,   // Disable volume confirmation
+    volumeMultiplier: 1.1,       // Lower if used
+    maxPositionTime: 60,         // 1 hour for faster exits
     exitBeforeClose: 30
   };
 
@@ -361,7 +361,7 @@ export class MovingAverageCrossoverStrategy extends BaseStrategy {
       confirmationBars: { type: 'number', required: true, min: 1, max: 5 },
       stopLossPercent: { type: 'number', required: true, min: 0.005, max: 0.1 },
       takeProfitPercent: { type: 'number', required: true, min: 0.01, max: 0.2 },
-      minTrendStrength: { type: 'number', required: true, min: 0.1, max: 1.0 },
+      minTrendStrength: { type: 'number', required: true, min: 0.001, max: 1.0 },
       volumeConfirmation: { type: 'boolean', required: true },
       volumeMultiplier: { type: 'number', required: true, min: 1.0, max: 3.0 },
       maxPositionTime: { type: 'number', required: true, min: 30, max: 1440 },

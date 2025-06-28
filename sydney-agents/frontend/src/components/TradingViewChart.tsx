@@ -14,19 +14,23 @@ import {
 import { OHLCV, MACDData, SignalData } from '@/types/tradingview';
 import { alphaVantageService } from '@/services/alphaVantageService';
 import { macdService } from '@/services/macdService';
+import { signalAnalyticsService } from '@/services/signalAnalyticsService';
+import { spyRealTimeService } from '@/services/realTimeDataService';
 
 interface TradingViewChartProps {
   symbol?: string;
   interval?: string;
   height?: number;
   theme?: 'light' | 'dark';
+  onSignalGenerated?: (signal: SignalData) => void;
 }
 
 export default function TradingViewChart({
   symbol = 'SPY',
   interval = '5m',
   height = 600,
-  theme = 'dark'
+  theme = 'dark',
+  onSignalGenerated
 }: TradingViewChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const macdContainerRef = useRef<HTMLDivElement>(null);
@@ -146,6 +150,17 @@ export default function TradingViewChart({
       // Generate signals using locked strategy
       const signals = macdService.generateSignals(ohlcvData, macdData);
 
+      // Add signals to analytics tracking
+      signals.forEach(signal => {
+        const signalId = signalAnalyticsService.addSignal(signal);
+        signal.id = signalId; // Add ID to signal for tracking
+
+        // Notify parent component if callback provided
+        if (onSignalGenerated) {
+          onSignalGenerated(signal);
+        }
+      });
+
       const data = {
         ohlcvData,
         macdData,
@@ -168,10 +183,96 @@ export default function TradingViewChart({
     }
   }, [symbol]);
 
-  // Load data on component mount
+  // Real-time updates using enhanced service
+  const startRealTimeUpdates = useCallback(() => {
+    if (isRealTime) return;
+
+    console.log('🚀 Starting enhanced real-time updates...');
+    setIsRealTime(true);
+    spyRealTimeService.start();
+  }, []);
+
+  const stopRealTimeUpdates = useCallback(() => {
+    console.log('⏹️ Stopping enhanced real-time updates...');
+    setIsRealTime(false);
+    spyRealTimeService.stop();
+  }, []);
+
+  // Load data on component mount and start real-time updates
   useEffect(() => {
-    loadRealData();
-  }, [loadRealData]);
+    loadRealData().then(() => {
+      // Auto-start real-time updates after initial load
+      setTimeout(() => {
+        console.log('🚀 Auto-starting real-time updates...');
+        startRealTimeUpdates();
+      }, 2000); // Wait 2 seconds after data load
+    });
+  }, [loadRealData, startRealTimeUpdates]);
+
+  // Set up real-time service subscriptions
+  useEffect(() => {
+    const unsubscribeUpdate = spyRealTimeService.onUpdate((update) => {
+      // Update chart with new price data
+      if (candlestickSeriesRef.current) {
+        const newBar = {
+          time: Math.floor(update.timestamp.getTime() / 1000) as any,
+          open: update.price,
+          high: update.price,
+          low: update.price,
+          close: update.price,
+        };
+        candlestickSeriesRef.current.update(newBar);
+      }
+
+      // Update MACD chart
+      if (update.macd && macdSeriesRef.current) {
+        const macdBar = {
+          time: Math.floor(update.timestamp.getTime() / 1000) as any,
+          value: update.macd.histogram,
+          color: update.macd.histogram >= 0 ? '#10b981' : '#ef4444',
+        };
+        macdSeriesRef.current.update(macdBar);
+      }
+
+      // Handle new signals
+      if (update.signal && onSignalGenerated) {
+        onSignalGenerated(update.signal);
+      }
+
+      // Update component state
+      setRealTimeData(prev => prev ? {
+        ...prev,
+        latestPrice: update.price,
+        latestSignal: update.signal || prev.latestSignal
+      } : null);
+    });
+
+    const unsubscribeDataRefresh = spyRealTimeService.onDataRefresh((freshData) => {
+      console.log(`🔄 Processing ${freshData.length} fresh data points...`);
+
+      // Recalculate all indicators
+      const ema9Data = macdService.calculateEMA9(freshData);
+      const macdData = macdService.calculateMACD(freshData);
+      const signals = macdService.generateSignals(freshData, macdData);
+
+      // Update state with fresh data
+      setRealTimeData(prev => ({
+        ohlcvData: freshData,
+        macdData,
+        signals,
+        ema9Data,
+        latestPrice: freshData[freshData.length - 1]?.close || prev?.latestPrice || 0,
+        latestSignal: signals[signals.length - 1] || prev?.latestSignal || null
+      }));
+
+      console.log(`✅ Refreshed with ${signals.length} total signals`);
+    });
+
+    return () => {
+      unsubscribeUpdate();
+      unsubscribeDataRefresh();
+    };
+  }, [onSignalGenerated]);
 
   // Initialize TradingView Lightweight Charts
   useEffect(() => {
@@ -179,12 +280,23 @@ export default function TradingViewChart({
 
     console.log('📈 Initializing TradingView Lightweight Charts...');
 
-    // Clear previous charts
-    if (chartRef.current) {
-      chartRef.current.remove();
+    // Clear previous charts safely
+    try {
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
+    } catch (error) {
+      console.warn('Previous main chart cleanup error:', error);
     }
-    if (macdChartRef.current) {
-      macdChartRef.current.remove();
+
+    try {
+      if (macdChartRef.current) {
+        macdChartRef.current.remove();
+        macdChartRef.current = null;
+      }
+    } catch (error) {
+      console.warn('Previous MACD chart cleanup error:', error);
     }
 
     try {
@@ -354,11 +466,23 @@ export default function TradingViewChart({
         cleanupSync();
       }
 
-      if (chartRef.current) {
-        chartRef.current.remove();
+      // Safely cleanup charts
+      try {
+        if (chartRef.current) {
+          chartRef.current.remove();
+          chartRef.current = null;
+        }
+      } catch (error) {
+        console.warn('Main chart cleanup error:', error);
       }
-      if (macdChartRef.current) {
-        macdChartRef.current.remove();
+
+      try {
+        if (macdChartRef.current) {
+          macdChartRef.current.remove();
+          macdChartRef.current = null;
+        }
+      } catch (error) {
+        console.warn('MACD chart cleanup error:', error);
       }
     };
 
@@ -368,100 +492,12 @@ export default function TradingViewChart({
     }
   }, [realTimeData, height, synchronizeCharts]);
 
-  // Real-time updates
-  const startRealTimeUpdates = useCallback(() => {
-    if (isRealTime || realTimeIntervalRef.current) return;
 
-    console.log('🔄 Starting real-time updates...');
-    setIsRealTime(true);
-
-    const updateInterval = setInterval(async () => {
-      try {
-        const latestPrice = await alphaVantageService.getLatestPrice(symbol);
-        const timestamp = new Date();
-
-        console.log(`💰 Real-time update: ${symbol} @ $${latestPrice.toFixed(2)}`);
-
-        // Update MACD service with new price
-        const update = macdService.updateWithNewPrice(latestPrice, timestamp);
-
-        // Update chart data if we have new MACD data
-        if (update.macd && candlestickSeriesRef.current) {
-          // Add new price bar (simplified - in production, you'd accumulate OHLCV)
-          const newBar = {
-            time: Math.floor(timestamp.getTime() / 1000) as any,
-            open: latestPrice,
-            high: latestPrice,
-            low: latestPrice,
-            close: latestPrice,
-          };
-
-          candlestickSeriesRef.current.update(newBar);
-        }
-
-        // Update EMA line
-        if (update.ema9 && emaSeriesRef.current) {
-          emaSeriesRef.current.update({
-            time: Math.floor(timestamp.getTime() / 1000) as any,
-            value: update.ema9
-          });
-        }
-
-        // Update MACD histogram
-        if (update.macd && macdSeriesRef.current) {
-          macdSeriesRef.current.update({
-            time: Math.floor(timestamp.getTime() / 1000) as any,
-            value: update.macd.histogram,
-            color: update.macd.histogram >= 0 ? '#10b981' : '#ef4444'
-          });
-        }
-
-        // Add new signal marker if generated
-        if (update.signal && candlestickSeriesRef.current) {
-          const newMarker = {
-            time: Math.floor(timestamp.getTime() / 1000) as any,
-            position: update.signal.type === 'long' ? 'belowBar' as const : 'aboveBar' as const,
-            color: update.signal.type === 'long' ? '#10b981' : '#ef4444',
-            shape: update.signal.type === 'long' ? 'arrowUp' as const : 'arrowDown' as const,
-            text: `${update.signal.type.toUpperCase()} @ $${update.signal.price.toFixed(2)}`,
-            size: 1,
-          };
-
-          // Note: In a real implementation, you'd manage markers more efficiently
-          console.log(`🎯 New ${update.signal.type} signal generated at $${update.signal.price.toFixed(2)}`);
-        }
-
-        // Update component state
-        setRealTimeData(prev => prev ? {
-          ...prev,
-          latestPrice: latestPrice,
-          latestSignal: update.signal || prev.latestSignal
-        } : null);
-
-      } catch (error) {
-        console.error('❌ Real-time update error:', error);
-      }
-    }, 60000); // 1-minute intervals
-
-    realTimeIntervalRef.current = updateInterval;
-  }, [isRealTime, symbol]);
-
-  const stopRealTimeUpdates = useCallback(() => {
-    console.log('⏹️ Stopping real-time updates...');
-    setIsRealTime(false);
-
-    if (realTimeIntervalRef.current) {
-      clearInterval(realTimeIntervalRef.current);
-      realTimeIntervalRef.current = null;
-    }
-  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (realTimeIntervalRef.current) {
-        clearInterval(realTimeIntervalRef.current);
-      }
+      spyRealTimeService.stop();
     };
   }, []);
 
@@ -559,8 +595,13 @@ export default function TradingViewChart({
           <div className="text-gray-300">
             <span className="text-gray-400">Status:</span>
             <span className={`ml-1 font-mono ${isRealTime ? 'text-green-400' : 'text-gray-400'}`}>
-              {isRealTime ? 'LIVE' : 'STATIC'}
+              {isRealTime ? '🟢 LIVE' : '🔴 STATIC'}
             </span>
+            {isRealTime && (
+              <span className="ml-2 text-xs text-green-400 animate-pulse">
+                • 30s updates
+              </span>
+            )}
           </div>
         </div>
       </div>

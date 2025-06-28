@@ -7,14 +7,17 @@
 
 import { StrategyFactory } from '../strategy-interface.js';
 import { OpeningRangeBreakoutStrategy } from './opening-range-breakout.js';
+import { OpeningRangeFadeStrategy } from './opening-range-fade.js';
 import { MovingAverageCrossoverStrategy } from './moving-average-crossover.js';
 
 // Register all strategies with the factory
 StrategyFactory.register('Opening Range Breakout', () => new OpeningRangeBreakoutStrategy());
+StrategyFactory.register('Opening Range Fade', () => new OpeningRangeFadeStrategy());
 StrategyFactory.register('Moving Average Crossover', () => new MovingAverageCrossoverStrategy());
 
 // Export strategies
 export { OpeningRangeBreakoutStrategy } from './opening-range-breakout.js';
+export { OpeningRangeFadeStrategy } from './opening-range-fade.js';
 export { MovingAverageCrossoverStrategy } from './moving-average-crossover.js';
 
 // Export factory for convenience
@@ -34,6 +37,20 @@ export const AVAILABLE_STRATEGIES = [
       volumeMultiplier: { default: 1.5, min: 1.0, max: 5.0, description: 'Volume confirmation multiplier' },
       stopLossATRMultiplier: { default: 2.0, min: 0.5, max: 5.0, description: 'Stop loss as multiple of ATR' },
       takeProfitRatio: { default: 2.0, min: 1.0, max: 5.0, description: 'Take profit ratio vs stop loss' }
+    }
+  },
+  {
+    name: 'Opening Range Fade',
+    description: 'Fades breakouts from the opening range - counter-trend strategy optimized for mean reversion',
+    category: 'day-trading',
+    difficulty: 'Advanced',
+    timeframes: ['1min', '5min'],
+    parameters: {
+      rangePeriodMinutes: { default: 30, min: 5, max: 120, description: 'Opening range period in minutes' },
+      fadeThreshold: { default: 0.002, min: 0, max: 0.05, description: 'Minimum breakout to fade percentage' },
+      volumeMultiplier: { default: 1.2, min: 1.0, max: 5.0, description: 'Volume confirmation multiplier' },
+      stopLossATRMultiplier: { default: 2.0, min: 0.5, max: 5.0, description: 'Stop loss as multiple of ATR (wider for counter-trend)' },
+      takeProfitRatio: { default: 1.5, min: 1.0, max: 5.0, description: 'Take profit ratio vs stop loss (tighter for mean reversion)' }
     }
   },
   {

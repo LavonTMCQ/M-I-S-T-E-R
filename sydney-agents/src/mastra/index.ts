@@ -7,8 +7,10 @@ import { soneResearchWorkflow, soneMainResearchWorkflow } from './workflows/sone
 import { weatherAgent } from './agents/weather-agent.js';
 import { soneAgent } from './agents/sone-agent.js';
 import { backtestingAgent } from './agents/backtesting-agent.js';
+import { quantAgent, initializeQuantAgent } from './agents/quant-agent.js';
 import { backtestingKnowledgeStore } from './backtesting/knowledge-store.js';
 import { dataManager } from './backtesting/data-manager.js';
+import initializeOrbAutoStart from './startup/orb-auto-start.js';
 
 export const mastra = new Mastra({
   workflows: {
@@ -16,7 +18,7 @@ export const mastra = new Mastra({
     soneResearchWorkflow,
     soneMainResearchWorkflow
   },
-  agents: { weatherAgent, soneAgent, backtestingAgent },
+  agents: { weatherAgent, soneAgent, backtestingAgent, quantAgent },
   storage: new LibSQLStore({
     // stores telemetry, evals, ... into memory storage, if it needs to persist, change to file:../mastra.db
     url: ":memory:",
@@ -40,5 +42,35 @@ async function initializeBacktestingSystem() {
   }
 }
 
-// Initialize on startup
-initializeBacktestingSystem();
+// Initialize Quant agent system
+async function initializeQuantSystem() {
+  try {
+    console.log('🔧 Initializing Quant agent system...');
+    await initializeQuantAgent();
+    console.log('✅ Quant agent system initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize Quant agent system:', error);
+  }
+}
+
+// Initialize Tomorrow Labs ORB monitoring system
+async function initializeOrbSystem() {
+  try {
+    console.log('🎯 Initializing Tomorrow Labs ORB monitoring system...');
+    await initializeOrbAutoStart();
+    console.log('✅ Tomorrow Labs ORB system initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize ORB system:', error);
+  }
+}
+
+
+
+// Initialize all systems on startup
+async function initializeAllSystems() {
+  await initializeBacktestingSystem();
+  await initializeQuantSystem();
+  await initializeOrbSystem();
+}
+
+initializeAllSystems();

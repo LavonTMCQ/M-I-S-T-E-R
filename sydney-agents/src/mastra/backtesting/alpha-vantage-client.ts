@@ -74,10 +74,10 @@ export class AlphaVantageClient {
   constructor(apiKey: string, rateLimitConfig?: Partial<RateLimitConfig>) {
     this.apiKey = apiKey;
     this.rateLimitConfig = {
-      requestsPerMinute: 5, // Free tier limit
-      requestsPerDay: 500,  // Free tier limit
+      requestsPerMinute: 150,  // Premium tier default: 150 requests per minute
+      requestsPerDay: 100000,  // Premium tier default: 100,000 requests per day
       retryAttempts: 3,
-      retryDelay: 1000,
+      retryDelay: 400,         // Faster retry for premium tier
       ...rateLimitConfig
     };
   }
@@ -197,40 +197,55 @@ export class AlphaVantageClient {
     endMonth: string,   // YYYY-MM
     interval: Interval = '5min'
   ): Promise<OHLVC[]> {
-    const months = this.generateMonthRange(startMonth, endMonth);
-    const allData: OHLVC[] = [];
+    console.log(`📊 Fetching data for ${symbol} (${interval})...`);
+    console.log(`📅 Requested range: ${startMonth} to ${endMonth}`);
 
-    console.log(`📊 Fetching ${months.length} months of data for ${symbol}...`);
+    try {
+      // For historical data, go directly to specific months instead of recent data
+      console.log(`📊 Fetching historical data for specific months...`);
+      const months = this.generateMonthRange(startMonth, endMonth);
+      const allData: OHLVC[] = [];
 
-    for (let i = 0; i < months.length; i++) {
-      const month = months[i];
-      console.log(`📅 Fetching ${month} (${i + 1}/${months.length})`);
+      console.log(`📅 Generated months: ${months.join(', ')}`);
 
-      try {
-        const monthData = await this.fetchIntradayData(symbol, {
-          interval,
-          month,
-          outputSize: 'full',
-          extendedHours: true
-        });
+      for (let i = 0; i < months.length; i++) {
+        const month = months[i];
+        console.log(`📅 Fetching ${month} (${i + 1}/${months.length})`);
 
-        allData.push(...monthData);
-        
-        // Add delay between requests to respect rate limits
-        if (i < months.length - 1) {
-          await this.delay(this.rateLimitConfig.retryDelay);
+        try {
+          const monthData = await this.fetchIntradayData(symbol, {
+            interval,
+            month,
+            outputSize: 'full',
+            extendedHours: true
+          });
+
+          console.log(`📊 Received ${monthData.length} data points for ${month}`);
+          if (monthData.length > 0) {
+            console.log(`📅 Month ${month} data range: ${monthData[0].timestamp.toISOString().split('T')[0]} to ${monthData[monthData.length - 1].timestamp.toISOString().split('T')[0]}`);
+          }
+
+          allData.push(...monthData);
+
+          // Add delay between requests to respect rate limits
+          if (i < months.length - 1) {
+            await this.delay(this.rateLimitConfig.retryDelay);
+          }
+        } catch (error) {
+          console.error(`⚠️ Failed to fetch data for ${month}, skipping...`, error);
+          continue;
         }
-      } catch (error) {
-        console.error(`⚠️ Failed to fetch data for ${month}, skipping...`);
-        continue;
       }
+
+      // Sort by timestamp to ensure chronological order
+      allData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+      console.log(`✅ Fetched ${allData.length} data points for ${symbol}`);
+      return allData;
+    } catch (error) {
+      console.error(`❌ Failed to fetch data for ${symbol}:`, error);
+      return [];
     }
-
-    // Sort by timestamp to ensure chronological order
-    allData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
-    console.log(`✅ Fetched ${allData.length} data points for ${symbol}`);
-    return allData;
   }
 
   /**
@@ -238,9 +253,14 @@ export class AlphaVantageClient {
    * Implements the parsing logic from stockbacktestdesign.txt
    */
   private parseTimeSeriesData(data: any, interval: string): OHLVC[] {
-    // Handle error responses
-    if (data['Error Message'] || data['Note'] || data['Information']) {
-      throw new Error(data['Error Message'] || data['Note'] || data['Information']);
+    // Handle actual error responses (but not informational messages)
+    if (data['Error Message']) {
+      throw new Error(data['Error Message']);
+    }
+
+    // Handle rate limit or API limit messages
+    if (data['Note'] && (data['Note'].includes('limit') || data['Note'].includes('exceeded'))) {
+      throw new Error(data['Note']);
     }
 
     // Find the time series key (varies by endpoint)
@@ -275,9 +295,14 @@ export class AlphaVantageClient {
    * Parse technical indicator data
    */
   private parseTechnicalIndicatorData(data: any, indicator: string): any {
-    // Handle error responses
-    if (data['Error Message'] || data['Note'] || data['Information']) {
-      throw new Error(data['Error Message'] || data['Note'] || data['Information']);
+    // Handle actual error responses (but not informational messages)
+    if (data['Error Message']) {
+      throw new Error(data['Error Message']);
+    }
+
+    // Handle rate limit or API limit messages
+    if (data['Note'] && (data['Note'].includes('limit') || data['Note'].includes('exceeded'))) {
+      throw new Error(data['Note']);
     }
 
     // Find the technical analysis key
@@ -375,17 +400,30 @@ export class AlphaVantageClient {
    */
   private generateMonthRange(startMonth: string, endMonth: string): string[] {
     const months: string[] = [];
-    const start = new Date(startMonth + '-01');
-    const end = new Date(endMonth + '-01');
 
-    const current = new Date(start);
-    while (current <= end) {
-      const year = current.getFullYear();
-      const month = String(current.getMonth() + 1).padStart(2, '0');
-      months.push(`${year}-${month}`);
-      current.setMonth(current.getMonth() + 1);
+    // Parse the input strings directly
+    const [startYear, startMonthNum] = startMonth.split('-').map(Number);
+    const [endYear, endMonthNum] = endMonth.split('-').map(Number);
+
+    console.log(`📅 Generating months from ${startMonth} to ${endMonth}`);
+
+    // Create proper date objects
+    let currentYear = startYear;
+    let currentMonth = startMonthNum;
+
+    while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonthNum)) {
+      const monthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+      months.push(monthStr);
+      console.log(`📅 Added month: ${monthStr}`);
+
+      currentMonth++;
+      if (currentMonth > 12) {
+        currentMonth = 1;
+        currentYear++;
+      }
     }
 
+    console.log(`📅 Final month list: ${months.join(', ')}`);
     return months;
   }
 
@@ -415,10 +453,10 @@ export class AlphaVantageClient {
   }
 }
 
-// Export configured client instance
+// Export configured client instance with PREMIUM TIER limits
 export const alphaVantageClient = new AlphaVantageClient('TJ3M96GBAVU75JQC', {
-  requestsPerMinute: 5,
-  requestsPerDay: 500,
+  requestsPerMinute: 150,  // Premium tier: 150 requests per minute
+  requestsPerDay: 100000,  // Premium tier: 100,000 requests per day
   retryAttempts: 3,
-  retryDelay: 1000
+  retryDelay: 400          // Faster retry for premium tier
 });

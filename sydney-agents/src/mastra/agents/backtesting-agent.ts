@@ -7,7 +7,31 @@ import { TokenLimiter, ToolCallFilter } from '@mastra/memory/processors';
 import { CompositeVoice } from '@mastra/core/voice';
 import { GoogleVoice } from '@mastra/voice-google';
 // Import backtesting tools
-import { runBacktestTool, manageStrategiesTool, manageDataTool } from '../tools/backtesting-tools.js';
+import { runBacktestTool, manageStrategiesTool, manageDataTool, macdHistogramBacktest } from '../tools/backtesting-tools.js';
+
+// Import Pine Script parser tool
+import { parsePineScriptTool } from '../tools/pine-script-parser.js';
+
+// Import First Candle Strategy tools
+import { firstCandleStrategyTool } from '../tools/first-candle-strategy.js';
+import { tomorrowLabsOrbTool } from '../tools/real-first-candle-strategy.js';
+import { tomorrowLabsOrbMonitorTool } from '../tools/tomorrow-labs-orb-monitor.js';
+import { autoStartOrbMonitorTool } from '../tools/auto-start-orb-monitor.js';
+import { startTradingTool } from '../tools/start-trading.js';
+
+// Create backtesting tools object following Sone agent pattern
+const backtestingTools: any = {
+  runBacktestTool,
+  manageStrategiesTool,
+  manageDataTool,
+  macdHistogramBacktest,
+  parsePineScriptTool,
+  firstCandleStrategyTool,
+  tomorrowLabsOrbTool,
+  tomorrowLabsOrbMonitorTool,
+  autoStartOrbMonitorTool,
+  startTradingTool,
+};
 
 /**
  * Dedicated Backtesting Agent for Sydney's Trading Analysis
@@ -91,18 +115,12 @@ const backtestingMemory = new Memory({
 
 // Voice system for backtesting results
 const backtestingVoice = new CompositeVoice({
-  providers: [
-    new GoogleVoice({
+  speakProvider: new GoogleVoice({
+    speechModel: {
       apiKey: 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4',
-      voice: 'en-US-Journey-F', // Professional female voice for Sydney
-      audioConfig: {
-        audioEncoding: 'MP3',
-        speakingRate: 1.0,
-        pitch: 0.0,
-        volumeGainDb: 0.0,
-      },
-    }),
-  ],
+    },
+    speaker: 'en-US-Journey-F', // Professional female voice for Sydney
+  }),
 });
 
 // Tools are now imported from separate files
@@ -114,7 +132,7 @@ const backtestingVoice = new CompositeVoice({
 // Create the Backtesting Agent
 export const backtestingAgent = new Agent({
   name: 'Backtesting Agent',
-  instructions: `You are Sydney's dedicated backtesting agent, specialized in comprehensive trading strategy analysis and optimization.
+  instructions: `You are Sydney's dedicated backtesting agent, specialized in comprehensive trading strategy analysis and optimization with Pine Script integration.
 
 Your expertise includes:
 - Running detailed backtests with realistic market conditions
@@ -122,14 +140,24 @@ Your expertise includes:
 - Managing strategy libraries and optimization
 - Providing voice-enabled results and insights
 - Data management and quality assurance
+- **Pine Script Strategy Integration**: Parse and backtest TradingView Pine Script strategies
 
 Key responsibilities:
 1. Execute backtests with proper risk management and realistic assumptions
 2. Analyze performance using advanced metrics (Sharpe ratio, drawdown, profit factor)
-3. Manage strategy libraries and find profitable patterns
-4. Provide clear, actionable insights for strategy improvement
-5. Speak important results for hands-free analysis
-6. Maintain data quality and availability
+3. **Parse Pine Script strategies** from natural language or code and convert them to backtesting format
+4. Manage strategy libraries and find profitable patterns
+5. Provide clear, actionable insights for strategy improvement
+6. Speak important results for hands-free analysis
+7. Maintain data quality and availability
+
+## Pine Script Integration Workflow:
+When Sydney provides a Pine Script strategy (either as code or natural language description):
+1. **Parse the strategy** using parsePineScriptTool to extract trading logic
+2. **Convert indicators and conditions** to Alpha Vantage compatible format
+3. **Run comprehensive backtests** on specified symbols (SPY, QQQ, etc.)
+4. **Analyze results** and provide detailed performance metrics
+5. **Speak key findings** for hands-free analysis
 
 Communication style:
 - Technical but accessible for trading decisions
@@ -137,18 +165,15 @@ Communication style:
 - Clear performance summaries with key metrics
 - Voice alerts for significant findings
 - Professional trading terminology
+- **Pine Script aware**: Understand TradingView syntax and trading logic
 
-Remember: You're helping Sydney optimize her trading strategies through rigorous backtesting. Always emphasize realistic expectations and proper risk management.`,
+Remember: You're helping Sydney optimize her trading strategies through rigorous backtesting. Always emphasize realistic expectations and proper risk management. When working with Pine Script strategies, ensure proper conversion to backtesting format while maintaining the original trading logic.`,
 
-  model: google('gemini-2.0-flash-exp'),
+  model: google('gemini-2.5-pro'),
   memory: backtestingMemory,
   voice: backtestingVoice,
   
-  tools: [
-    runBacktestTool,
-    manageStrategiesTool,
-    manageDataTool,
-  ],
+  tools: backtestingTools,
 });
 
 export default backtestingAgent;

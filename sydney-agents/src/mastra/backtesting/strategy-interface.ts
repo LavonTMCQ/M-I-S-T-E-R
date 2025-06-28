@@ -148,38 +148,55 @@ export abstract class BaseStrategy implements IStrategy {
   }
 
   calculatePositionSize(signal: StrategySignal, context: StrategyContext): number {
-    // Default position sizing - 2% risk per trade
-    const riskPerTrade = 0.02;
+    // Conservative position sizing to ensure sufficient cash
     const accountValue = context.portfolio.totalValue;
-    const riskAmount = accountValue * riskPerTrade;
-    
+    const availableCash = context.portfolio.cash;
+    const price = signal.price || 0;
+
+    if (price <= 0) return 0;
+
+    // Use 10% of available cash for position (conservative approach)
+    const maxPositionValue = Math.min(
+      availableCash * 0.10,  // 10% of cash
+      accountValue * 0.25    // or 25% of total portfolio value
+    );
+
+    // Calculate max shares we can afford including commission buffer
+    const commission = 1.0; // $1 commission
+    const maxShares = Math.floor((maxPositionValue - commission) / price);
+
+    // Risk-based sizing if stop loss is provided
     if (signal.stopLoss && signal.price) {
       const riskPerShare = Math.abs(signal.price - signal.stopLoss);
       if (riskPerShare > 0) {
-        return Math.floor(riskAmount / riskPerShare);
+        // Risk 1% of account value per trade
+        const riskAmount = accountValue * 0.01;
+        const riskBasedShares = Math.floor(riskAmount / riskPerShare);
+
+        // Use the smaller of risk-based or cash-based sizing
+        return Math.min(maxShares, riskBasedShares);
       }
     }
-    
-    // Fallback to percentage of portfolio
-    const maxPositionValue = accountValue * context.riskLimits.maxPositionSize;
-    return signal.price ? Math.floor(maxPositionValue / signal.price) : 0;
+
+    return Math.max(1, maxShares); // Ensure at least 1 share if we can afford it
   }
 
   shouldExit(context: StrategyContext, state: StrategyState): StrategySignal | null {
     // Default exit logic - stop loss and take profit
     if (!state.currentPosition) return null;
-    
+
     const currentPrice = context.currentBar.close;
     const position = state.currentPosition;
-    
+
     // Calculate unrealized P/L percentage
     const entryPrice = position.entryPrice;
-    const pnlPercent = position.side === 'LONG' 
+    const pnlPercent = position.side === 'LONG'
       ? (currentPrice - entryPrice) / entryPrice
       : (entryPrice - currentPrice) / entryPrice;
-    
-    // Stop loss check (2% default)
-    if (pnlPercent < -0.02) {
+
+    // Use strategy-specific stop loss if available, otherwise default to 2%
+    const stopLossPercent = (this.parameters as any).stopLossPercent || 0.02;
+    if (pnlPercent < -stopLossPercent) {
       return {
         type: 'CLOSE',
         strength: 'STRONG',
@@ -188,9 +205,10 @@ export abstract class BaseStrategy implements IStrategy {
         timestamp: new Date()
       };
     }
-    
-    // Take profit check (4% default for 2:1 R/R)
-    if (pnlPercent > 0.04) {
+
+    // Use strategy-specific take profit if available, otherwise default to 4%
+    const takeProfitPercent = (this.parameters as any).takeProfitPercent || 0.04;
+    if (pnlPercent > takeProfitPercent) {
       return {
         type: 'CLOSE',
         strength: 'STRONG',
@@ -199,7 +217,7 @@ export abstract class BaseStrategy implements IStrategy {
         timestamp: new Date()
       };
     }
-    
+
     return null;
   }
 

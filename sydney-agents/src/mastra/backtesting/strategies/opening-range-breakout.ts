@@ -44,12 +44,12 @@ export class OpeningRangeBreakoutStrategy extends BaseStrategy {
 
   readonly parameters: OpeningRangeBreakoutParameters = {
     rangePeriodMinutes: 30,
-    breakoutThreshold: 0.001,      // 0.1%
-    volumeMultiplier: 1.5,
-    stopLossATRMultiplier: 2.0,
-    takeProfitRatio: 2.0,
-    maxPositionTime: 240,          // 4 hours
-    minRangeSize: 0.002,           // 0.2%
+    breakoutThreshold: 0.005,      // 0.5% - much higher threshold for meaningful breakouts
+    volumeMultiplier: 2.0,         // require 2x volume for confirmation
+    stopLossATRMultiplier: 2.0,    // wider stops for better risk management
+    takeProfitRatio: 1.5,          // tighter profit targets for higher hit rate
+    maxPositionTime: 120,          // 2 hours max - shorter for day trading
+    minRangeSize: 0.002,           // 0.2% - larger minimum range size
     exitBeforeClose: 30
   };
 
@@ -162,15 +162,25 @@ export class OpeningRangeBreakoutStrategy extends BaseStrategy {
 
   private finalizeOpeningRange(): void {
     const rangeSize = this.openingRange.high - this.openingRange.low;
-    const rangeSizePercent = rangeSize / ((this.openingRange.high + this.openingRange.low) / 2);
+    const midPrice = (this.openingRange.high + this.openingRange.low) / 2;
+    const rangeSizePercent = rangeSize / midPrice;
 
-    // Validate range size
+    console.log(`📊 Opening range analysis: $${this.openingRange.low.toFixed(2)} - $${this.openingRange.high.toFixed(2)}`);
+    console.log(`📏 Range size: $${rangeSize.toFixed(2)} (${(rangeSizePercent * 100).toFixed(3)}%)`);
+    console.log(`📐 Min required: ${(this.parameters.minRangeSize * 100).toFixed(3)}%`);
+
+    // Only establish range if it meets minimum size requirement
     if (rangeSizePercent >= this.parameters.minRangeSize) {
       this.openingRange.established = true;
-      console.log(`📊 Opening range established: $${this.openingRange.low.toFixed(2)} - $${this.openingRange.high.toFixed(2)} (${(rangeSizePercent * 100).toFixed(2)}%)`);
+      console.log(`✅ Opening range established and ready for breakout signals`);
+
+      // Log breakout levels
+      const bullishBreakout = this.openingRange.high * (1 + this.parameters.breakoutThreshold);
+      const bearishBreakout = this.openingRange.low * (1 - this.parameters.breakoutThreshold);
+      console.log(`🎯 Bullish breakout level: $${bullishBreakout.toFixed(2)}`);
+      console.log(`🎯 Bearish breakout level: $${bearishBreakout.toFixed(2)}`);
     } else {
-      console.log(`⚠️ Opening range too small: ${(rangeSizePercent * 100).toFixed(2)}% < ${(this.parameters.minRangeSize * 100).toFixed(2)}%`);
-      this.resetOpeningRange();
+      console.log(`❌ Range too small (${(rangeSizePercent * 100).toFixed(3)}% < ${(this.parameters.minRangeSize * 100).toFixed(3)}%) - no trades today`);
     }
   }
 
@@ -183,17 +193,28 @@ export class OpeningRangeBreakoutStrategy extends BaseStrategy {
     const currentPrice = currentBar.close;
     const currentVolume = currentBar.volume;
 
+    const bullishBreakoutLevel = high * (1 + this.parameters.breakoutThreshold);
+    const bearishBreakoutLevel = low * (1 - this.parameters.breakoutThreshold);
+
     // Check for bullish breakout
-    if (currentPrice > high * (1 + this.parameters.breakoutThreshold)) {
+    if (currentPrice > bullishBreakoutLevel) {
+      console.log(`🚀 Bullish breakout detected! Price: $${currentPrice.toFixed(2)} > $${bullishBreakoutLevel.toFixed(2)}`);
       if (this.isVolumeConfirmed(currentVolume)) {
+        console.log(`✅ Volume confirmed: ${currentVolume} vs avg ${this.averageVolume.toFixed(0)}`);
         return this.createBuySignal(currentBar, context);
+      } else {
+        console.log(`⚠️ Volume not confirmed: ${currentVolume} vs required ${(this.averageVolume * this.parameters.volumeMultiplier).toFixed(0)}`);
       }
     }
 
     // Check for bearish breakout
-    if (currentPrice < low * (1 - this.parameters.breakoutThreshold)) {
+    if (currentPrice < bearishBreakoutLevel) {
+      console.log(`📉 Bearish breakout detected! Price: $${currentPrice.toFixed(2)} < $${bearishBreakoutLevel.toFixed(2)}`);
       if (this.isVolumeConfirmed(currentVolume)) {
+        console.log(`✅ Volume confirmed: ${currentVolume} vs avg ${this.averageVolume.toFixed(0)}`);
         return this.createSellSignal(currentBar, context);
+      } else {
+        console.log(`⚠️ Volume not confirmed: ${currentVolume} vs required ${(this.averageVolume * this.parameters.volumeMultiplier).toFixed(0)}`);
       }
     }
 

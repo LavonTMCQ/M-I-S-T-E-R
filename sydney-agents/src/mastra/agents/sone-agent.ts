@@ -1829,7 +1829,7 @@ function chunkDocument(text: string, options: {
 }
 
 // Model for evaluations
-const evalModel = google('gemini-2.0-flash');
+const evalModel = google('gemini-2.5-pro');
 
 // Create voice system with fallback strategy
 let soneVoice: any;

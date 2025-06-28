@@ -92,11 +92,18 @@ export class DataManager {
 
       // Step 1: Check cache first (unless force refresh)
       if (!forceRefresh) {
-        const cachedData = await this.getCachedData(symbol, interval, { start: startDate, end: endDate });
-        if (cachedData.length > 0) {
-          console.log(`📋 Found ${cachedData.length} cached data points`);
-          data = cachedData;
-          source = 'cache';
+        // Quick check if we have any data for this symbol/interval/date range
+        const hasData = await backtestingKnowledgeStore.hasMarketData(symbol, interval, { start: startDate, end: endDate });
+
+        if (hasData) {
+          const cachedData = await this.getCachedData(symbol, interval, { start: startDate, end: endDate });
+          if (cachedData.length > 0) {
+            console.log(`📋 Found ${cachedData.length} cached data points for ${symbol} ${interval}`);
+            data = cachedData;
+            source = 'cache';
+          }
+        } else {
+          console.log(`📋 No cached data found for ${symbol} ${interval} in date range`);
         }
       }
 
@@ -189,9 +196,12 @@ export class DataManager {
     interval: Interval,
     extendedHours: boolean
   ): Promise<OHLVC[]> {
-    // Generate month range for API calls
+    // Generate correct month range for API calls
     const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
     const endMonth = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}`;
+
+    console.log(`📅 Fetching data for date range: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
+    console.log(`📅 Using month range: ${startMonth} to ${endMonth}`);
 
     // Use Alpha Vantage client to fetch historical data range
     const data = await alphaVantageClient.fetchHistoricalDataRange(
@@ -201,10 +211,44 @@ export class DataManager {
       interval
     );
 
-    // Filter to exact date range
-    return data.filter(bar => 
-      bar.timestamp >= startDate && bar.timestamp <= endDate
-    );
+    console.log(`📊 Raw API data: ${data.length} points`);
+    if (data.length > 0) {
+      console.log(`📅 Data range: ${data[0].timestamp.toISOString().split('T')[0]} to ${data[data.length - 1].timestamp.toISOString().split('T')[0]}`);
+    }
+
+    // Filter to exact date range with more lenient comparison
+    const filteredData = data.filter(bar => {
+      const barDate = new Date(bar.timestamp);
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      // Set times to start/end of day for comparison
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+
+      return barDate >= start && barDate <= end;
+    });
+
+    console.log(`📊 Filtered data: ${filteredData.length} points in requested range`);
+
+    // If we still have no data, try a broader approach
+    if (filteredData.length === 0 && data.length > 0) {
+      console.log(`⚠️ No data in exact range, trying broader date matching...`);
+
+      // Try matching just the date part (ignore time)
+      const broadFilteredData = data.filter(bar => {
+        const barDateStr = bar.timestamp.toISOString().split('T')[0];
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+
+        return barDateStr >= startDateStr && barDateStr <= endDateStr;
+      });
+
+      console.log(`📊 Broad filtered data: ${broadFilteredData.length} points found`);
+      return broadFilteredData;
+    }
+
+    return filteredData;
   }
 
   /**
@@ -242,32 +286,12 @@ export class DataManager {
     interval: Interval,
     dateRange: { start: Date; end: Date }
   ): Promise<OHLVC[]> {
-    const cachedDataSets = await backtestingKnowledgeStore.getMarketData(
+    // Use the new efficient SQL-based retrieval that returns OHLVC[] directly
+    return await backtestingKnowledgeStore.getMarketData(
       symbol,
       interval,
       dateRange
     );
-
-    if (cachedDataSets.length === 0) return [];
-
-    // Combine and deduplicate data from multiple cached sets
-    const allData: OHLVC[] = [];
-    const seenTimestamps = new Set<string>();
-
-    for (const dataSet of cachedDataSets) {
-      for (const bar of dataSet.data) {
-        const timestampKey = bar.timestamp.toISOString();
-        if (!seenTimestamps.has(timestampKey)) {
-          seenTimestamps.add(timestampKey);
-          allData.push(bar);
-        }
-      }
-    }
-
-    // Sort chronologically
-    allData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
-    return allData;
   }
 
   /**
@@ -333,7 +357,7 @@ export class DataManager {
 
     try {
       const cachedData = await backtestingKnowledgeStore.getMarketData(symbol, interval);
-      
+
       if (cachedData.length === 0) {
         return {
           available: false,
@@ -342,32 +366,17 @@ export class DataManager {
         };
       }
 
-      // Combine all cached data to get full picture
-      const allBars: OHLVC[] = [];
-      let lastUpdated: Date | undefined;
-
-      for (const dataSet of cachedData) {
-        allBars.push(...dataSet.data);
-        if (!lastUpdated || dataSet.fetchedAt > lastUpdated) {
-          lastUpdated = dataSet.fetchedAt;
-        }
-      }
-
-      // Remove duplicates and sort
-      const uniqueBars = Array.from(
-        new Map(allBars.map(bar => [bar.timestamp.toISOString(), bar])).values()
-      ).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
-      const stats = DataUtils.calculateStatistics(uniqueBars);
+      // Data is already sorted and deduplicated from SQL query
+      const stats = DataUtils.calculateStatistics(cachedData);
 
       return {
         available: true,
-        dateRange: uniqueBars.length > 0 ? {
-          start: uniqueBars[0].timestamp,
-          end: uniqueBars[uniqueBars.length - 1].timestamp
+        dateRange: cachedData.length > 0 ? {
+          start: cachedData[0].timestamp,
+          end: cachedData[cachedData.length - 1].timestamp
         } : undefined,
-        dataPoints: uniqueBars.length,
-        lastUpdated,
+        dataPoints: cachedData.length,
+        lastUpdated: new Date(), // Could be enhanced to track actual last update
         gaps: stats.gaps
       };
     } catch (error) {

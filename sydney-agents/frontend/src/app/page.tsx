@@ -1,18 +1,71 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import TradingViewChart from '@/components/TradingViewChart';
 import Dashboard from '@/components/Dashboard';
+import SignalAnalyticsDashboard from '@/components/SignalAnalyticsDashboard';
+import SignalQualityIndicator from '@/components/SignalQualityIndicator';
+import { SignalData } from '@/types/tradingview';
+import { clearSignalData, initializeMockSignalData } from '@/utils/mockSignalData';
 
 export default function Home() {
+  const [latestSignal, setLatestSignal] = useState<SignalData | null>(null);
+  const [showDataControls, setShowDataControls] = useState(false);
+
+  const handleSignalGenerated = (signal: SignalData) => {
+    setLatestSignal(signal);
+    console.log('📊 New signal received in main page:', signal);
+  };
+
+  const handleClearData = () => {
+    clearSignalData();
+    window.location.reload(); // Refresh to show empty state
+  };
+
+  const handleLoadTestData = () => {
+    initializeMockSignalData();
+    window.location.reload(); // Refresh to show test data
+  };
+
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Header */}
       <header className="bg-gray-900 border-b border-gray-700 p-6">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            🎯 Sydney's Advanced Trading System
-          </h1>
-          <p className="text-gray-300">
-            Enhanced MACD Histogram Strategy | Locked Optimal Configuration | 10.04% Monthly Return
-          </p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                🎯 Sydney's Advanced Trading System
+              </h1>
+              <p className="text-gray-300">
+                Enhanced MACD Histogram Strategy | Locked Optimal Configuration | 10.04% Monthly Return
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowDataControls(!showDataControls)}
+                className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors"
+              >
+                ⚙️ Data Controls
+              </button>
+              {showDataControls && (
+                <div className="flex space-x-2">
+                  <button
+                    onClick={handleClearData}
+                    className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors"
+                  >
+                    🗑️ Clear Data
+                  </button>
+                  <button
+                    onClick={handleLoadTestData}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors"
+                  >
+                    📊 Load Test Data
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </header>
 
@@ -21,80 +74,92 @@ export default function Home() {
         {/* Dashboard */}
         <Dashboard />
 
-        {/* TradingView Chart */}
-        <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
-          <h2 className="text-xl font-bold text-white mb-4">📊 SPY 5-Minute Chart</h2>
-          <TradingViewChart
-            symbol="SPY"
-            interval="5m"
-            height={600}
-            theme="dark"
-          />
+        {/* Advanced Signal Analytics Dashboard */}
+        <SignalAnalyticsDashboard />
+
+        {/* TradingView Chart with Signal Quality */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main Chart */}
+          <div className="lg:col-span-3 bg-gray-900 rounded-lg border border-gray-700 p-6">
+            <h2 className="text-xl font-bold text-white mb-4">📊 SPY 5-Minute Chart</h2>
+            <TradingViewChart
+              symbol="SPY"
+              interval="5m"
+              height={600}
+              theme="dark"
+              onSignalGenerated={handleSignalGenerated}
+            />
+          </div>
+
+          {/* Signal Quality Indicator */}
+          <div className="lg:col-span-1">
+            <SignalQualityIndicator signal={latestSignal} />
+          </div>
         </div>
 
-        {/* Week 1 Progress */}
+        {/* Phase 2 Implementation Status */}
         <div className="bg-green-900/20 border border-green-500 rounded-lg p-6">
-          <h2 className="text-green-400 text-xl font-bold mb-4">🎉 Week 1 Implementation Progress</h2>
+          <h2 className="text-green-400 text-xl font-bold mb-4">🎉 Phase 2: Advanced Analytics Dashboard Complete!</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h3 className="text-green-300 font-semibold mb-3">✅ Completed Deliverables</h3>
+              <h3 className="text-green-300 font-semibold mb-3">✅ Phase 2: Advanced Analytics Complete</h3>
               <ul className="space-y-2 text-sm">
                 <li className="flex items-center">
                   <span className="text-green-400 mr-2">✅</span>
-                  TradingView integration research and documentation
+                  Interactive signal timeline visualization
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-400 mr-2">✅</span>
-                  Next.js frontend project setup with TypeScript
+                  Advanced filtering interface
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-400 mr-2">✅</span>
-                  Basic chart component with mock SPY data
+                  Performance charts (P&L, Win Rate, Distribution)
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-400 mr-2">✅</span>
-                  MACD calculation using locked optimal parameters (5/15/5)
+                  Multi-view dashboard (Overview/Timeline/Charts)
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-400 mr-2">✅</span>
-                  Signal generation with EMA-9 trend filter
+                  Signal quality scoring system
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-400 mr-2">✅</span>
-                  Performance dashboard with validated metrics
+                  Comprehensive filter presets
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-400 mr-2">✅</span>
-                  Development environment with hot reload
+                  Real-time analytics updates
                 </li>
               </ul>
             </div>
             <div>
-              <h3 className="text-yellow-300 font-semibold mb-3">🔄 Week 2 Priorities</h3>
+              <h3 className="text-blue-300 font-semibold mb-3">🚀 Phase 3: Predictive Analytics (Next)</h3>
               <ul className="space-y-2 text-sm">
                 <li className="flex items-center">
-                  <span className="text-yellow-400 mr-2">🔄</span>
-                  TradingView library access and integration
+                  <span className="text-blue-400 mr-2">🤖</span>
+                  Machine learning signal quality prediction
                 </li>
                 <li className="flex items-center">
-                  <span className="text-yellow-400 mr-2">🔄</span>
-                  Real-time data feed from Alpha Vantage
+                  <span className="text-blue-400 mr-2">📊</span>
+                  Market condition correlation analysis
                 </li>
                 <li className="flex items-center">
-                  <span className="text-yellow-400 mr-2">🔄</span>
-                  WebSocket implementation for live updates
+                  <span className="text-blue-400 mr-2">⚙️</span>
+                  Strategy optimization recommendations
                 </li>
                 <li className="flex items-center">
-                  <span className="text-yellow-400 mr-2">🔄</span>
-                  Interactive chart controls and navigation
+                  <span className="text-blue-400 mr-2">🎯</span>
+                  Advanced risk management scoring
                 </li>
                 <li className="flex items-center">
-                  <span className="text-yellow-400 mr-2">🔄</span>
-                  Signal overlay visualization on charts
+                  <span className="text-blue-400 mr-2">📈</span>
+                  Predictive performance modeling
                 </li>
                 <li className="flex items-center">
-                  <span className="text-yellow-400 mr-2">🔄</span>
-                  Performance optimization for real-time data
+                  <span className="text-blue-400 mr-2">🔮</span>
+                  AI-powered signal recommendations
                 </li>
               </ul>
             </div>

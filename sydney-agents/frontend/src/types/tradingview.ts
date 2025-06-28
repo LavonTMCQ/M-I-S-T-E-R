@@ -40,6 +40,64 @@ export interface SignalData {
   reason: string;
   macdValue: number;
   emaValue: number;
+  id?: string; // Unique identifier for tracking
+}
+
+// Enhanced Signal Analytics Types
+export interface SignalPerformance {
+  signalId: string;
+  signal: SignalData;
+  outcome?: 'win' | 'loss' | 'pending';
+  pnl?: number;
+  pnlPips?: number;
+  holdingPeriod?: number; // in minutes
+  exitPrice?: number;
+  exitTime?: Date;
+  maxRunup?: number;
+  maxDrawdown?: number;
+  riskRewardRatio?: number;
+}
+
+export interface SignalAnalytics {
+  totalSignals: number;
+  longSignals: number;
+  shortSignals: number;
+  winRate: number;
+  longWinRate: number;
+  shortWinRate: number;
+  avgPnL: number;
+  avgPnLPips: number;
+  avgHoldingPeriod: number;
+  bestSignal: SignalPerformance | null;
+  worstSignal: SignalPerformance | null;
+  profitFactor: number;
+  sharpeRatio: number;
+  consecutiveWins: number;
+  consecutiveLosses: number;
+  avgConfidence: number;
+  confidenceCorrelation: number; // correlation between confidence and performance
+}
+
+export interface SignalFilter {
+  type?: 'long' | 'short' | 'all';
+  outcome?: 'win' | 'loss' | 'pending' | 'all';
+  minConfidence?: number;
+  maxConfidence?: number;
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
+  minPnL?: number;
+  maxPnL?: number;
+}
+
+export interface MarketCondition {
+  timestamp: Date;
+  trend: 'bullish' | 'bearish' | 'sideways';
+  volatility: 'low' | 'medium' | 'high';
+  volume: 'low' | 'medium' | 'high';
+  emaSlope: number;
+  macdMomentum: number;
 }
 
 // Chart Configuration

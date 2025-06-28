@@ -16,7 +16,7 @@ export class AlphaVantageService {
   private config: AlphaVantageConfig;
   private cache: Map<string, any> = new Map();
   private lastFetchTime: number = 0;
-  private readonly CACHE_DURATION = 60000; // 1 minute cache
+  private readonly CACHE_DURATION = 30000; // 30 second cache for more frequent updates
 
   constructor(config: Partial<AlphaVantageConfig> = {}) {
     this.config = {
@@ -169,19 +169,34 @@ export class AlphaVantageService {
   }
 
   /**
-   * Start real-time price monitoring (simulated with periodic fetches)
+   * Start real-time price monitoring with comprehensive data refresh
    */
   startRealTimeUpdates(
     symbol: string,
     onUpdate: (price: number, timestamp: Date) => void,
-    intervalMs: number = 60000 // 1 minute intervals
+    onDataRefresh?: (data: OHLCV[]) => void,
+    intervalMs: number = 30000 // 30 second intervals
   ): () => void {
     console.log(`🔄 Starting real-time updates for ${symbol} (${intervalMs}ms intervals)`);
-    
+
+    let updateCount = 0;
+
     const interval = setInterval(async () => {
       try {
+        updateCount++;
+
+        // Get latest price every update
         const price = await this.getLatestPrice(symbol);
         onUpdate(price, new Date());
+
+        // Refresh full dataset every 5 minutes (10 updates at 30s intervals)
+        if (updateCount % 10 === 0 && onDataRefresh) {
+          console.log('🔄 Refreshing full dataset for new signals...');
+          this.clearCache(); // Clear cache to force fresh data
+          const freshData = await this.fetchIntradayData(symbol);
+          onDataRefresh(freshData);
+        }
+
       } catch (error) {
         console.error('❌ Real-time update error:', error);
       }
