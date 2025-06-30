@@ -29,8 +29,13 @@
     "@mastra/voice-google": "^0.10.2",
     "@mastra/voice-openai": "^0.10.2",
     "@modelcontextprotocol/sdk": "^1.12.3",
+    "@types/express": "^5.0.3",
+    "@types/ws": "^8.18.1",
+    "axios": "^1.10.0",
+    "express": "^5.1.0",
     "node-fetch": "^3.3.2",
     "playwright": "^1.53.1",
+    "ws": "^8.18.3",
     "zod": "^3.25.65"
   },
   "devDependencies": {

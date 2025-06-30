@@ -227,15 +227,22 @@ function getCurrentMarketStatus() {
 
   // Calculate next market open
   let nextMarketOpen = new Date(easternTime);
-  if (!isWeekday || (isWeekday && hour >= 16)) {
-    // Move to next weekday
+
+  if (!isWeekday) {
+    // Weekend - move to next Monday
     while (nextMarketOpen.getDay() === 0 || nextMarketOpen.getDay() === 6) {
       nextMarketOpen.setDate(nextMarketOpen.getDate() + 1);
     }
-    if (hour >= 16) {
+  } else if (isWeekday && hour >= 16) {
+    // After market close - move to next trading day
+    nextMarketOpen.setDate(nextMarketOpen.getDate() + 1);
+    // Skip weekends if we land on one
+    while (nextMarketOpen.getDay() === 0 || nextMarketOpen.getDay() === 6) {
       nextMarketOpen.setDate(nextMarketOpen.getDate() + 1);
     }
   }
+  // If it's a weekday and before market close, keep the same day
+
   nextMarketOpen.setHours(9, 30, 0, 0);
 
   return {

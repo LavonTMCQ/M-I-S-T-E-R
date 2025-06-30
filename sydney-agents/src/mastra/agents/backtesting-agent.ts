@@ -19,6 +19,12 @@ import { tomorrowLabsOrbMonitorTool } from '../tools/tomorrow-labs-orb-monitor.j
 import { autoStartOrbMonitorTool } from '../tools/auto-start-orb-monitor.js';
 import { startTradingTool } from '../tools/start-trading.js';
 
+// Import Webhook Monitoring tools
+import { webhookMonitorTool } from '../tools/webhook-monitor-tool.js';
+import { realtimeSignalProcessor } from '../tools/realtime-signal-processor.js';
+import { tradeExecutionMonitor } from '../tools/trade-execution-monitor.js';
+import { tradingViewWebhookIntegration } from '../tools/tradingview-webhook-integration.js';
+
 // Create backtesting tools object following Sone agent pattern
 const backtestingTools: any = {
   runBacktestTool,
@@ -31,6 +37,11 @@ const backtestingTools: any = {
   tomorrowLabsOrbMonitorTool,
   autoStartOrbMonitorTool,
   startTradingTool,
+  // Webhook Monitoring Tools
+  webhookMonitorTool,
+  realtimeSignalProcessor,
+  tradeExecutionMonitor,
+  tradingViewWebhookIntegration,
 };
 
 /**

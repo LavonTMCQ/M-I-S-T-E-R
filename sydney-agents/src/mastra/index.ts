@@ -8,6 +8,7 @@ import { weatherAgent } from './agents/weather-agent.js';
 import { soneAgent } from './agents/sone-agent.js';
 import { backtestingAgent } from './agents/backtesting-agent.js';
 import { quantAgent, initializeQuantAgent } from './agents/quant-agent.js';
+import { cryptoBacktestingAgent, initializeCryptoBacktestingSystem } from './agents/crypto-backtesting-agent.js';
 import { backtestingKnowledgeStore } from './backtesting/knowledge-store.js';
 import { dataManager } from './backtesting/data-manager.js';
 import initializeOrbAutoStart from './startup/orb-auto-start.js';
@@ -18,7 +19,7 @@ export const mastra = new Mastra({
     soneResearchWorkflow,
     soneMainResearchWorkflow
   },
-  agents: { weatherAgent, soneAgent, backtestingAgent, quantAgent },
+  agents: { weatherAgent, soneAgent, backtestingAgent, quantAgent, cryptoBacktestingAgent },
   storage: new LibSQLStore({
     // stores telemetry, evals, ... into memory storage, if it needs to persist, change to file:../mastra.db
     url: ":memory:",
@@ -66,10 +67,22 @@ async function initializeOrbSystem() {
 
 
 
+// Initialize crypto backtesting system
+async function initializeCryptoSystem() {
+  try {
+    console.log('🔧 Initializing crypto backtesting system...');
+    await initializeCryptoBacktestingSystem();
+    console.log('✅ Crypto backtesting system initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize crypto backtesting system:', error);
+  }
+}
+
 // Initialize all systems on startup
 async function initializeAllSystems() {
   await initializeBacktestingSystem();
   await initializeQuantSystem();
+  await initializeCryptoSystem();
   await initializeOrbSystem();
 }
 
