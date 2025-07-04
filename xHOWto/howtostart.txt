@@ -1,0 +1,11 @@
+# 1. Start all services (if not already running)
+
+cd sydney-agents && npm run dev                    # Terminal 1: Mastra system
+
+cd sydney-agents && npm run mister:bridge         # Terminal 2: API bridge 
+
+cd sydney-agents && cd mister-frontend && npm run dev  # Terminal 3: Front-------
+
+cd sydney-agents && node mister-bridge-server.cjs
+
+npx @agentdeskai/browser-tools-server@latest

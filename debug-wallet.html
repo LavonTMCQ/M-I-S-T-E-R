@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Wallet Address</title>
+</head>
+<body>
+    <h1>Wallet Address Debug Tool</h1>
+    <button onclick="debugWallet()">Debug Wallet Address</button>
+    <button onclick="clearWalletData()">Clear Invalid Wallet Data</button>
+    <pre id="output"></pre>
+
+    <script>
+        function log(message) {
+            const output = document.getElementById('output');
+            output.textContent += message + '\n';
+            console.log(message);
+        }
+
+        function debugWallet() {
+            const output = document.getElementById('output');
+            output.textContent = '';
+            
+            log('🔍 DEBUGGING WALLET ADDRESS ISSUE');
+            log('=====================================');
+
+            // Check all localStorage keys
+            log('📋 All localStorage keys:');
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                log(`- ${key}`);
+            }
+
+            log('\n🔍 Wallet-related localStorage data:');
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('wallet') || key.includes('auth') || key.includes('user'))) {
+                    const value = localStorage.getItem(key);
+                    log(`\n${key}:`);
+                    
+                    if (value) {
+                        try {
+                            const parsed = JSON.parse(value);
+                            log('Parsed data: ' + JSON.stringify(parsed, null, 2));
+                            
+                            // Check for the problematic address
+                            const jsonStr = JSON.stringify(parsed, null, 2);
+                            if (jsonStr.includes('addr1q82j3cnhky8u0w4')) {
+                                log('🚨 FOUND INVALID ADDRESS!');
+                                log('Full JSON: ' + jsonStr);
+                                
+                                // Check if it ends with 'x'
+                                if (jsonStr.includes('n2nlx')) {
+                                    log('❌ CONFIRMED: Address ends with "x" instead of "8"');
+                                    log('This is the source of the Strike Finance API error!');
+                                }
+                            }
+                        } catch (e) {
+                            log('Raw value (not JSON): ' + value.substring(0, 200) + '...');
+                        }
+                    }
+                }
+            }
+
+            log('\n✅ Debug complete. Click "Clear Invalid Wallet Data" to fix.');
+        }
+
+        function clearWalletData() {
+            log('\n🧹 Clearing all wallet-related localStorage data...');
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('wallet') || key.includes('auth') || key.includes('user'))) {
+                    keysToRemove.push(key);
+                }
+            }
+
+            keysToRemove.forEach(key => {
+                log(`Removing: ${key}`);
+                localStorage.removeItem(key);
+            });
+
+            log('✅ localStorage cleared. Please refresh the trading page and reconnect your wallet.');
+        }
+    </script>
+</body>
+</html>

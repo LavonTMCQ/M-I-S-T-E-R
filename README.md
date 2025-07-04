@@ -87,11 +87,13 @@ npm run start        # Start production server
 
 ## 🧪 Test Files
 
-The repository includes comprehensive test files:
+The repository includes comprehensive test files in `misterlabs/tests/`:
 - `test-sone-voice.js` - Voice capabilities testing
 - `test-trading-monitor.js` - Trading analysis testing
 - `test-mrs-connection.js` - Financial agent integration
 - `test-enhanced-sone.js` - Complete agent functionality
+- `demo-voice-streaming.js` - Voice streaming demonstration
+- Additional specialized test files for various features
 
 ## 📁 Project Structure
 
@@ -103,9 +105,13 @@ sydney-agents/
 │   ├── workflows/       # Automated workflows
 │   ├── utils/           # Utility functions
 │   └── mcp/            # MCP server configuration
-├── examples/           # Usage examples
-├── test-*.js          # Test files
-└── .env               # Environment variables (included)
+├── misterlabs/
+│   ├── docs/
+│   │   ├── sone/        # Sone agent documentation
+│   │   └── general/     # General system documentation
+│   ├── examples/        # Usage examples
+│   └── tests/           # Test files
+└── .env                # Environment variables (included)
 ```
 
 ## 🔧 Configuration
@@ -123,13 +129,13 @@ sydney-agents/
 ### Basic Agent Interaction
 ```javascript
 // Test Sone agent with voice
-node test-sone-voice.js
+node misterlabs/tests/test-sone-voice.js
 
 // Test trading monitoring
-node test-trading-monitor.js
+node misterlabs/tests/test-trading-monitor.js
 
 // Test financial integration
-node test-mrs-connection.js
+node misterlabs/tests/test-mrs-connection.js
 ```
 
 ### Trading Commands
@@ -139,11 +145,21 @@ node test-mrs-connection.js
 
 ## 📚 Documentation
 
-Comprehensive guides included:
+Comprehensive guides organized in `misterlabs/docs/`:
+
+### Sone Agent Documentation (`misterlabs/docs/sone/`)
 - `ENHANCED_SONE_SUMMARY.md` - Complete agent overview
 - `VOICE_STREAMING_GUIDE.md` - Voice implementation details
-- `TRADING_SESSION_MEMORY_GUIDE.md` - Trading memory system
 - `SONE_FINANCIAL_INTEGRATION.md` - Financial agent integration
+- `SONE_MEMORY_ENHANCEMENTS.md` - Memory system details
+- `SONE_ADVANCED_WORKFLOWS_MCP.md` - Advanced workflows
+- `SONE_PERSONALIZED_AGUI_INTEGRATION.md` - AGUI integration
+
+### General Documentation (`misterlabs/docs/general/`)
+- `TRADING_SESSION_MEMORY_GUIDE.md` - Trading memory system
+- `BROWSER_TOOLS_RESTORED.md` - Browser automation tools
+- `PERSISTENT_BROWSER_SETUP.md` - Browser session persistence
+- `PERSISTENT_SESSIONS_GUIDE.md` - Session management
 
 ## 🔒 Security Note
 
@@ -153,7 +169,7 @@ This repository includes API keys for immediate functionality. Ensure the reposi
 
 1. Clone and install (see Quick Setup above)
 2. Run `npm run dev` to start the server
-3. Test with `node test-sone-voice.js`
+3. Test with `node misterlabs/tests/test-sone-voice.js`
 4. Open browser tools for trading analysis
 5. Say "start trading" to begin monitoring
 
