@@ -6,7 +6,11 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "mastra dev",
     "build": "mastra build",
-    "start": "mastra start"
+    "start": "mastra start",
+    "mister": "tsx src/mastra/start-mister.ts",
+    "mister:simple": "tsx src/mastra/start-simple-mister.ts",
+    "mister:demo": "tsx demo-mister.ts",
+    "mister:bridge": "node mister-bridge-server.cjs"
   },
   "keywords": [],
   "author": "",
@@ -18,6 +22,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.19",
+    "@emurgo/cardano-serialization-lib-nodejs": "^12.1.1",
     "@mastra/core": "^0.10.5",
     "@mastra/evals": "^0.10.3",
     "@mastra/fastembed": "^0.10.0",
@@ -29,6 +34,9 @@
     "@mastra/voice-google": "^0.10.2",
     "@mastra/voice-openai": "^0.10.2",
     "@modelcontextprotocol/sdk": "^1.12.3",
+    "axios": "^1.7.9",
+    "bip39": "^3.1.0",
+    "danfojs-node": "^1.1.2",
     "playwright": "^1.53.0",
     "zod": "^3.25.65"
   },

@@ -1,0 +1,548 @@
+// src/interfaces.ts
+
+/**
+ * Common Types as defined in the Strike Finance API documentation.
+ */
+export interface Asset {
+  policyId: string;
+  assetName: string;
+}
+
+export interface OutRef {
+  txHash: string;
+  outputIndex: number;
+}
+
+export type Side = "Long" | "Short";
+
+export interface AssetInfo {
+  asset: Asset;
+  ticker: string;
+  type: string;
+  url: string;
+  decimals: number;
+  dex: string;
+  perpAuthPolicyId: string;
+}
+
+export interface PoolInfo {
+  totalAssetAmount: number;
+  availableAssetAmount: number;
+  totalLpMinted: number;
+  totalValueLocked: number;
+}
+
+export interface MarketInfo {
+  longInterest: number;
+  shortInterest: number;
+}
+
+/**
+ * Position Management Interfaces
+ */
+export interface OpenPositionRequest {
+  request: {
+    bech32Address: string;
+    leverage: number;
+    position: Side;
+    asset: Asset;
+    collateralAmount: number;
+    positionSize: number;
+    enteredPrice: number;
+    positionType: string;
+  };
+}
+
+export interface ClosePositionRequest {
+  request: {
+    address: string;
+    asset: Asset;
+    outRef: OutRef;
+    positionSize: number;
+    positionType: string;
+    collateralAmount: number;
+    position: Side;
+  };
+}
+
+export interface UpdatePositionRequest {
+  request: {
+    address: string;
+    asset: Asset;
+    outRef: OutRef;
+    stopLossPrice: number;
+    takeProfitPrice: number;
+  };
+}
+
+export interface PerpetualInfo {
+  position: Side;
+  positionSize: number;
+  leverage: number;
+  stopLoss: number;
+  takeProfit: number;
+  asset: {
+    ticker: string;
+    asset: Asset;
+  };
+  assetName: string;
+  type: string;
+  url: string;
+  decimals: number;
+  dex: string;
+  perpAuthPolicyId: string;
+  collateral: {
+    amount: number;
+    ticker: string;
+  };
+  entryPrice: number;
+  isPending: boolean;
+  outRef: OutRef;
+  enteredPositionTime: number;
+  status: "Pending" | "Completed";
+  liquidationPrice: number;
+  hourlyBorrowFee: number;
+}
+
+/**
+ * Transaction History Interfaces
+ */
+export interface PerpetualTransactionInfo {
+    contract: "Perpetual";
+    action: string;
+    assetTicker: string;
+    type: "Perpetual";
+    pair: string;
+    time: number;
+    address: string;
+    txHash: string;
+    status: string;
+    enteredPrice: number;
+    positionSize: number;
+    positionType: string;
+    collateralAmount: number;
+    description: string;
+    pnl: number;
+    usdPrice?: number;
+    leverage?: number;
+    currentPrice: number;
+}
+
+
+// src/strike-finance-api.ts
+import axios, { AxiosInstance } from "axios";
+import {
+  OpenPositionRequest,
+  ClosePositionRequest,
+  UpdatePositionRequest,
+  PerpetualInfo,
+  PoolInfo,
+  MarketInfo,
+  PerpetualTransactionInfo,
+} from "./interfaces";
+
+export class StrikeFinanceAPI {
+  private readonly client: AxiosInstance;
+  private readonly baseUrl = "https://app.strikefinance.org";
+
+  constructor() {
+    this.client = axios.create({
+      baseURL: this.baseUrl,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  }
+
+  async openPosition(data: OpenPositionRequest): Promise<{ cbor: string }> {
+    const response = await this.client.post("/api/perpetuals/openPosition", data);
+    return response.data;
+  }
+
+  async closePosition(data: ClosePositionRequest): Promise<{ cbor: string }> {
+    const response = await this.client.post("/api/perpetuals/closePosition", data);
+    return response.data;
+  }
+  
+  async updatePosition(data: UpdatePositionRequest): Promise<{ cbor: string }> {
+      const response = await this.client.post("/api/perpetuals/updatePosition", data);
+      return response.data;
+  }
+
+  async getPositions(address: string): Promise<PerpetualInfo[]> {
+    const response = await this.client.get(`/api/perpetuals/getPositions?address=${address}`);
+    return response.data;
+  }
+  
+  async getPoolInfoV2(): Promise<{ data: PoolInfo }> {
+      const response = await this.client.get("/api/perpetuals/getPoolInfoV2");
+      return response.data;
+  }
+
+  async getOverallInfo(): Promise<{ data: MarketInfo }> {
+      const response = await this.client.get("/api/perpetuals/getOverallInfo");
+      return response.data;
+  }
+
+  async getPerpetualHistory(address: string): Promise<{ transactions: PerpetualTransactionInfo[] }> {
+      const response = await this.client.get(`/api/perpetuals/getPerpetualHistory?address=${address}`);
+      return response.data;
+  }
+}
+
+
+// src/cardano-wallet.ts
+import * as CSL from '@emurgo/cardano-serialization-lib-nodejs';
+
+export class CardanoWallet {
+    private privateKey: CSL.PrivateKey;
+    public readonly address: string;
+
+    constructor(bech32PrivateKey: string) {
+        this.privateKey = CSL.PrivateKey.from_bech32(bech32PrivateKey);
+        const publicKey = this.privateKey.to_public();
+        
+        // Deriving the address from the private key
+        const stakeCred = CSL.StakeCredential.from_keyhash(publicKey.hash());
+        const baseAddr = CSL.BaseAddress.new(
+            CSL.NetworkInfo.mainnet().network_id(),
+            CSL.StakeCredential.from_keyhash(publicKey.hash()),
+            stakeCred
+        );
+        this.address = baseAddr.to_address().to_bech32();
+    }
+
+    /**
+     * Signs the transaction CBOR received from the API and prepares it for submission.
+     * @param txCbor - The CBOR string of the unsigned transaction.
+     * @returns The signed transaction hash.
+     */
+    async signAndSubmitTx(txCbor: string): Promise<string> {
+        console.log("Signing and submitting transaction...");
+
+        const transaction = CSL.Transaction.from_bytes(Buffer.from(txCbor, "hex"));
+        const txBody = transaction.body();
+        const txHash = CSL.hash_transaction(txBody);
+        
+        // Create the witness set
+        const witnesses = CSL.TransactionWitnessSet.new();
+        const vkeyWitnesses = CSL.Vkeywitnesses.new();
+        const vkeyWitness = CSL.make_vkey_witness(txHash, this.privateKey);
+        vkeyWitnesses.add(vkeyWitness);
+        witnesses.set_vkeys(vkeyWitnesses);
+        
+        // Create the signed transaction
+        const signedTx = CSL.Transaction.new(
+            txBody,
+            witnesses,
+            transaction.auxiliary_data() // Include if it exists
+        );
+
+        // Submit the transaction to the network
+        const submittedTxHash = await this.submitTx(signedTx.to_bytes());
+        console.log("Transaction submitted with hash:", submittedTxHash);
+        return submittedTxHash;
+    }
+
+    /**
+     * Submits a signed transaction to the Cardano network.
+     * * IMPORTANT: This is a MOCK implementation. In a real-world application,
+     * you would use a service like Blockfrost, Kupo, or a self-hosted
+     * Cardano node to submit the transaction.
+     * * @param signedTxBytes - The byte array of the signed transaction.
+     * @returns A promise that resolves with the transaction hash.
+     */
+    private async submitTx(signedTxBytes: Uint8Array): Promise<string> {
+        const txHash = CSL.hash_transaction(CSL.Transaction.from_bytes(signedTxBytes).body()).to_hex();
+        console.log(`[MOCK SUBMISSION] Submitting Tx with Hash: ${txHash}`);
+        // In a real app:
+        // const blockfrost = new Blockfrost.BlockfrostAPI({ projectId: 'YOUR_PROJECT_ID' });
+        // const result = await blockfrost.txSubmit(signedTxBytes);
+        return Promise.resolve(txHash);
+    }
+}
+
+
+// src/price-service.ts
+export class PriceService {
+    /**
+     * Fetches the current price of ADA.
+     * This is a MOCK implementation. In a real application, you would integrate
+     * a reliable price oracle or an API from a major exchange.
+     * @returns The current price of ADA in USD.
+     */
+    async getAdaPrice(): Promise<number> {
+        // Mock price that fluctuates slightly
+        return 0.45 + (Math.random() - 0.5) * 0.05;
+    }
+}
+
+
+// src/trading-strategies.ts
+import { MarketInfo, PerpetualInfo } from "./interfaces";
+import * as pd from "danfojs-node";
+
+export abstract class TradingStrategy {
+    abstract evaluate(marketInfo: MarketInfo, existingPositions: PerpetualInfo[], priceData: pd.DataFrame): TradingDecision;
+}
+
+export type TradingAction = "Open" | "Close" | "Update" | "Hold";
+export interface TradingDecision {
+    action: TradingAction;
+    params?: any;
+}
+
+
+// src/strategies/titan2k-trend-tuned.ts
+import { TradingStrategy, TradingDecision } from "../trading-strategies";
+import { MarketInfo, PerpetualInfo } from "../interfaces";
+import * as pd from "danfojs-node";
+
+export class TITAN2KTrendTuned extends TradingStrategy {
+    private readonly aggressiveMode: boolean;
+    private readonly timeframeWeights = { daily: 0.6, medium: 0.25, lower: 0.15 };
+    private readonly trendStrengthThreshold = 0.5;
+    private readonly maxPositionSize = 1; // Represents 100% of a base size
+    private readonly maxLeverage = 10;
+    private readonly trailingStopMultiplier = 1.5;
+    private readonly profitTargetMultiplier = 3;
+
+    constructor(aggressiveMode = true) {
+        super();
+        this.aggressiveMode = aggressiveMode;
+    }
+
+    evaluate(marketInfo: MarketInfo, existingPositions: PerpetualInfo[], priceData: pd.DataFrame): TradingDecision {
+        console.log("Evaluating TITAN2K Trend-Tuned Strategy...");
+
+        if (priceData.shape[0] < 200) {
+            console.log("Not enough historical price data to evaluate strategy.");
+            return { action: "Hold" };
+        }
+
+        const dfWithIndicators = this.calculateIndicators(priceData);
+        const dfWithSignals = this.generateSignals(dfWithIndicators);
+
+        const latestSignal = dfWithSignals.iloc({ rows: [dfWithSignals.shape[0] - 1] });
+        
+        const signal = latestSignal["signal"].values[0];
+
+        if (signal === "BUY") {
+            const hasLongPosition = existingPositions.some(p => p.position === "Long");
+            if (!hasLongPosition) {
+                return {
+                    action: "Open",
+                    params: {
+                        position: "Long",
+                        leverage: latestSignal["leverage"].values[0],
+                        collateralAmount: 1000 * 1_000_000, // 1000 ADA in Lovelace
+                        positionSize: latestSignal["position_size"].values[0] * 5000 * 1_000_000, // e.g. up to 5000 ADA
+                        stopLossPrice: latestSignal["stop_loss"].values[0],
+                        takeProfitPrice: latestSignal["take_profit"].values[0],
+                    },
+                };
+            }
+        } else if (signal === "SELL") {
+            const hasShortPosition = existingPositions.some(p => p.position === "Short");
+            if (!hasShortPosition) {
+                return {
+                    action: "Open",
+                    params: {
+                        position: "Short",
+                        leverage: latestSignal["leverage"].values[0],
+                        collateralAmount: 1000 * 1_000_000,
+                        positionSize: latestSignal["position_size"].values[0] * 5000 * 1_000_000,
+                        stopLossPrice: latestSignal["stop_loss"].values[0],
+                        takeProfitPrice: latestSignal["take_profit"].values[0],
+                    },
+                };
+            }
+        }
+
+        return { action: "Hold" };
+    }
+
+    private calculateIndicators(df: pd.DataFrame): pd.DataFrame {
+        let new_df = df.copy();
+        new_df["ema50"] = new_df["close"].ewm({ com: 50 }).mean();
+        new_df["ema200"] = new_df["close"].ewm({ com: 200 }).mean();
+        new_df["ema50_roc"] = new_df["ema50"].pct_change({ periods: 20 }).mul(100);
+        new_df["ema200_roc"] = new_df["ema200"].pct_change({ periods: 20 }).mul(100);
+
+        const bearMarket = new_df["close"].lt(new_df["ema200"]).and(new_df["ema50"].lt(new_df["ema200"])).and(new_df["ema50_roc"].lt(-0.5));
+        new_df["bear_market"] = bearMarket.astype("int");
+
+        const bullMarket = new_df["close"].gt(new_df["ema200"]).and(new_df["ema50"].gt(new_df["ema200"])).and(new_df["ema50_roc"].gt(0.5));
+        new_df["bull_market"] = bullMarket.astype("int");
+        
+        new_df["atr14"] = new_df["close"].rolling({ window: 14 }).std(); // Simplified ATR
+        new_df["combined_trend"] = new_df["ema50_roc"]; // Simplified combined trend for example
+        new_df["timeframe_alignment"] = new_df["ema200_roc"]; // Simplified alignment for example
+
+        return new_df;
+    }
+
+    private generateSignals(df: pd.DataFrame): pd.DataFrame {
+        let new_df = df.copy();
+        new_df.addColumn("signal", Array(new_df.shape[0]).fill("NEUTRAL"), { inplace: true });
+        new_df.addColumn("confidence", Array(new_df.shape[0]).fill(0.0), { inplace: true });
+        new_df.addColumn("position_size", Array(new_df.shape[0]).fill(0.0), { inplace: true });
+        new_df.addColumn("leverage", Array(new_df.shape[0]).fill(1.0), { inplace: true });
+        new_df.addColumn("stop_loss", Array(new_df.shape[0]).fill(null), { inplace: true });
+        new_df.addColumn("take_profit", Array(new_df.shape[0]).fill(null), { inplace: true });
+
+        for (let i = 200; i < new_df.shape[0]; i++) {
+            const row = new_df.iloc({ rows: [i] });
+            const bearMarket = row["bear_market"].values[0] === 1;
+            const bullMarket = row["bull_market"].values[0] === 1;
+            const combinedTrend = row["combined_trend"].values[0] || 0;
+            const timeframeAlignment = row["timeframe_alignment"].values[0] || 0;
+            
+            let signal = "NEUTRAL";
+            let confidence = 0.0;
+
+            if (combinedTrend >= this.trendStrengthThreshold) {
+                signal = "BUY";
+                confidence = Math.min(Math.abs(combinedTrend), 0.99);
+            } else if (combinedTrend <= -this.trendStrengthThreshold) {
+                signal = "SELL";
+                confidence = Math.min(Math.abs(combinedTrend), 0.99);
+            }
+
+            if ((bearMarket && signal === "BUY" && (confidence < 0.7 || timeframeAlignment < 0.7)) || (bullMarket && signal === "SELL" && (confidence < 0.7 || timeframeAlignment < 0.7))) {
+                signal = "NEUTRAL";
+            }
+
+            if (signal !== "NEUTRAL") {
+                const positionSize = timeframeAlignment * this.maxPositionSize;
+                const leverage = 1.0 + (Math.abs(combinedTrend) * (this.maxLeverage - 1.0));
+                const atr = row["atr14"].values[0];
+                const closePrice = row["close"].values[0];
+                
+                new_df.at(i, "signal", signal);
+                new_df.at(i, "confidence", confidence);
+                new_df.at(i, "position_size", positionSize);
+                new_df.at(i, "leverage", Math.min(leverage, this.maxLeverage));
+                new_df.at(i, "stop_loss", signal === 'BUY' ? closePrice - atr * this.trailingStopMultiplier : closePrice + atr * this.trailingStopMultiplier);
+                new_df.at(i, "take_profit", signal === 'BUY' ? closePrice + atr * this.profitTargetMultiplier : closePrice - atr * this.profitTargetMultiplier);
+            }
+        }
+        return new_df;
+    }
+}
+
+
+// src/mastra-agent.ts
+import { StrikeFinanceAPI } from "./strike-finance-api";
+import { TradingStrategy, TradingDecision } from "./trading-strategies";
+import { OpenPositionRequest } from "./interfaces";
+import { CardanoWallet } from "./cardano-wallet";
+import { PriceService } from "./price-service";
+import * as pd from "danfojs-node";
+
+export class MastraAgent {
+  private readonly strikeFinanceAPI: StrikeFinanceAPI;
+  private readonly tradingStrategy: TradingStrategy;
+  private readonly wallet: CardanoWallet;
+  private readonly priceService: PriceService;
+  private priceData: pd.DataFrame;
+
+  constructor(tradingStrategy: TradingStrategy, wallet: CardanoWallet) {
+    this.strikeFinanceAPI = new StrikeFinanceAPI();
+    this.tradingStrategy = tradingStrategy;
+    this.wallet = wallet;
+    this.priceService = new PriceService();
+    this.priceData = new pd.DataFrame([], { columns: ["time", "open", "high", "low", "close", "volume"] });
+  }
+
+  async run() {
+    console.log("Mastra Agent is running...");
+
+    // 1. Get latest price data
+    const newPrice = await this.priceService.getAdaPrice();
+    const newRow = {
+        time: new Date().getTime(),
+        open: this.priceData.shape[0] > 0 ? this.priceData.iloc({rows: [this.priceData.shape[0] - 1]})["close"].values[0] : newPrice,
+        high: newPrice,
+        low: newPrice,
+        close: newPrice,
+        volume: 0,
+    };
+    const new_df = new pd.DataFrame([newRow]);
+    this.priceData = pd.concat({ dfList: [this.priceData, new_df], axis: 0 });
+
+    // 2. Get market info & existing positions
+    const marketInfo = (await this.strikeFinanceAPI.getOverallInfo()).data;
+    const existingPositions = await this.strikeFinanceAPI.getPositions(this.wallet.address);
+
+    // 3. Evaluate trading strategy
+    const decision = this.tradingStrategy.evaluate(marketInfo, existingPositions, this.priceData);
+
+    // 4. Execute trading decision
+    await this.executeDecision(decision, newPrice);
+  }
+
+  private async executeDecision(decision: TradingDecision, currentPrice: number) {
+    if (decision.action === "Open") {
+        console.log("Executing Open action...");
+        const openPositionRequest: OpenPositionRequest = {
+            request: {
+                bech32Address: this.wallet.address,
+                leverage: decision.params.leverage,
+                position: decision.params.position,
+                asset: { policyId: "", assetName: "" }, // ADA policy/assetName
+                collateralAmount: decision.params.collateralAmount,
+                positionSize: decision.params.positionSize,
+                enteredPrice: currentPrice,
+                positionType: decision.params.position,
+            }
+        };
+        try {
+            const { cbor } = await this.strikeFinanceAPI.openPosition(openPositionRequest);
+            await this.wallet.signAndSubmitTx(cbor);
+        } catch (error) {
+            console.error("Error opening position:", error.response?.data || error.message);
+        }
+    } else {
+        console.log("Executing Hold action.");
+    }
+  }
+}
+
+
+// src/main.ts
+import { MastraAgent } from "./mastra-agent";
+import { CardanoWallet } from "./cardano-wallet";
+import { TITAN2KTrendTuned } from "./strategies/titan2k-trend-tuned";
+
+async function main() {
+    // IMPORTANT: Replace with your actual Bech32-encoded private key.
+    // This key should correspond to the wallet you intend to trade with.
+    // For security, load this from an environment variable, not plaintext.
+    const bech32PrivateKey = process.env.CARDANO_PRIVATE_KEY || "xprv1...";
+
+    if (bech32PrivateKey === "xprv1...") {
+        console.error("FATAL: Please replace the placeholder private key in src/main.ts or set CARDANO_PRIVATE_KEY environment variable.");
+        return;
+    }
+
+    try {
+        const wallet = new CardanoWallet(bech32PrivateKey);
+        const strategy = new TITAN2KTrendTuned();
+        const agent = new MastraAgent(strategy, wallet);
+
+        console.log(`Agent initialized for wallet address: ${wallet.address}`);
+
+        // Run the agent every 60 seconds
+        setInterval(() => {
+            agent.run();
+        }, 60000);
+
+    } catch (error) {
+        console.error("Failed to initialize the agent:", error.message);
+    }
+}
+
+main().catch(error => {
+    console.error("An unexpected error occurred:", error);
+});

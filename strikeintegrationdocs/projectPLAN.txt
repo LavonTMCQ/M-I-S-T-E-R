@@ -1,0 +1,91 @@
+Project Plan: Managed Wallet Copy Trading Service
+Phase 1: Backend Foundation & Core Services (Tasks 1-5)
+This phase focuses on building the non-negotiable, foundational infrastructure of the service.
+
+Task 1: Setup Secure Development Environment
+
+Initialize a new Node.js project with TypeScript.
+Set up version control using Git and create a private repository (e.g., on GitHub).
+Establish a dependency management structure (npm or yarn).
+Install initial core dependencies: axios for API calls, typescript, ts-node, @types/node.
+Task 2: Build the WalletManager Service
+
+Install Cardano and cryptography libraries: @emurgo/cardano-serialization-lib-nodejs, bip39.
+Create the WalletManager class.
+Implement the createNewWallet function to generate a 24-word mnemonic and derive a Cardano address and private key.
+Crucially, set up the integration with a secure secret management system (e.g., AWS Secrets Manager, Google Secret Manager, HashiCorp Vault). The function should store the new wallet's mnemonic/private key in the vault, not in a local database.
+Implement the getPrivateKeyForAddress function to securely retrieve a key from the secret manager. This function should be heavily access-controlled.
+Task 3: Implement the SignalService
+
+Install the danfojs-node library for data analysis.
+Port the TITAN2KTrendTuned Python strategy into a TypeScript class within this service.
+Create a PriceService to fetch real-time price data (initially mocked, later connected to a live data provider).
+Implement the runSignalCheck logic that periodically runs the strategy and emits a TradingDecision ({ action: 'Open', ... }) using a Node.js EventEmitter.
+Task 4: Implement the StrikeFinanceAPI Service
+
+Create a dedicated class to encapsulate all interactions with the Strike Finance Perpetuals API. 
+Implement a method for each required endpoint, especially POST /api/perpetuals/openPosition, which returns the cbor. 
+Ensure proper error handling for API failures (e.g., downtime, invalid requests).
+Task 5: Build the ExecutionService
+
+Create the ExecutionService class that listens for events from the SignalService's EventEmitter.
+Upon receiving a signal, the service should fetch the list of all active managed wallet addresses.
+Implement the core "fan-out" loop:
+For each wallet address, call the StrikeFinanceAPI service to get the unsigned cbor.
+Call the WalletManager to securely retrieve the corresponding private key.
+Use the cardano-serialization-lib to sign the cbor with the retrieved key.
+Implement the logic to submit the signed transaction to the Cardano network (using a service like Blockfrost or a local node).
+Include robust error logging to handle failures for individual users without halting the entire loop.
+Phase 2: Frontend Development (Tasks 6-8)
+With the backend services in place, this phase builds the user interface.
+
+Task 6: Setup React Frontend Environment
+
+Initialize a new React project using a modern toolchain like Vite or Create React App.
+Install necessary libraries: react, react-dom, and a styling solution (e.g., Tailwind CSS).
+Structure the project into components, services, and views.
+Task 7: Implement User Onboarding & Wallet Creation Flow
+
+Build the initial "Connect Main Wallet" component to identify the user.
+Create the "Create Trading Wallet" screen. This component will call a backend API endpoint that triggers the WalletManager.createNewWallet function.
+Develop the critical "Backup Mnemonic" screen, which displays the 24-word phrase and requires user confirmation before proceeding. Emphasize that this is the only time the phrase will be shown.
+Task 8: Develop the User Dashboard
+
+Build the main dashboard view that displays the managed wallet's address and balance.
+Create a component to show open positions as reported by the Strike Finance API. This will require a new backend endpoint that calls GET /api/perpetuals/getPositions for a specific managed wallet. 
+Implement the "Deposit" instructions (telling the user to send ADA to their managed wallet address) and a "Withdraw" feature that allows the user to trigger a transaction from their managed wallet back to their main wallet.
+Phase 3: API, Security, and Deployment (Tasks 9-12)
+This phase connects the backend and frontend, and prepares the system for live operation.
+
+Task 9: Build the Backend API Server
+
+Set up a lightweight web server framework like Express.js.
+Create the API endpoints needed by the frontend:
+POST /api/trading-wallet/create: Triggers the wallet creation process.
+GET /api/trading-wallet/{address}/data: Fetches the dashboard data (balance, positions).
+POST /api/trading-wallet/withdraw: Initiates the profit-taking withdrawal process.
+Implement CORS and basic security headers.
+Task 10: Conduct Comprehensive Security Audit
+
+Engage a third-party cybersecurity firm to perform a full penetration test and security audit of the entire backend infrastructure.
+Focus areas must include: the key storage and retrieval process in the WalletManager, database security, and API endpoint security.
+Remediate all high-priority findings from the audit report.
+Task 11: Implement Monitoring and Alerting
+
+Set up a logging service (e.g., Winston, Pino) for all backend services.
+Create a monitoring dashboard (e.g., using Grafana, Datadog) to track system health, API response times, and trade execution success/failure rates.
+Configure automated alerts (e.g., via PagerDuty, Slack) for critical failures, such as the ExecutionService failing or the Strike API being down.
+Task 12: Deployment and Go-Live
+
+Containerize the backend services using Docker for consistent and scalable deployment.
+Deploy the backend services and database to a secure cloud provider (e.g., AWS, Google Cloud, Azure).
+Deploy the React frontend to a static hosting provider (e.g., Vercel, Netlify).
+Conduct a final round of end-to-end testing in the live environment before announcing the service to users.
+
+Sources
+
+
+
+
+
+

@@ -6,6 +6,12 @@ import { weatherWorkflow } from './workflows/weather-workflow.js';
 import { soneResearchWorkflow, soneMainResearchWorkflow } from './workflows/sone-research-workflow.js';
 import { weatherAgent } from './agents/weather-agent.js';
 import { soneAgent } from './agents/sone-agent.js';
+import { cashAgent } from './agents/cash-agent.js';
+import { strikeAgent } from './agents/strike-agent';
+import { cryptoBacktestingAgent } from './agents/crypto-backtesting-agent';
+import { backtestingAgent } from './agents/backtesting-agent';
+import { quantAgent } from './agents/quant-agent';
+import { soneMCPServer } from './mcp/sone-mcp-server';
 
 export const mastra = new Mastra({
   workflows: {
@@ -13,7 +19,10 @@ export const mastra = new Mastra({
     soneResearchWorkflow,
     soneMainResearchWorkflow
   },
-  agents: { weatherAgent, soneAgent },
+  agents: { weatherAgent, soneAgent, cashAgent, strikeAgent, cryptoBacktestingAgent, backtestingAgent, quantAgent },
+  mcpServers: {
+    soneMCPServer
+  },
   storage: new LibSQLStore({
     // stores telemetry, evals, ... into memory storage, if it needs to persist, change to file:../mastra.db
     url: ":memory:",
