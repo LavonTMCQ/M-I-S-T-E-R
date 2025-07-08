@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,14 @@ import { useWallet } from '@/contexts/WalletContext';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { USER_STORAGE_KEYS } from '@/lib/utils/userStorage';
 
+interface WalletRegistrationInfo {
+  walletAddress: string;
+  stakeAddress: string;
+  walletType: string;
+  balance: number;
+  handle?: string | null;
+}
+
 export default function TradingPage() {
   const auth = useRequireAuth();
   const { mainWallet, isLoading: walletLoading } = useWallet();
@@ -25,6 +33,9 @@ export default function TradingPage() {
     isAuthenticated,
     getUserDisplayName,
   } = useUserIdentity();
+
+  // Ref to track if preferences have been loaded to prevent infinite loops
+  const preferencesLoadedRef = useRef(false);
 
   const [marketData, setMarketData] = useState({
     price: 0.47,
@@ -46,26 +57,29 @@ export default function TradingPage() {
 
   // Load user-specific trading preferences
   useEffect(() => {
-    if (isAuthenticated && userStorage) {
+    if (isAuthenticated && userStorage && !preferencesLoadedRef.current) {
       const savedPreferences = userStorage.getItem(USER_STORAGE_KEYS.TRADING_PREFERENCES);
       if (savedPreferences) {
         try {
           const preferences = JSON.parse(savedPreferences);
           setTradingPreferences(prev => ({ ...prev, ...preferences }));
           console.log('📊 [SECURE] Loaded trading preferences for user:', getUserDisplayName());
+          preferencesLoadedRef.current = true;
         } catch (error) {
           console.warn('⚠️ Failed to parse trading preferences:', error);
         }
+      } else {
+        preferencesLoadedRef.current = true;
       }
     }
-  }, [isAuthenticated]); // Removed userStorage from dependencies to prevent infinite loop
+  }, [isAuthenticated, userStorage, getUserDisplayName]);
 
   // Save trading preferences when they change
   useEffect(() => {
     if (isAuthenticated && userStorage) {
       userStorage.setItem(USER_STORAGE_KEYS.TRADING_PREFERENCES, JSON.stringify(tradingPreferences));
     }
-  }, [tradingPreferences, isAuthenticated]); // Removed userStorage from dependencies to prevent infinite loop
+  }, [tradingPreferences, isAuthenticated, userStorage]);
 
   useEffect(() => {
     if (auth.user && mainWallet) {
@@ -107,7 +121,7 @@ export default function TradingPage() {
 
   // All wallet data now comes from global wallet context - no need for local loading
 
-  const registerWalletForTrading = async (walletInfo: any) => {
+  const registerWalletForTrading = async (walletInfo: WalletRegistrationInfo) => {
     try {
       const response = await fetch('http://localhost:4113/api/wallet/register', {
         method: 'POST',

@@ -3,27 +3,21 @@
 import { useState, useEffect } from "react";
 import {
   Bot,
-  TrendingUp,
-  TrendingDown,
   Wallet,
-  Activity,
-  Settings,
   LogOut,
   RefreshCw,
-  Target,
-  Loader2,
-  Brain,
-  Copy
+  Copy,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useRequireAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { useManagedWalletIdentity } from "@/hooks/useUserIdentity";
 import { USER_STORAGE_KEYS } from "@/lib/utils/userStorage";
+import { EnhancedManagedDashboard } from "@/components/trading/EnhancedManagedDashboard";
 
 interface ManagedWalletData {
   address: string;
@@ -432,185 +426,23 @@ export default function ManagedDashboardPage() {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - Enhanced Dashboard */}
       <div className="container mx-auto px-4 py-6 relative z-40">
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 relative z-50">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="algorithms">Algorithms</TabsTrigger>
-            <TabsTrigger value="positions">Positions</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            {/* Wallet Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Wallet Balance</CardTitle>
-                  <Wallet className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{managedWallet.balance.toFixed(2)} ADA</div>
-                  <p className="text-xs text-muted-foreground">
-                    ${managedWallet.totalValue.toFixed(2)} USD
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total P&L</CardTitle>
-                  {managedWallet.pnl >= 0 ? (
-                    <TrendingUp className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-red-500" />
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${managedWallet.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {managedWallet.pnl >= 0 ? '+' : ''}${managedWallet.pnl.toFixed(2)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {managedWallet.pnlPercent >= 0 ? '+' : ''}{managedWallet.pnlPercent.toFixed(2)}%
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Open Positions</CardTitle>
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{managedWallet.positions}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Active trades
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Agent Status</CardTitle>
-                  <Bot className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold capitalize">{managedWallet.agentStatus}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Last: {managedWallet.lastActivity}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Agent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Recent Agent Activity
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Agent activity will appear here</p>
-                  <p className="text-sm">Enable algorithms to start automated trading</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="algorithms" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Brain className="h-5 w-5" />
-                  Trading Algorithms
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No algorithms configured yet</p>
-                  <p className="text-sm">Add trading algorithms for the agent to execute</p>
-                  <Button className="mt-4" variant="outline">
-                    Add Algorithm
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="positions" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5" />
-                  Open Positions
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No open positions</p>
-                  <p className="text-sm">Positions will appear here when the agent starts trading</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="settings" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Managed Wallet Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Wallet Address</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {managedWallet.address.substring(0, 20)}...
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      View Full
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Risk Management</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Configure trading limits and risk parameters
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      Configure
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Backup & Recovery</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Manage wallet backup and recovery options
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      Manage
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {/* Show enhanced dashboard only if we have a managed wallet */}
+        {managedWallet ? (
+          <EnhancedManagedDashboard
+            managedWallet={{
+              walletId: `managed_${managedWallet.address.substring(0, 12)}`, // Create a proper walletId
+              address: managedWallet.address,
+              balance: managedWallet.balance,
+              userId: userIdentity?.userId || `user_${managedWallet.address.substring(0, 12)}`
+            }}
+          />
+        ) : (
+          <div className="text-center py-8">
+            <p>Loading managed wallet...</p>
+          </div>
+        )}
       </div>
     </div>
   );

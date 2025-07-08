@@ -27,15 +27,22 @@ export async function GET(
     // Call the actual Mastra strategy to get real backtest results
     const backtestResults = await runRealMastraBacktest(symbol, startDate, endDate);
 
+    if (!backtestResults) {
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to generate backtest results'
+      }, { status: 500 });
+    }
+
     return NextResponse.json({
       success: true,
       runId,
       symbol,
       startDate,
       endDate,
-      totalTrades: backtestResults.trades.length,
-      trades: backtestResults.trades,
-      performance: backtestResults.performance,
+      totalTrades: backtestResults.trades?.length || 0,
+      trades: backtestResults.trades || [],
+      performance: backtestResults.performance || {},
       summary: backtestResults.summary || {}
     });
 
@@ -126,7 +133,7 @@ async function runRealMastraBacktest(symbol: string, startDate: string, endDate:
             console.log('✅ Found trade data in text field');
           }
         } catch (e) {
-          console.log('Could not parse text field as JSON:', e.message);
+          console.log('Could not parse text field as JSON:', e instanceof Error ? e.message : String(e));
           console.log('🔍 Text field preview:', result.text.substring(0, 500));
         }
       }
@@ -152,7 +159,7 @@ async function runRealMastraBacktest(symbol: string, startDate: string, endDate:
         } : 'No trades');
 
         return {
-          trades: trades.map(trade => ({
+          trades: trades.map((trade: any) => ({
             id: trade.id || `trade_${trade.entryTime || trade.entryDate}`,
             entryTime: trade.entryTime || trade.entryDate,
             exitTime: trade.exitTime || trade.exitDate,

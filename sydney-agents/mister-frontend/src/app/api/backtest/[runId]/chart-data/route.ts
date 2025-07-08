@@ -144,7 +144,7 @@ async function runRealMastraBacktest(symbol: string, startDate: string, endDate:
             console.log('✅ Found backtest data in text field');
           }
         } catch (e) {
-          console.log('Could not parse text field as JSON:', e.message);
+          console.log('Could not parse text field as JSON:', e instanceof Error ? e.message : String(e));
           console.log('🔍 Text field preview:', result.text.substring(0, 500));
         }
       }
@@ -183,7 +183,7 @@ async function runRealMastraBacktest(symbol: string, startDate: string, endDate:
 
         return {
           chartData,
-          trades: trades.map(trade => ({
+          trades: trades.map((trade: any) => ({
             id: trade.id || `trade_${trade.entryTime || trade.entryDate}`,
             entryTime: trade.entryTime || trade.entryDate,
             exitTime: trade.exitTime || trade.exitDate,
@@ -272,11 +272,11 @@ async function getRealADAOHLCVData(startDate: string, endDate: string) {
 
     // Convert Kraken format to our format
     const chartData = ohlcData
-      .filter(candle => {
+      .filter((candle: any) => {
         const candleTime = new Date(candle[0] * 1000);
         return candleTime >= start && candleTime <= end;
       })
-      .map(candle => ({
+      .map((candle: any) => ({
         time: new Date(candle[0] * 1000).toISOString(),
         open: Number(parseFloat(candle[1]).toFixed(6)),
         high: Number(parseFloat(candle[2]).toFixed(6)),
@@ -286,7 +286,7 @@ async function getRealADAOHLCVData(startDate: string, endDate: string) {
       }));
 
     console.log(`✅ Loaded ${chartData.length} REAL ADA/USD candles from Kraken`);
-    console.log(`📊 Price range: $${Math.min(...chartData.map(c => c.low)).toFixed(4)} - $${Math.max(...chartData.map(c => c.high)).toFixed(4)}`);
+    console.log(`📊 Price range: $${Math.min(...chartData.map((c: any) => c.low)).toFixed(4)} - $${Math.max(...chartData.map((c: any) => c.high)).toFixed(4)}`);
 
     return chartData;
 
@@ -331,7 +331,7 @@ async function getPhemexADAData(startDate: string, endDate: string) {
     throw new Error('Invalid Phemex response format');
   }
 
-  const chartData = phemexData.data.rows.map(candle => ({
+  const chartData = phemexData.data.rows.map((candle: any) => ({
     time: new Date(candle[0] * 1000).toISOString(),
     open: Number((candle[1] / 10000).toFixed(6)), // Phemex uses scaled prices
     high: Number((candle[2] / 10000).toFixed(6)),
