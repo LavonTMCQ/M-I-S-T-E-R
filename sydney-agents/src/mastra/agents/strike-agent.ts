@@ -4,9 +4,10 @@ import { Memory } from '@mastra/memory';
 import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
 import { fastembed } from '@mastra/fastembed';
 // import { TokenLimiter, ToolCallFilter } from '@mastra/memory';
-import { CompositeVoice } from '@mastra/core/voice';
-import { GoogleVoice } from '@mastra/voice-google';
-import { OpenAIVoice } from '@mastra/voice-openai';
+// Temporarily disable voice for Mastra Cloud deployment
+// import { CompositeVoice } from '@mastra/core/voice';
+// import { GoogleVoice } from '@mastra/voice-google';
+// import { OpenAIVoice } from '@mastra/voice-openai';
 import { strikeFinanceTools } from '../tools/strike-finance-tools';
 
 // Create comprehensive memory system for Strike Finance agent
@@ -110,7 +111,13 @@ const strikeMemory = new Memory({
 // Voice configuration for Strike Finance agent - using Google Voice only
 let strikeVoice;
 
+// Temporarily disable voice for Mastra Cloud deployment
 try {
+  console.log('⚡ Strike Agent: Voice temporarily disabled for cloud deployment');
+  strikeVoice = undefined;
+
+  // TODO: Re-enable voice after fixing Mastra Cloud voice package imports
+  /*
   const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4';
 
   if (GOOGLE_API_KEY) {
@@ -134,6 +141,7 @@ try {
     console.log('❌ Strike Agent: No voice API keys found - voice capabilities disabled');
     strikeVoice = undefined;
   }
+  */
 } catch (error) {
   console.error('❌ Strike Agent: Voice initialization failed:', error instanceof Error ? error.message : String(error));
   strikeVoice = undefined;
