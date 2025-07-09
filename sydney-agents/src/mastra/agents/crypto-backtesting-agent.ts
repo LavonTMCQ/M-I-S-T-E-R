@@ -15,7 +15,7 @@ import { promisify } from 'util';
 
 // Import crypto backtesting tools (using existing tools from the system)
 import { cryptoBacktestTool } from '../tools/crypto-backtest-tool';
-import { backtestingTool } from '../tools/backtesting-tools';
+import { runBacktestTool } from '../tools/backtesting-tools';
 import { phemexDataTool } from '../tools/phemex-data-tool';
 import { krakenDataTool } from '../tools/kraken-data-tool';
 import { adaStrategyTool } from '../tools/ada-strategy-tool';
@@ -243,6 +243,7 @@ const speakCryptoResultsTool = createTool({
 // Create crypto backtesting tools object
 const cryptoBacktestingTools: any = {
   cryptoBacktestTool,
+  runBacktestTool,
   phemexDataTool,
   krakenDataTool,
   adaStrategyTool,
@@ -418,7 +419,7 @@ When called by the MISTER frontend API, you MUST return responses in this EXACT 
 **REQUIRED**: Include complete OHLCV data for the entire backtest period (15-minute candles).
 **ESSENTIAL**: Include ALL trades with precise entry/exit times, prices, and P&L calculations.`,
 
-  model: google('gemini-2.0-flash-exp'),
+  model: google('gemini-2.5-flash'),
   memory: cryptoBacktestingMemory,
   voice: cryptoVoiceInstance,
   tools: cryptoBacktestingTools,
