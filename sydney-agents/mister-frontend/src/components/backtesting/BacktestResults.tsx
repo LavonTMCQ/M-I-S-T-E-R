@@ -6,16 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 // import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  createChart, 
-  IChartApi, 
-  ISeriesApi, 
-  ColorType, 
-  LineStyle, 
-  CrosshairMode,
-  CandlestickSeries,
-  createSeriesMarkers
-} from 'lightweight-charts';
+import { ProfessionalChart } from './ProfessionalChart';
+import { ApexTradingChart } from './ApexTradingChart';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -71,51 +63,78 @@ interface BacktestResultsProps {
 }
 
 export function BacktestResults({ results, className = '' }: BacktestResultsProps) {
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chart = useRef<IChartApi | null>(null);
-  const candlestickSeries = useRef<ISeriesApi<any> | null>(null);
+  // Chart refs removed - using ProfessionalChart component instead
   const [selectedTrade, setSelectedTrade] = useState<BacktestTrade | null>(null);
   const [realChartData, setRealChartData] = useState<any[]>([]);
   const [realTrades, setRealTrades] = useState<BacktestTrade[]>([]);
   const [isLoadingChartData, setIsLoadingChartData] = useState(true);
   const [isLoadingTrades, setIsLoadingTrades] = useState(true);
 
-  // Fetch real chart data and trades on component mount
+  // Fetch real market data directly from Kraken API
   useEffect(() => {
-    const fetchRealData = async () => {
+    const fetchRealMarketData = async () => {
       try {
         setIsLoadingChartData(true);
         setIsLoadingTrades(true);
 
-        // Fetch both chart data and trades in parallel
-        const [chartResponse, tradesResponse] = await Promise.all([
-          fetch(`/api/backtest/${results.runId}/chart-data`),
-          fetch(`/api/backtest/${results.runId}/trades`)
-        ]);
+        // Get date range for the last 30 days of data
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30); // Last 30 days
 
-        const chartData = await chartResponse.json();
-        const tradesData = await tradesResponse.json();
+        console.log(`📊 Fetching real ADA/USD market data from ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-        // Set chart data
-        if (chartData.success && chartData.chartData && chartData.chartData.length > 0) {
-          setRealChartData(chartData.chartData);
-          console.log(`✅ Loaded ${chartData.chartData.length} real OHLCV candles from Mastra strategy`);
+        // Fetch real OHLCV data directly from Kraken API
+        const since = Math.floor(startDate.getTime() / 1000);
+        const krakenUrl = `https://api.kraken.com/0/public/OHLC?pair=ADAUSD&interval=15&since=${since}`;
+
+        console.log('🌐 Fetching from Kraken API:', krakenUrl);
+
+        const response = await fetch(krakenUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'MISTER-Trading-Bot/1.0'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Kraken API error: ${response.status}`);
+        }
+
+        const krakenData = await response.json();
+
+        if (krakenData.error && krakenData.error.length > 0) {
+          throw new Error(`Kraken API error: ${krakenData.error.join(', ')}`);
+        }
+
+        // Extract OHLCV data from Kraken response
+        const ohlcData = krakenData.result?.ADAUSD || [];
+
+        if (ohlcData && ohlcData.length > 0) {
+          // Convert Kraken format to our chart format
+          const chartData = ohlcData.map((candle: any[]) => ({
+            time: new Date(candle[0] * 1000).toISOString(), // Convert Unix timestamp to ISO string
+            open: parseFloat(candle[1]),
+            high: parseFloat(candle[2]),
+            low: parseFloat(candle[3]),
+            close: parseFloat(candle[4]),
+            volume: parseFloat(candle[6])
+          }));
+
+          setRealChartData(chartData);
+          console.log(`✅ Loaded ${chartData.length} real OHLCV candles from Kraken API`);
+          console.log('📊 Sample data:', chartData.slice(0, 3));
         } else {
-          console.warn('Failed to fetch real chart data, using fallback sample data');
+          console.warn('No OHLCV data returned from Kraken, using fallback');
           setRealChartData(results.chartData || []);
         }
 
-        // Set trade data
-        if (tradesData.success && tradesData.trades && tradesData.trades.length > 0) {
-          setRealTrades(tradesData.trades);
-          console.log(`✅ Loaded ${tradesData.trades.length} real trades from Mastra strategy`);
-        } else {
-          console.warn('Failed to fetch real trade data, using fallback sample data');
-          setRealTrades(results.trades || []);
-        }
+        // Use the trades from the backtest results
+        setRealTrades(results.trades || []);
+        console.log(`✅ Using ${results.trades?.length || 0} trades from backtest results`);
 
       } catch (error) {
-        console.error('Error fetching real backtest data:', error);
+        console.error('❌ Error fetching real market data:', error);
         setRealChartData(results.chartData || []);
         setRealTrades(results.trades || []);
       } finally {
@@ -124,8 +143,8 @@ export function BacktestResults({ results, className = '' }: BacktestResultsProp
       }
     };
 
-    fetchRealData();
-  }, [results.runId, results.chartData, results.trades]);
+    fetchRealMarketData();
+  }, [results.chartData, results.trades]);
 
   // Performance metrics calculations - use real trades if available
   const tradesToCalculate = realTrades.length > 0 ? realTrades : results.trades;
@@ -150,141 +169,7 @@ export function BacktestResults({ results, className = '' }: BacktestResultsProp
       }, 0) / tradesToCalculate.length
     : 0;
 
-  // Initialize chart
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
-
-    // Create chart with professional styling
-    chart.current = createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
-      height: 500,
-      layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#d1d4dc',
-        fontSize: 12,
-        fontFamily: 'Inter, system-ui, sans-serif',
-      },
-      grid: {
-        vertLines: { color: 'rgba(42, 46, 57, 0.5)' },
-        horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
-      },
-      crosshair: {
-        mode: CrosshairMode.Normal,
-        vertLine: {
-          color: '#758696',
-          width: 1,
-          style: LineStyle.Dashed,
-        },
-        horzLine: {
-          color: '#758696',
-          width: 1,
-          style: LineStyle.Dashed,
-        },
-      },
-      rightPriceScale: {
-        borderColor: 'rgba(197, 203, 206, 0.4)',
-        scaleMargins: {
-          top: 0.1,
-          bottom: 0.1,
-        },
-      },
-      timeScale: {
-        borderColor: 'rgba(197, 203, 206, 0.4)',
-        timeVisible: true,
-        secondsVisible: false,
-      },
-    });
-
-    // Add candlestick series
-    candlestickSeries.current = chart.current.addSeries(CandlestickSeries, {
-      upColor: '#26a69a',
-      downColor: '#ef5350',
-      borderVisible: false,
-      wickUpColor: '#26a69a',
-      wickDownColor: '#ef5350',
-    });
-
-    // Set chart data - use real data if available, fallback to results.chartData
-    const chartDataToUse = realChartData.length > 0 ? realChartData : (results.chartData || []);
-
-    if (chartDataToUse.length > 0) {
-      const formattedData = chartDataToUse
-        .map(candle => ({
-          time: Math.floor(new Date(candle.time).getTime() / 1000), // Convert to Unix timestamp for intraday data
-          open: candle.open,
-          high: candle.high,
-          low: candle.low,
-          close: candle.close,
-        }))
-        .sort((a, b) => a.time - b.time) // Sort by Unix timestamp ascending
-        .filter((candle, index, array) =>
-          index === 0 || candle.time !== array[index - 1].time // Remove duplicates
-        );
-
-      candlestickSeries.current.setData(formattedData);
-    }
-
-    // Create trade markers using v5 API - both entry AND exit markers
-    // Use real trades if available, fallback to results.trades
-    const tradesToUse = realTrades.length > 0 ? realTrades : (results.trades || []);
-
-    if (tradesToUse.length > 0) {
-      const markers: any[] = [];
-
-      tradesToUse.forEach(trade => {
-        // Enhanced Entry marker with better colors and shapes
-        markers.push({
-          time: Math.floor(new Date(trade.entryTime).getTime() / 1000),
-          position: trade.side === 'LONG' ? 'belowBar' : 'aboveBar' as const,
-          color: trade.side === 'LONG' ? '#00D4AA' : '#FF6B6B', // Brighter colors
-          shape: trade.side === 'LONG' ? 'arrowUp' : 'arrowDown' as const,
-          text: `📈 ${trade.side} Entry: $${trade.entryPrice.toFixed(4)}`,
-          id: `${trade.id}_entry`,
-          size: 2, // Larger size for better visibility
-        });
-
-        // Enhanced Exit marker with profit/loss indication
-        const isProfitable = trade.netPnl >= 0;
-        const profitColor = isProfitable ? '#00D4AA' : '#FF6B6B';
-        const profitEmoji = isProfitable ? '💰' : '💸';
-
-        markers.push({
-          time: Math.floor(new Date(trade.exitTime).getTime() / 1000),
-          position: trade.side === 'LONG' ? 'aboveBar' : 'belowBar' as const,
-          color: profitColor,
-          shape: isProfitable ? 'circle' : 'square' as const,
-          text: `${profitEmoji} Exit: $${trade.exitPrice.toFixed(4)} (${isProfitable ? '+' : ''}$${trade.netPnl.toFixed(2)})`,
-          id: `${trade.id}_exit`,
-          size: 2,
-        });
-      });
-
-      // Sort all markers by time
-      markers.sort((a, b) => a.time - b.time);
-
-      // Use v5 createSeriesMarkers API
-      createSeriesMarkers(candlestickSeries.current, markers);
-    }
-
-    // Handle resize
-    const handleResize = () => {
-      if (chart.current && chartContainerRef.current) {
-        chart.current.applyOptions({ 
-          width: chartContainerRef.current.clientWidth 
-        });
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (chart.current) {
-        chart.current.remove();
-        chart.current = null;
-      }
-    };
-  }, [realChartData, realTrades, results.trades, isLoadingChartData, isLoadingTrades]);
+  // Chart initialization removed - using ProfessionalChart component instead
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -381,12 +266,16 @@ export function BacktestResults({ results, className = '' }: BacktestResultsProp
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5" />
-            Price Chart with Trade Markers
+            ADA Price Chart with{' '}
+            <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent font-bold animate-pulse drop-shadow-lg" style={{textShadow: '0 0 10px rgba(147, 51, 234, 0.5)'}}>
+              MISTER
+            </span>{' '}
+            Signals
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {isLoadingChartData || isLoadingTrades ? (
-            <div className="w-full h-[500px] flex items-center justify-center">
+            <div className="w-full h-[600px] flex items-center justify-center">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
                 <p className="text-sm text-muted-foreground">
@@ -399,7 +288,11 @@ export function BacktestResults({ results, className = '' }: BacktestResultsProp
               </div>
             </div>
           ) : (
-            <div ref={chartContainerRef} className="w-full h-[500px]" />
+            <ApexTradingChart
+              chartData={realChartData.length > 0 ? realChartData : (results.chartData || [])}
+              trades={realTrades.length > 0 ? realTrades : results.trades}
+              className="w-full"
+            />
           )}
         </CardContent>
       </Card>
