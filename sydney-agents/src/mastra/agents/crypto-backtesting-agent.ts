@@ -4,8 +4,10 @@ import { Memory } from '@mastra/memory';
 import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
 import { fastembed } from '@mastra/fastembed';
 import { TokenLimiter, ToolCallFilter } from '@mastra/memory/processors';
-import { CompositeVoice } from '@mastra/core/voice';
-import { GoogleVoice } from '@mastra/voice-google';
+// TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
+// import { CompositeVoice } from '@mastra/core/voice';
+// TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
+// import { GoogleVoice } from '@mastra/voice-google';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { exec } from 'child_process';
@@ -26,29 +28,30 @@ import { adaTradeMemoryTool } from '../tools/ada-trade-memory-tool';
 // Initialize Google Voice for crypto backtesting (same as Sone)
 let cryptoVoiceInstance: any;
 
-try {
-  const GOOGLE_API_KEY = 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4';
+// TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
+// try {
+//   const GOOGLE_API_KEY = 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4';
 
-  const googleVoiceForCrypto = new GoogleVoice({
-    speechModel: {
-      apiKey: GOOGLE_API_KEY,
-    },
-    listeningModel: {
-      apiKey: GOOGLE_API_KEY,
-    },
-    speaker: 'en-US-Studio-O', // Professional female voice
-  });
+//   const googleVoiceForCrypto = new GoogleVoice({
+//     speechModel: {
+//       apiKey: GOOGLE_API_KEY,
+//     },
+//     listeningModel: {
+//       apiKey: GOOGLE_API_KEY,
+//     },
+//     speaker: 'en-US-Studio-O', // Professional female voice
+//   });
 
-  cryptoVoiceInstance = new CompositeVoice({
-    input: googleVoiceForCrypto,  // Google STT for speech recognition
-    output: googleVoiceForCrypto, // Google TTS for speech synthesis
-  });
+//   cryptoVoiceInstance = new CompositeVoice({
+//     input: googleVoiceForCrypto,  // Google STT for speech recognition
+//     output: googleVoiceForCrypto, // Google TTS for speech synthesis
+//   });
 
-  console.log('✅ Crypto Agent: Using Google Voice (primary)');
-} catch (error) {
-  console.error('❌ Crypto Agent: Voice initialization failed:', error instanceof Error ? error.message : String(error));
-  cryptoVoiceInstance = undefined;
-}
+//   console.log('✅ Crypto Agent: Using Google Voice (primary)');
+// } catch (error) {
+//   console.error('❌ Crypto Agent: Voice initialization failed:', error instanceof Error ? error.message : String(error));
+// }
+cryptoVoiceInstance = undefined;
 
 // Voice tool for crypto backtesting results - MANDATORY for all results
 const speakCryptoResultsTool = createTool({

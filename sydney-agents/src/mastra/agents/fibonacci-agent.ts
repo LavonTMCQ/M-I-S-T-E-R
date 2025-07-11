@@ -5,7 +5,8 @@ import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
 import { fastembed } from '@mastra/fastembed';
 import { TokenLimiter, ToolCallFilter } from '@mastra/memory/processors';
 import { CompositeVoice } from '@mastra/core/voice';
-import { GoogleVoice } from '@mastra/voice-google';
+// TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
+// import { GoogleVoice } from '@mastra/voice-google';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { exec } from 'child_process';

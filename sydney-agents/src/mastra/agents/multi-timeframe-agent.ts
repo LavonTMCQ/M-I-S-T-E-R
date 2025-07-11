@@ -4,8 +4,9 @@ import { Memory } from '@mastra/memory';
 import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
 import { fastembed } from '@mastra/fastembed';
 import { TokenLimiter, ToolCallFilter } from '@mastra/memory/processors';
-import { CompositeVoice } from '@mastra/core/voice';
-import { GoogleVoice } from '@mastra/voice-google';
+// TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
+// import { CompositeVoice } from '@mastra/core/voice';
+// import { GoogleVoice } from '@mastra/voice-google';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { exec } from 'child_process';
@@ -13,23 +14,25 @@ import { exec } from 'child_process';
 // Import the multi-timeframe strategy tool
 import { multiTimeframeAdaStrategyTool } from '../tools/multi-timeframe-ada-strategy-tool';
 
+// TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
 // Voice system for multi-timeframe agent
-let multiTimeframeVoiceInstance: CompositeVoice | null = null;
+// let multiTimeframeVoiceInstance: CompositeVoice | null = null;
+let multiTimeframeVoiceInstance: any = null;
 
-try {
-  multiTimeframeVoiceInstance = new CompositeVoice({
-    providers: [
-      new GoogleVoice({
-        apiKey: process.env.GOOGLE_VOICE_API_KEY || '',
-        projectId: process.env.GOOGLE_CLOUD_PROJECT_ID || '',
-      }),
-    ],
-  });
-  console.log('✅ Multi-Timeframe voice system initialized');
-} catch (error) {
-  console.error('❌ Multi-Timeframe voice system failed to initialize:', error);
-  multiTimeframeVoiceInstance = null;
-}
+// try {
+//   multiTimeframeVoiceInstance = new CompositeVoice({
+//     providers: [
+//       new GoogleVoice({
+//         apiKey: process.env.GOOGLE_VOICE_API_KEY || '',
+//         projectId: process.env.GOOGLE_CLOUD_PROJECT_ID || '',
+//       }),
+//     ],
+//   });
+//   console.log('✅ Multi-Timeframe voice system initialized');
+// } catch (error) {
+//   console.error('❌ Multi-Timeframe voice system failed to initialize:', error);
+//   multiTimeframeVoiceInstance = null;
+// }
 
 // Voice announcement tool for multi-timeframe results
 const speakMultiTimeframeResultsTool = createTool({

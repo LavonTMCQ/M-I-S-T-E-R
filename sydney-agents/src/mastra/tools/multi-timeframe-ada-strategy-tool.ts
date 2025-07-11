@@ -1296,16 +1296,19 @@ async function announceResults(results: any, symbol: string, leverage: number, c
     }
 
     // Fallback to direct Google Voice
-    const { GoogleVoice } = await import('@mastra/voice-google');
+    // TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
+    // const { GoogleVoice } = await import('@mastra/voice-google');
 
-    const googleVoice = new GoogleVoice({
-      speechModel: {
-        apiKey: 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4',
-      },
-      speaker: 'en-US-Studio-O',
-    });
+    // TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
+    // const googleVoice = new GoogleVoice({
+    //   speechModel: {
+    //     apiKey: 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4',
+    //   },
+    //   speaker: 'en-US-Studio-O',
+    // });
 
-    await googleVoice.speak(announcement);
+    // await googleVoice.speak(announcement);
+    console.log('🔊 VOICE ANNOUNCEMENT (temporarily disabled):', announcement);
     console.log('✅ Voice announcement completed via Google Voice');
 
   } catch (error) {
