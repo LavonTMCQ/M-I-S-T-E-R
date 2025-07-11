@@ -304,11 +304,11 @@ export const cryptoBacktestingAgent = new Agent({
 ## Your Core Responsibilities:
 
 ### 🔸 Crypto Data Management:
-- Fetch real-time and historical data from Phemex API (primary) and Kraken API (fallback)
-- Support for ADA/USDT, ADA/USD and other major crypto pairs
-- Handle crypto-specific data formats and timeframes
+- **KRAKEN API ONLY** - Proven reliable data source for ADA/USD trading
+- Support for ADA/USD and other major crypto pairs (NO USDT pairs)
+- Handle crypto-specific data formats and timeframes (15m, 1h, 1d)
 - Manage crypto market hours (24/7 trading)
-- Automatic failover between exchanges for reliable data access
+- **NO PHEMEX** - Kraken works perfectly for all ADA backtesting needs
 
 ### 🔸 ADA Strategy Development:
 - **PRIMARY STRATEGY**: multiTimeframeAdaStrategyTool (ALWAYS use this first - proven best performer)

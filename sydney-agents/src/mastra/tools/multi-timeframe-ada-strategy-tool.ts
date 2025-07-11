@@ -89,9 +89,13 @@ export const multiTimeframeAdaStrategyTool = createTool({
       const marketData: { [key: string]: TimeframeData[] } = {};
 
       for (const tf of timeframes) {
-        console.log(`📡 Fetching ${tf}min data for ${symbol}...`);
-        // Use Kraken as primary since it has reliable data
+        console.log(`📡 Fetching ${tf}min data for ${symbol} from KRAKEN...`);
+        // Use KRAKEN ONLY - it works perfectly for ADA data
         const data = await fetchKrakenData(symbol, tf, actualStartDate, actualEndDate);
+        if (!data || data.length === 0) {
+          throw new Error(`Failed to fetch ${tf}min data from Kraken for ${symbol}`);
+        }
+        console.log(`✅ Loaded ${data.length} ${tf}min candles from Kraken`);
         marketData[tf] = data;
       }
 
@@ -121,15 +125,52 @@ export const multiTimeframeAdaStrategyTool = createTool({
 
       console.log(`✅ Multi-Timeframe ADA Strategy Analysis Complete`);
 
+      // Format trades for frontend compatibility
+      const formattedTrades = strategyResults.trades.map((trade: any, index: number) => ({
+        id: `mt_trade_${index + 1}`,
+        entryTime: new Date(trade.entryTime).toISOString(),
+        exitTime: trade.exitTime ? new Date(trade.exitTime).toISOString() : null,
+        side: trade.side,
+        entryPrice: trade.entryPrice,
+        exitPrice: trade.exitPrice || trade.entryPrice,
+        size: trade.size,
+        netPnl: trade.pnl || 0,
+        reason: trade.reason || 'Multi-timeframe confluence signal',
+        leverage: trade.leverage || leverage,
+        duration: trade.exitTime ?
+          Math.round((new Date(trade.exitTime).getTime() - new Date(trade.entryTime).getTime()) / (1000 * 60 * 60)) : 0
+      }));
+
+      // Format chart data (OHLCV) for frontend
+      const chartData = marketData['15'].map((candle: any) => ({
+        time: new Date(candle.timestamp * 1000).toISOString(),
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+        volume: candle.volume || 0
+      }));
+
       return {
         success: true,
-        strategy: 'multi_timeframe_ada_10x',
+        strategy: 'multi-timeframe-ada',
         symbol: symbol,
         leverage: leverage,
         timeframes: ['15m', '1h', '1d'],
         period: `${startDate} to ${endDate}`,
-        results: strategyResults,
+        trades: formattedTrades,
+        chartData: chartData,
         analysis: analysis,
+        performance: {
+          totalTrades: strategyResults.totalTrades,
+          winRate: strategyResults.hitRate, // Use hitRate instead of winRate
+          avgReturn: strategyResults.totalReturnPercent, // Use totalReturnPercent
+          maxDrawdown: strategyResults.maxDrawdown,
+          profitFactor: strategyResults.profitFactor,
+          sharpeRatio: strategyResults.sharpeRatio || 0,
+          totalReturn: strategyResults.totalReturn,
+          finalCapital: strategyResults.finalCapital
+        },
         summary: generateSummary(strategyResults, symbol, leverage),
         riskMetrics: calculateRiskMetrics(strategyResults, initialCapital),
         voiceAnnouncement: speakResults ? 'Results announced via Google Voice' : 'Voice disabled'
@@ -146,14 +187,19 @@ export const multiTimeframeAdaStrategyTool = createTool({
   },
 });
 
-// Fetch data from Kraken API
+// Fetch data from Kraken API - REAL-TIME APPROACH like Fibonacci agent
 async function fetchKrakenData(symbol: string, timeframe: string, startDate: string, endDate: string): Promise<TimeframeData[]> {
   try {
-    console.log(`📡 Fetching Kraken data for ${symbol}, timeframe: ${timeframe}min`);
+    console.log(`📡 Fetching REAL-TIME Kraken data for ${symbol}, timeframe: ${timeframe}min`);
 
     // Convert timeframe to Kraken format
     const krakenInterval = timeframe === '15' ? '15' : timeframe === '60' ? '60' : '1440';
-    const url = `https://api.kraken.com/0/public/OHLC?pair=${symbol}&interval=${krakenInterval}`;
+
+    // Use COUNT approach like Fibonacci agent (gets recent data that actually exists)
+    const count = timeframe === '15' ? 200 : timeframe === '60' ? 100 : 50; // More data for shorter timeframes
+    const url = `https://api.kraken.com/0/public/OHLC?pair=${symbol}&interval=${krakenInterval}&count=${count}`;
+
+    console.log(`🌐 Kraken API URL: ${url}`);
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -216,66 +262,12 @@ async function fetchKrakenData(symbol: string, timeframe: string, startDate: str
 
   } catch (error) {
     console.error(`❌ Kraken fetch failed for ${symbol}:`, error);
-    // Try Phemex as fallback
-    return await fetchPhemexData(symbol, timeframe, startDate, endDate);
+    // NO FALLBACK - Kraken only, just like Fibonacci strategy
+    throw new Error(`Kraken API failed for ${symbol}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-// Fetch data from Phemex API as fallback
-async function fetchPhemexData(symbol: string, timeframe: string, startDate: string, endDate: string): Promise<TimeframeData[]> {
-  try {
-    console.log(`📡 Fetching Phemex data for ${symbol}, timeframe: ${timeframe}min`);
-
-    // Convert symbol to Phemex format (add 'c' prefix for contracts)
-    const phemexSymbol = symbol.includes('USD') ? `c${symbol}` : symbol;
-
-    // Get recent data (last 1000 candles)
-    const now = Math.floor(Date.now() / 1000);
-    const timeframeSeconds = parseInt(timeframe) * 60;
-    const from = now - (1000 * timeframeSeconds); // Last 1000 candles
-
-    const url = `https://api.phemex.com/exchange/public/md/kline?symbol=${phemexSymbol}&resolution=${timeframe}&from=${from}&to=${now}`;
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Phemex API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    if (data.code !== 0) {
-      throw new Error(`Phemex API error: ${data.msg}`);
-    }
-
-    if (!data.data || !data.data.rows || data.data.rows.length === 0) {
-      throw new Error(`No data returned from Phemex for ${phemexSymbol}`);
-    }
-
-    const candles = data.data.rows.map((candle: any[]) => ({
-      timestamp: candle[0],
-      open: candle[3] / 10000, // Phemex prices are scaled by 10000
-      high: candle[4] / 10000,
-      low: candle[5] / 10000,
-      close: candle[6] / 10000,
-      volume: candle[7] / 1000000000000 // Volume is also scaled
-    }));
-
-    // Filter by date range if provided
-    const filteredCandles = candles.filter((candle: TimeframeData) => {
-      if (!startDate || !endDate) return true;
-      const candleDate = new Date(candle.timestamp * 1000);
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      return candleDate >= start && candleDate <= end;
-    }).sort((a: TimeframeData, b: TimeframeData) => a.timestamp - b.timestamp);
-
-    console.log(`📊 Retrieved ${filteredCandles.length} candles from Phemex for ${phemexSymbol}`);
-    return filteredCandles;
-
-  } catch (error) {
-    console.error(`❌ Phemex fetch failed for ${symbol}:`, error);
-    throw new Error(`Both Kraken and Phemex failed to fetch data for ${symbol}`);
-  }
-}
+// KRAKEN ONLY - No Phemex fallback needed since Kraken works perfectly for ADA
 
 // Calculate technical indicators
 function calculateTechnicalIndicators(data: TimeframeData[], params: any): TechnicalIndicators {
@@ -567,7 +559,6 @@ function analyzeDailyTimeframe(data: TimeframeData[], indicators: TechnicalIndic
   }
 
   const currentPrice = data[currentIndex].close;
-  const _prevPrice = data[Math.max(0, currentIndex - 1)].close;
   const prev3Price = data[Math.max(0, currentIndex - 3)].close;
   const ema200 = indicators.ema200[currentIndex] || currentPrice;
   const ema50 = indicators.ema50[currentIndex] || currentPrice;
@@ -643,7 +634,6 @@ function analyzeHourlyTimeframe(data: TimeframeData[], indicators: TechnicalIndi
   }
 
   const currentPrice = data[currentIndex].close;
-  const _prevPrice = data[Math.max(0, currentIndex - 1)].close;
   const prev2Price = data[Math.max(0, currentIndex - 2)].close;
   const ema50 = indicators.ema50[currentIndex] || currentPrice;
   const macd = indicators.macd.macd[currentIndex] || 0;

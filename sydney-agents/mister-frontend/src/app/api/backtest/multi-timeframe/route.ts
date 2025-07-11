@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
           role: 'user',
           content: `Use the multi-timeframe-ada-strategy tool to run a comprehensive backtest for ${symbol} from ${startDate} to ${endDate}. Use 15-minute execution timeframe with RSI and momentum indicators. I need both the complete OHLCV chart data and all trade results with entry/exit times, prices, and P&L. Return the results in the exact format expected by the frontend with chartData array and trades array.`
         }]
-      }),
-      signal: AbortSignal.timeout(240000) // 4 minute timeout for full backtest
+      })
+      // NO TIMEOUT - Let it take as long as needed like Fibonacci strategy
     });
 
     if (!response.ok) {
