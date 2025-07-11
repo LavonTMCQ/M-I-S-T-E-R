@@ -11,6 +11,7 @@ import { strikeAgent } from './agents/strike-agent';
 import { cryptoBacktestingAgent } from './agents/crypto-backtesting-agent';
 import { backtestingAgent } from './agents/backtesting-agent';
 import { quantAgent } from './agents/quant-agent';
+import { fibonacciAgent } from './agents/fibonacci-agent';
 import { soneMCPServer } from './mcp/sone-mcp-server';
 
 export const mastra = new Mastra({
@@ -19,7 +20,7 @@ export const mastra = new Mastra({
     soneResearchWorkflow,
     soneMainResearchWorkflow
   },
-  agents: { weatherAgent, soneAgent, cashAgent, strikeAgent, cryptoBacktestingAgent, backtestingAgent, quantAgent },
+  agents: { weatherAgent, soneAgent, cashAgent, strikeAgent, cryptoBacktestingAgent, backtestingAgent, quantAgent, fibonacciAgent },
   mcpServers: {
     soneMCPServer
   },

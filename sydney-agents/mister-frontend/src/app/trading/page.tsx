@@ -4,12 +4,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Activity } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Activity, Bot, Brain, User } from 'lucide-react';
 import { ManualTradingInterface } from '@/components/trading/ManualTradingInterface';
 import { TradingChart } from '@/components/trading/TradingChart';
 import { AITradingChat } from '@/components/trading/AITradingChat';
+import { AIThinkingTerminal } from '@/components/trading/AIThinkingTerminal';
+import { StrategySelection } from '@/components/trading/StrategySelection';
 import { PositionsSummary } from '@/components/trading/PositionsSummary';
 import { MarketInfoBar } from '@/components/trading/MarketInfoBar';
+import { MisterLogo } from '@/components/ui/mister-logo';
 import { useRequireAuth } from '@/contexts/AuthContext';
 import { useWallet } from '@/contexts/WalletContext';
 import { useUserIdentity } from '@/hooks/useUserIdentity';
@@ -36,6 +40,11 @@ export default function TradingPage() {
 
   // Ref to track if preferences have been loaded to prevent infinite loops
   const preferencesLoadedRef = useRef(false);
+
+  // MISTER Trading mode state
+  const [isMisterMode, setIsMisterMode] = useState(false);
+  const [selectedStrategy, setSelectedStrategy] = useState<string>('fibonacci');
+  const [showStrategySelection, setShowStrategySelection] = useState(false);
 
   const [marketData, setMarketData] = useState({
     price: 0.47,
@@ -185,47 +194,123 @@ export default function TradingPage() {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="border-b bg-card flex-shrink-0">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+      {/* Combined Header & Market Info */}
+      <div className="border-b bg-gradient-to-r from-card via-card/95 to-card flex-shrink-0 shadow-sm">
+        <div className="container mx-auto px-4">
+          {/* Top Header Row */}
+          <div className="flex items-center justify-between py-3 border-b border-border/50">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold">MISTER Trading</h1>
-              <Badge variant="outline" className="flex items-center gap-1">
-                <Activity className="h-3 w-3" />
-                Live Trading
-              </Badge>
+              {/* MISTER Logo on the left */}
+              <MisterLogo size="lg" />
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                  Trading
+                </h1>
+                <Badge variant="outline" className="flex items-center gap-1 bg-primary/5 border-primary/20 text-primary">
+                  <Activity className="h-3 w-3" />
+                  Live Trading
+                </Badge>
+              </div>
             </div>
 
-            {/* Wallet info now shown in global header */}
+            {/* MISTER Trading Mode Toggle */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className={`font-medium ${!isMisterMode ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Manual
+                </span>
+              </div>
+
+              <Switch
+                checked={isMisterMode}
+                onCheckedChange={(checked) => {
+                  setIsMisterMode(checked);
+                  if (checked) {
+                    setShowStrategySelection(true);
+                  }
+                }}
+                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-blue-500 data-[state=checked]:to-purple-600"
+              />
+
+              <div className="flex items-center gap-2 text-sm">
+                <Bot className="h-4 w-4 text-muted-foreground" />
+                <span className={`font-medium ${isMisterMode ? 'text-primary' : 'text-muted-foreground'}`}>
+                  MISTER
+                </span>
+              </div>
+
+              {isMisterMode && (
+                <>
+                  <Badge variant="secondary" className="flex items-center gap-1 bg-gradient-to-r from-blue-500/10 to-purple-600/10 border-blue-500/20 text-blue-700">
+                    <Brain className="h-3 w-3" />
+                    AI Trading
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowStrategySelection(!showStrategySelection)}
+                    className="text-xs"
+                  >
+                    {showStrategySelection ? 'Back to Terminal' : 'Change Strategy'}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Market Info Row */}
+          <div className="py-3">
+            <MarketInfoBar marketData={marketData} />
           </div>
         </div>
       </div>
 
-      {/* Market Info Bar */}
-      <div className="flex-shrink-0">
-        <MarketInfoBar marketData={marketData} />
-      </div>
-
       {/* Main Trading Interface */}
-      <div className="container mx-auto px-4 py-3 flex-1 overflow-hidden">
-        <div className="grid grid-cols-12 gap-3 h-full">
+      <div className="container mx-auto px-4 py-4 flex-1 overflow-hidden">
+        <div className="grid grid-cols-12 gap-4 h-[calc(100vh-11rem)]">
 
           {/* Left Panel - Trading Controls */}
-          <div className="col-span-3 space-y-3 overflow-y-auto">
-            {/* Manual Trading Interface */}
-            <ManualTradingInterface
-              walletAddress={mainWallet.address}
-              walletType="connected"
-              balance={mainWallet.balance}
-              currentPrice={marketData.price}
-            />
+          <div className="col-span-3 space-y-4 overflow-y-auto">
+            {isMisterMode ? (
+              /* MISTER AI Trading Terminal */
+              showStrategySelection ? (
+                <StrategySelection
+                  onStrategySelect={(strategyId) => {
+                    setSelectedStrategy(strategyId);
+                    setShowStrategySelection(false);
+                  }}
+                  selectedStrategy={selectedStrategy}
+                  walletBalance={mainWallet.balance}
+                />
+              ) : (
+                <AIThinkingTerminal
+                  walletAddress={mainWallet.address}
+                  selectedStrategy={selectedStrategy}
+                  isActive={false} // Will be controlled by the terminal's own toggle
+                  onToggleTrading={() => {
+                    // TODO: Implement MISTER trading start/stop logic
+                    console.log('Toggle MISTER trading');
+                  }}
+                />
+              )
+            ) : (
+              /* Manual Trading Interface */
+              <>
+                <ManualTradingInterface
+                  walletAddress={mainWallet.address}
+                  walletType="connected"
+                  balance={mainWallet.balance}
+                  currentPrice={marketData.price}
+                />
 
-            {/* Positions Summary */}
-            <PositionsSummary />
+                {/* Positions Summary */}
+                <PositionsSummary />
+              </>
+            )}
           </div>
 
-          {/* Center Panel - Chart */}
+          {/* Center Panel - Chart (Back to original width) */}
           <div className="col-span-6 overflow-hidden">
             <Card className="h-full">
               <CardContent className="p-0 h-full">
@@ -234,7 +319,7 @@ export default function TradingPage() {
             </Card>
           </div>
 
-          {/* Right Panel - Full AI Chat */}
+          {/* Right Panel - AI Chat */}
           <div className="col-span-3 overflow-hidden">
             {/* Full-Height AI Trading Chat */}
             <div className="h-full">
