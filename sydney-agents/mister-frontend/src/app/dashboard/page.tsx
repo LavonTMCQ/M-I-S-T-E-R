@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth, useRequireAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { useUserIdentity } from "@/hooks/useUserIdentity";
+import { MisterLogo } from "@/components/ui/mister-logo";
 import { dashboardAPI, positionsAPI, activityAPI, strikeAPI } from "@/lib/api";
 import { tapToolsAPI } from "@/lib/api/taptools";
 import { DashboardData, Position, AIActivity, AIStatus, MarketData, SignalStats } from "@/types/api";
@@ -100,35 +101,35 @@ export default function DashboardPage() {
       // Handle TapTools real portfolio data first
       let realPortfolioData = null;
       if (tapToolsResponse.success && tapToolsResponse.data) {
-        console.log('✅ Using real TapTools portfolio data with', tapToolsResponse.data.length, 'data points');
-        console.log('📊 Raw TapTools data sample:', tapToolsResponse.data.slice(0, 3));
+        console.log('✅ Using real TapTools portfolio data with', Array.isArray(tapToolsResponse.data) ? tapToolsResponse.data.length : 'unknown', 'data points');
+        console.log('📊 Raw TapTools data sample:', Array.isArray(tapToolsResponse.data) ? tapToolsResponse.data.slice(0, 3) : tapToolsResponse.data);
 
         // TapTools returns an array directly, not an object with values
-        const chartData = tapToolsResponse.data.map((point: any, index: number) => ({
+        const chartData = Array.isArray(tapToolsResponse.data) ? tapToolsResponse.data.map((point: any, index: number) => ({
           date: new Date(point.time * 1000).toISOString().split('T')[0],
           portfolioValue: point.usd_value || point.value || 0,
           adaValue: point.ada_value || point.ada || mainWallet.balance,
-          dailyReturn: index > 0 ?
+          dailyReturn: index > 0 && Array.isArray(tapToolsResponse.data) ?
             ((point.usd_value - tapToolsResponse.data[index - 1].usd_value) / tapToolsResponse.data[index - 1].usd_value) * 100 : 0,
-          cumulativeReturn: tapToolsResponse.data.length > 0 ?
+          cumulativeReturn: Array.isArray(tapToolsResponse.data) && tapToolsResponse.data.length > 0 ?
             ((point.usd_value - tapToolsResponse.data[0].usd_value) / tapToolsResponse.data[0].usd_value) * 100 : 0
-        }));
+        })) : [];
 
         console.log('📊 Converted chart data:', chartData.length, 'points');
         console.log('📊 Chart data sample:', chartData.slice(0, 3));
         setPortfolioPerformance(chartData);
 
         // Update dashboard data with real portfolio values
-        const latestPoint = tapToolsResponse.data[tapToolsResponse.data.length - 1];
-        const firstPoint = tapToolsResponse.data[0];
+        const latestPoint = Array.isArray(tapToolsResponse.data) ? tapToolsResponse.data[tapToolsResponse.data.length - 1] : null;
+        const firstPoint = Array.isArray(tapToolsResponse.data) ? tapToolsResponse.data[0] : null;
         const updatedDashboardData = createFallbackDashboardData();
         updatedDashboardData.portfolio = {
-          totalValue: latestPoint.usd_value || latestPoint.value || mainWallet.balance * 0.45,
-          dailyChange: latestPoint.usd_value - firstPoint.usd_value,
-          dailyChangePercent: ((latestPoint.usd_value - firstPoint.usd_value) / firstPoint.usd_value) * 100,
+          totalValue: latestPoint?.usd_value || latestPoint?.value || mainWallet.balance * 0.45,
+          dailyChange: (latestPoint?.usd_value || 0) - (firstPoint?.usd_value || 0),
+          dailyChangePercent: firstPoint?.usd_value ? (((latestPoint?.usd_value || 0) - firstPoint.usd_value) / firstPoint.usd_value) * 100 : 0,
           availableBalance: mainWallet.balance,
-          totalPnL: latestPoint.usd_value - firstPoint.usd_value,
-          totalPnLPercent: ((latestPoint.usd_value - firstPoint.usd_value) / firstPoint.usd_value) * 100
+          totalPnL: (latestPoint?.usd_value || 0) - (firstPoint?.usd_value || 0),
+          totalPnLPercent: firstPoint?.usd_value ? (((latestPoint?.usd_value || 0) - firstPoint.usd_value) / firstPoint.usd_value) * 100 : 0
         };
         setDashboardData(updatedDashboardData);
       } else {
@@ -183,10 +184,16 @@ export default function DashboardPage() {
 
       // Handle market data
       if (marketResponse.success && marketResponse.data) {
-        setMarketData(marketResponse.data);
+        setMarketData({
+          ...marketResponse.data,
+          timestamp: new Date().toISOString()
+        } as any);
       } else {
         console.warn('Market data not available, using fallback');
-        setMarketData(createFallbackMarketData());
+        setMarketData({
+          ...createFallbackMarketData(),
+          timestamp: new Date().toISOString()
+        });
       }
 
       // Handle Strike Finance health
@@ -557,10 +564,7 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">M</span>
-              </div>
-              <span className="text-xl font-bold">MISTER</span>
+              <MisterLogo size="lg" />
               <Badge variant={aiStatus?.isRunning ? "default" : "destructive"} className="ml-2">
                 <Bot className="w-3 h-3 mr-1" />
                 AI {aiStatus?.isRunning ? 'Active' : 'Inactive'}

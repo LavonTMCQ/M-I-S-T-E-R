@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { MASTRA_API_URL } from '@/lib/api-config';
 
 /**
  * GET /api/test-mastra
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest) {
     console.log('🧪 Testing Mastra connection...');
     
     // Test basic Mastra connectivity
-    const response = await fetch('http://localhost:4112/api/agents/cryptoBacktestingAgent/generate', {
+    const response = await fetch(`${MASTRA_API_URL}/api/agents/cryptoBacktestingAgent/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

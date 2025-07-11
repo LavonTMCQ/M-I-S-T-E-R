@@ -19,11 +19,15 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔄 Closing position ${positionId} via Strike Finance API...`);
 
+    // Get the authorization header from the original request
+    const authHeader = request.headers.get('authorization');
+
     // Call the bridge server to get the close position CBOR
     const closeResponse = await fetch('http://localhost:4113/api/strike/close-position', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(authHeader && { 'Authorization': authHeader })
       },
       body: JSON.stringify({
         positionId: positionId,

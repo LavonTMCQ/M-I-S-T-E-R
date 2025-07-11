@@ -62,68 +62,110 @@ export class BackendTransactionSigner {
   }
 
   /**
-   * Example backend signing implementation
-   * Based on your Talos-Dexter patterns
+   * Real backend signing implementation for Strike Finance
+   * Uses actual Cardano Serialization Library with seed phrase
    */
   private static async performBackendSigning(
-    txCbor: string, 
+    txCbor: string,
     config: BackendSigningConfig
   ): Promise<{ signedTx: string; txHash: string }> {
-    
-    // This is pseudocode showing the approach from your Talos-Dexter integration
-    // In reality, you'd use @emurgo/cardano-serialization-lib-nodejs
-    
+
     console.log('🔧 Backend: Using Cardano Serialization Library (Node.js version)...');
-    
-    // 1. Parse the transaction
-    // const CSL = require('@emurgo/cardano-serialization-lib-nodejs');
-    // const transaction = CSL.Transaction.from_bytes(Buffer.from(txCbor, 'hex'));
-    
-    // 2. Derive keys from seed phrase
-    // const rootKey = CSL.Bip32PrivateKey.from_bip39_entropy(
-    //   Buffer.from(mnemonicToEntropy(config.seedPhrase), 'hex'),
-    //   Buffer.from('')
-    // );
-    
-    // 3. Create signing key for the specific address
-    // const accountKey = rootKey
-    //   .derive(harden(1852)) // purpose
-    //   .derive(harden(1815)) // coin_type (ADA)
-    //   .derive(harden(0));   // account
-    
-    // const paymentKey = accountKey
-    //   .derive(0) // external chain
-    //   .derive(0) // address index
-    //   .to_raw_key();
-    
-    // 4. Sign the transaction
-    // const txHash = CSL.hash_transaction(transaction.body());
-    // const vkeyWitness = CSL.make_vkey_witness(txHash, paymentKey);
-    
-    // 5. Add witness to transaction
-    // const witnessSet = CSL.TransactionWitnessSet.new();
-    // const vkeyWitnesses = CSL.Vkeywitnesses.new();
-    // vkeyWitnesses.add(vkeyWitness);
-    // witnessSet.set_vkeys(vkeyWitnesses);
-    
-    // 6. Create final signed transaction
-    // const signedTx = CSL.Transaction.new(
-    //   transaction.body(),
-    //   witnessSet,
-    //   transaction.auxiliary_data()
-    // );
-    
-    // For demonstration, return mock values
-    const mockSignedTx = txCbor + 'a10081825820' + 'mock_signature_data'.repeat(8);
-    const mockTxHash = 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-    
-    console.log('✅ Backend: Transaction signed successfully');
-    console.log('📋 Backend: Signed transaction length:', mockSignedTx.length);
-    
-    return {
-      signedTx: mockSignedTx,
-      txHash: mockTxHash
-    };
+
+    try {
+      // Import CSL Node.js version for backend
+      const CSL = await import('@emurgo/cardano-serialization-lib-nodejs');
+      const { mnemonicToEntropy } = await import('bip39');
+
+      console.log('✅ Backend: CSL and BIP39 libraries loaded');
+
+      // 1. Parse the Strike Finance transaction
+      const transaction = CSL.Transaction.from_bytes(Buffer.from(txCbor, 'hex'));
+      const txBody = transaction.body();
+      const txHash = CSL.hash_transaction(txBody);
+
+      console.log('✅ Backend: Strike Finance transaction parsed');
+      console.log('📋 Backend: Transaction hash:', Buffer.from(txHash.to_bytes()).toString('hex'));
+
+      // 2. Derive private key from seed phrase (same as CNT bot approach)
+      const entropy = mnemonicToEntropy(config.seedPhrase);
+      const rootKey = CSL.Bip32PrivateKey.from_bip39_entropy(
+        Buffer.from(entropy, 'hex'),
+        Buffer.from('') // Empty passphrase
+      );
+
+      // 3. Derive payment key using Cardano CIP-1852 derivation path
+      const accountKey = rootKey
+        .derive(1852 | 0x80000000) // Purpose: 1852' (CIP-1852)
+        .derive(1815 | 0x80000000) // Coin type: 1815' (ADA)
+        .derive(0 | 0x80000000);   // Account: 0'
+
+      const paymentKey = accountKey
+        .derive(0) // External chain
+        .derive(0) // Address index
+        .to_raw_key();
+
+      console.log('✅ Backend: Private key derived from seed phrase');
+
+      // 4. Create witness for the transaction
+      const vkeyWitness = CSL.make_vkey_witness(txHash, paymentKey);
+
+      // 5. Build witness set
+      const witnessSet = CSL.TransactionWitnessSet.new();
+      const vkeyWitnesses = CSL.Vkeywitnesses.new();
+      vkeyWitnesses.add(vkeyWitness);
+      witnessSet.set_vkeys(vkeyWitnesses);
+
+      // 6. Preserve any existing witnesses from Strike Finance transaction
+      const originalWitnessSet = transaction.witness_set();
+      if (originalWitnessSet) {
+        // Copy native scripts if they exist
+        const nativeScripts = originalWitnessSet.native_scripts();
+        if (nativeScripts) {
+          witnessSet.set_native_scripts(nativeScripts);
+        }
+
+        // Copy Plutus scripts if they exist
+        const plutusScripts = originalWitnessSet.plutus_scripts();
+        if (plutusScripts) {
+          witnessSet.set_plutus_scripts(plutusScripts);
+        }
+
+        // Copy Plutus data if it exists
+        const plutusData = originalWitnessSet.plutus_data();
+        if (plutusData) {
+          witnessSet.set_plutus_data(plutusData);
+        }
+
+        // Copy redeemers if they exist
+        const redeemers = originalWitnessSet.redeemers();
+        if (redeemers) {
+          witnessSet.set_redeemers(redeemers);
+        }
+      }
+
+      // 7. Create final signed transaction
+      const signedTx = CSL.Transaction.new(
+        txBody,
+        witnessSet,
+        transaction.auxiliary_data()
+      );
+
+      const signedTxCbor = Buffer.from(signedTx.to_bytes()).toString('hex');
+      const finalTxHash = Buffer.from(txHash.to_bytes()).toString('hex');
+
+      console.log('✅ Backend: Strike Finance transaction signed successfully');
+      console.log('📋 Backend: Signed transaction length:', signedTxCbor.length);
+
+      return {
+        signedTx: signedTxCbor,
+        txHash: finalTxHash
+      };
+
+    } catch (error) {
+      console.error('❌ Backend: Strike Finance signing failed:', error);
+      throw new Error(`Backend signing failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   /**

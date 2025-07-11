@@ -76,20 +76,47 @@ export function EnhancedManagedDashboard({ managedWallet }: EnhancedManagedDashb
     try {
       setIsAnalysisLoading(true);
 
-      // Fetch current analysis
-      const currentResponse = await fetch('http://localhost:4114/api/analysis/current');
+      // Fetch current analysis from hosted Mastra Cloud Strike Agent
+      const currentResponse = await fetch('https://substantial-scarce-magazin.mastra.cloud/api/agents/strikeAgent/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'user',
+              content: 'Use the getCurrentAnalysis tool to get the latest token analysis data'
+            }
+          ]
+        })
+      });
       let currentData = null;
 
       if (currentResponse.ok) {
-        currentData = await currentResponse.json();
-        if (currentData.success) {
-          setCurrentAnalysis(currentData.data);
-          setLastAnalysisUpdate(new Date().toISOString());
+        const agentResponse = await currentResponse.json();
+        // Extract analysis data from agent response
+        if (agentResponse.text && agentResponse.text.includes('analysis')) {
+          // Parse the agent response to extract analysis data
+          // For now, we'll use mock data until the agent response format is standardized
+          currentData = { success: true, data: null };
         }
       }
 
-      // Fetch analysis history
-      const historyResponse = await fetch('http://localhost:4114/api/analysis/history');
+      // If no current data from agent, fetch from backup endpoint
+      if (!currentData) {
+        const backupResponse = await fetch('https://cnt-trading-api-production.up.railway.app/api/analysis/current');
+        if (backupResponse.ok) {
+          currentData = await backupResponse.json();
+          if (currentData.success) {
+            setCurrentAnalysis(currentData.data);
+            setLastAnalysisUpdate(new Date().toISOString());
+          }
+        }
+      }
+
+      // Fetch analysis history from backup endpoint
+      const historyResponse = await fetch('https://cnt-trading-api-production.up.railway.app/api/analysis/history');
       if (historyResponse.ok) {
         const historyData = await historyResponse.json();
         if (historyData.success) {
@@ -208,8 +235,8 @@ export function EnhancedManagedDashboard({ managedWallet }: EnhancedManagedDashb
       setIsLoading(true);
       setError(null);
 
-      // Check for active CNT trading session
-      const cntResponse = await fetch(`http://localhost:4114/api/trading/status/${managedWallet.walletId}`);
+      // Check for active CNT trading session from hosted CNT API
+      const cntResponse = await fetch(`https://cnt-trading-api-production.up.railway.app/api/trading/status/${managedWallet.walletId}`);
 
       if (cntResponse.ok) {
         const cntData = await cntResponse.json();
@@ -282,7 +309,7 @@ export function EnhancedManagedDashboard({ managedWallet }: EnhancedManagedDashb
       if (type === 'cnt') {
         // First, try to create/register the wallet in our CNT system if it doesn't exist
         try {
-          const walletResponse = await fetch('http://localhost:4114/api/wallets/create', {
+          const walletResponse = await fetch('https://cnt-trading-api-production.up.railway.app/api/wallets/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -299,8 +326,8 @@ export function EnhancedManagedDashboard({ managedWallet }: EnhancedManagedDashb
           console.log('[CNT] Wallet may already exist, continuing...');
         }
 
-        // Start CNT trading using our new API
-        const response = await fetch('http://localhost:4114/api/trading/start', {
+        // Start CNT trading using our hosted API
+        const response = await fetch('https://cnt-trading-api-production.up.railway.app/api/trading/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -354,8 +381,8 @@ export function EnhancedManagedDashboard({ managedWallet }: EnhancedManagedDashb
       setError(null);
 
       if (type === 'cnt') {
-        // Stop CNT trading
-        const response = await fetch('http://localhost:4114/api/trading/stop', {
+        // Stop CNT trading using hosted API
+        const response = await fetch('https://cnt-trading-api-production.up.railway.app/api/trading/stop', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -397,8 +424,8 @@ export function EnhancedManagedDashboard({ managedWallet }: EnhancedManagedDashb
       setIsLoading(true);
       
       if (tradingConfig?.type === 'cnt') {
-        // Execute CNT manual trade
-        const response = await fetch('http://localhost:4114/api/trading/manual-trade', {
+        // Execute CNT manual trade using hosted API
+        const response = await fetch('https://cnt-trading-api-production.up.railway.app/api/trading/manual-trade', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { MASTRA_API_URL } from '@/lib/api-config';
 
 /**
  * GET /api/backtest/[runId]/chart-data
@@ -23,8 +24,12 @@ export async function GET(
     // Format: backtest_MultiTimeframeADAStrategy_e77532aed0a80
     const symbol = 'ADAUSD';
     const timeframe = '15m';
-    const startDate = '2025-04-01T00:00:00Z';
-    const endDate = new Date().toISOString(); // Always use current date
+
+    // Use a longer historical period to show more data on the chart
+    const endDate = new Date().toISOString();
+    const startDate = new Date(Date.now() - (90 * 24 * 60 * 60 * 1000)).toISOString(); // 90 days ago
+
+    console.log(`📊 Chart API: Fetching data from ${startDate} to ${endDate}`);
 
     // Call the actual Mastra strategy to get real backtest results
     const backtestResults = await runRealMastraBacktest(symbol, startDate, endDate);
@@ -61,18 +66,18 @@ async function runRealMastraBacktest(symbol: string, startDate: string, endDate:
   try {
     console.log('🔄 Attempting to connect to Mastra Multi-Timeframe ADA Strategy...');
 
-    // Check if Mastra is running first
-    const healthCheck = await fetch('http://localhost:4112/health', {
+    // Check if hosted Mastra is running first
+    const healthCheck = await fetch('https://substantial-scarce-magazin.mastra.cloud/health', {
       method: 'GET',
       signal: AbortSignal.timeout(5000) // 5 second timeout
     }).catch(() => null);
 
     if (!healthCheck || !healthCheck.ok) {
-      throw new Error('Mastra server is not running on port 4112. Please start Mastra first.');
+      throw new Error('Hosted Mastra server is not available. Please check the service status.');
     }
 
     // Call your Mastra agent - using the correct agent name
-    const response = await fetch('http://localhost:4112/api/agents/cryptoBacktestingAgent/generate', {
+    const response = await fetch(`${MASTRA_API_URL}/api/agents/cryptoBacktestingAgent/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

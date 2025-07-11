@@ -246,7 +246,7 @@ export default function ManagedDashboardPage() {
         console.log('🔑 Using auth token for API call:', authToken ? 'Found' : 'Missing');
 
         if (authToken) {
-          const algoResponse = await fetch('http://localhost:4113/api/wallet/managed', {
+          const algoResponse = await fetch('https://substantial-scarce-magazin.mastra.cloud/api/wallet/managed', {
             headers: {
               'Authorization': `Bearer ${authToken}`,
             }
@@ -267,7 +267,7 @@ export default function ManagedDashboardPage() {
           console.log('🔍 No auth token found - wallet user needs to create managed wallet');
           // Don't set managedWallet, let the component show "Create Managed Wallet" screen
         } else {
-          const response = await fetch('http://localhost:4113/api/wallet/managed', {
+          const response = await fetch('https://substantial-scarce-magazin.mastra.cloud/api/wallet/managed', {
             headers: {
               'Authorization': `Bearer ${authToken}`,
             }

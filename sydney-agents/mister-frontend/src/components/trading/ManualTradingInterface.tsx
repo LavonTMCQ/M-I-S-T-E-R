@@ -314,61 +314,42 @@ export function ManualTradingInterface({
   };
 
   return (
-    <Card className="w-full max-w-md bg-gradient-to-br from-card via-card to-card/80 border-2 shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-b p-4 pb-3">
-        <CardTitle className="flex items-center gap-3 text-lg mb-1">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <DollarSign className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <div className="font-bold">Manual Trading</div>
-            <div className="text-xs text-muted-foreground font-normal">Professional Trading Interface</div>
-          </div>
-        </CardTitle>
-        <CardDescription className="flex items-center gap-2 mt-1">
-          <Wallet className="h-4 w-4" />
-          Execute trades directly from your <Badge variant="outline" className="ml-1">{walletType}</Badge> wallet
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-5 p-5">
-        {/* Enhanced Wallet Info */}
-        <div className="bg-gradient-to-r from-muted/30 via-muted/20 to-muted/30 p-4 rounded-xl border space-y-3">
-          <div className="flex items-center gap-2 mb-2">
-            <Activity className="h-4 w-4 text-primary" />
-            <span className="font-semibold text-sm">Wallet Overview</span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3">
-            <div className="flex justify-between items-center p-2 bg-background/50 rounded-lg">
-              <span className="text-sm text-muted-foreground flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                Wallet Type
-              </span>
-              <Badge variant={walletType === 'connected' ? 'default' : 'secondary'} className="font-medium">
-                {walletType}
-              </Badge>
+    <Card className="w-full bg-gradient-to-br from-card via-card to-card/95 border shadow-lg">
+      <CardHeader className="bg-gradient-to-r from-primary/3 via-primary/5 to-primary/3 border-b p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-primary/12 rounded-lg shadow-sm">
+              <DollarSign className="h-5 w-5 text-primary" />
             </div>
-
-            <div className="flex justify-between items-center p-2 bg-background/50 rounded-lg">
-              <span className="text-sm text-muted-foreground">Available Balance</span>
-              <span className="font-bold text-primary">{balance.toFixed(2)} ADA</span>
-            </div>
-
-            <div className="flex justify-between items-center p-2 bg-background/50 rounded-lg">
-              <span className="text-sm text-muted-foreground">Current Price</span>
-              <span className="font-bold">${currentPrice.toFixed(4)}</span>
+            <div>
+              <CardTitle className="text-lg font-bold text-foreground mb-0.5">
+                Manual Trading
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
+                Professional Trading Interface
+              </CardDescription>
             </div>
           </div>
+          <Badge variant="outline" className="bg-primary/8 border-primary/25 text-primary text-xs px-2 py-1">
+            {walletType}
+          </Badge>
         </div>
 
-        <Separator className="bg-gradient-to-r from-transparent via-border to-transparent" />
+        <div className="flex items-center justify-between pt-3 border-t border-primary/8">
+          <div className="text-xs text-muted-foreground">Available Balance</div>
+          <div className="text-right">
+            <div className="text-lg font-bold text-primary">{balance.toFixed(2)} ADA</div>
+            <div className="text-xs text-muted-foreground">${(balance * currentPrice).toFixed(2)} USD</div>
+          </div>
+        </div>
+      </CardHeader>
 
+      <CardContent className="space-y-4 p-4">
         {/* Enhanced Trading Form */}
         <form onSubmit={handleTradeSubmit} className="space-y-4">
           <div className="flex items-center gap-2 mb-3">
             <Target className="h-4 w-4 text-primary" />
-            <span className="font-semibold text-sm">Trading Parameters</span>
+            <span className="font-medium text-sm">Trading Parameters</span>
           </div>
 
           {/* Side Selection Only */}
@@ -557,17 +538,12 @@ export function ManualTradingInterface({
             </div>
           )}
 
-          {/* Enhanced Risk Warning */}
-          <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-yellow-50 via-yellow-100/50 to-yellow-50 dark:from-yellow-900/20 dark:via-yellow-900/30 dark:to-yellow-900/20 rounded-xl border-2 border-yellow-200 dark:border-yellow-800">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">
-                Risk Warning
-              </p>
-              <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                Leveraged trading involves significant risk. You may lose more than your initial investment.
-              </p>
-            </div>
+          {/* Minimal Risk Warning */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-50/50 dark:bg-yellow-900/10 rounded-lg border border-yellow-200/50 dark:border-yellow-800/30">
+            <AlertTriangle className="h-3 w-3 text-yellow-600 flex-shrink-0" />
+            <p className="text-xs text-yellow-700 dark:text-yellow-300">
+              Beta - Leveraged trading involves risk
+            </p>
           </div>
 
           {/* Enhanced Submit Button */}

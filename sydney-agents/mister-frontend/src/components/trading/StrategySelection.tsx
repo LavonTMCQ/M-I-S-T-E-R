@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
+import { useStrategyStats } from "@/hooks/useStrategyStats";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -49,126 +50,124 @@ interface StrategySelectionProps {
   walletBalance: number;
 }
 
-export function StrategySelection({ 
-  onStrategySelect, 
+export function StrategySelection({
+  onStrategySelect,
   selectedStrategy,
-  walletBalance 
+  walletBalance
 }: StrategySelectionProps) {
   const [strategies, setStrategies] = useState<TradingStrategy[]>([]);
+  const { strategies: strategyData, loading: statsLoading, error } = useStrategyStats();
   const [loading, setLoading] = useState(true);
 
-  // Mock strategy data (in production, fetch from API)
+  // Convert hook data to component format when strategy data changes
   useEffect(() => {
-    const mockStrategies: TradingStrategy[] = [
-      {
-        id: 'fibonacci',
-        name: 'Fibonacci Retracement',
-        description: 'Professional Fibonacci retracement strategy using 38.2%, 61.8%, and 78.6% levels with RSI confirmation',
-        icon: Target,
-        category: 'Technical',
-        riskLevel: 'Medium',
-        leverage: 3,
-        minBalance: 100,
-        isActive: true,
-        metrics: {
-          totalTrades: 28,
-          winRate: 67.9,
-          avgReturn: 4.2,
-          maxDrawdown: 6.8,
-          profitFactor: 1.85,
-          sharpeRatio: 2.1,
-          lastUpdated: '2025-01-11T12:30:00Z'
-        },
-        features: [
-          'Golden ratio analysis',
-          'RSI confirmation',
-          'Volume validation',
-          '3x leverage optimization'
-        ]
-      },
-      {
-        id: 'rsi-divergence',
-        name: 'RSI Divergence',
-        description: 'Detects RSI divergences and momentum shifts for high-probability reversal trades',
-        icon: TrendingUp,
-        category: 'Technical',
-        riskLevel: 'Medium',
-        leverage: 2,
-        minBalance: 80,
-        isActive: false, // Coming soon
-        metrics: {
-          totalTrades: 0,
-          winRate: 0,
-          avgReturn: 0,
-          maxDrawdown: 0,
-          profitFactor: 0,
-          sharpeRatio: 0,
-          lastUpdated: ''
-        },
-        features: [
-          'Bullish/bearish divergence detection',
-          'Momentum confirmation',
-          'Multi-timeframe analysis',
-          'Dynamic stop losses'
-        ]
-      },
-      {
-        id: 'breakout',
-        name: 'Breakout Strategy',
-        description: 'Identifies price breakouts from consolidation patterns with volume confirmation',
-        icon: Zap,
-        category: 'Technical',
-        riskLevel: 'High',
-        leverage: 5,
-        minBalance: 150,
-        isActive: false, // Coming soon
-        metrics: {
-          totalTrades: 0,
-          winRate: 0,
-          avgReturn: 0,
-          maxDrawdown: 0,
-          profitFactor: 0,
-          sharpeRatio: 0,
-          lastUpdated: ''
-        },
-        features: [
-          'Support/resistance breakouts',
-          'Volume surge detection',
-          'False breakout filtering',
-          '5x leverage for momentum'
-        ]
-      },
-      {
-        id: 'crypto-backtesting',
-        name: 'Enhanced Crypto Backtesting',
-        description: 'Advanced multi-timeframe ADA strategy with proven 40%+ returns and sophisticated risk management',
-        icon: BarChart3,
-        category: 'AI-Driven',
-        riskLevel: 'Medium',
-        leverage: 10,
-        minBalance: 200,
-        isActive: false, // Needs upgrade
-        metrics: {
-          totalTrades: 45,
-          winRate: 62.2,
-          avgReturn: 8.7,
-          maxDrawdown: 9.1,
-          profitFactor: 2.3,
-          sharpeRatio: 1.9,
-          lastUpdated: '2025-01-10T15:45:00Z'
-        },
-        features: [
-          'Multi-timeframe MACD analysis',
-          '10x leverage optimization',
-          'Real-time webhook integration',
-          'Voice-enabled trade alerts'
-        ]
-      }
-    ];
+    if (!statsLoading && strategyData) {
+      console.log('📊 Converting strategy data from hook:', Object.keys(strategyData).length, 'strategies');
 
-    setStrategies(mockStrategies);
-    setLoading(false);
-  }, []);
+      const realStrategies: TradingStrategy[] = [];
+
+      // Fibonacci strategy with real data
+      if (strategyData['fibonacci-retracement']) {
+        const fibStats = strategyData['fibonacci-retracement'];
+        realStrategies.push({
+          id: 'fibonacci',
+          name: 'Fibonacci Retracement',
+          description: 'Professional Fibonacci retracement strategy using 38.2%, 61.8%, and 78.6% levels with RSI confirmation',
+          icon: Target,
+          category: 'Technical',
+          riskLevel: 'Medium',
+          leverage: 3,
+          minBalance: 100,
+          isActive: true,
+          metrics: {
+            totalTrades: Math.round(fibStats.performance.totalTrades || 0),
+            winRate: Number((fibStats.performance.winRate || 0).toFixed(1)),
+            avgReturn: Number((fibStats.performance.avgReturn || 0).toFixed(1)),
+            maxDrawdown: Number((fibStats.performance.maxDrawdown || 0).toFixed(1)),
+            profitFactor: Number((fibStats.performance.profitFactor || 0).toFixed(2)),
+            sharpeRatio: Number((fibStats.performance.sharpeRatio || 0).toFixed(2)),
+            lastUpdated: fibStats.lastUpdate || new Date().toISOString()
+          },
+          features: [
+            'Golden ratio analysis',
+            'RSI confirmation',
+            'Volume validation',
+            '3x leverage optimization'
+          ]
+        });
+      }
+
+      // Multi-Timeframe ADA strategy with real data
+      if (strategyData['multi-timeframe-ada']) {
+        const mtStats = strategyData['multi-timeframe-ada'];
+        realStrategies.push({
+          id: 'multi-timeframe',
+          name: 'Multi-Timeframe ADA',
+          description: 'Advanced multi-timeframe analysis with RSI and momentum indicators',
+          icon: BarChart3,
+          category: 'Technical',
+          riskLevel: 'Medium',
+          leverage: 10,
+          minBalance: 200,
+          isActive: true,
+          metrics: {
+            totalTrades: Math.round(mtStats.performance.totalTrades || 0),
+            winRate: Number((mtStats.performance.winRate || 0).toFixed(1)),
+            avgReturn: Number((mtStats.performance.avgReturn || 0).toFixed(1)),
+            maxDrawdown: Number((mtStats.performance.maxDrawdown || 0).toFixed(1)),
+            profitFactor: Number((mtStats.performance.profitFactor || 0).toFixed(2)),
+            sharpeRatio: Number((mtStats.performance.sharpeRatio || 0).toFixed(2)),
+            lastUpdated: mtStats.lastUpdate || new Date().toISOString()
+          },
+          features: [
+            'Multi-timeframe MACD analysis',
+            '10x leverage optimization',
+            'Real-time webhook integration',
+            'Voice-enabled trade alerts'
+          ]
+        });
+      }
+
+      // AI Sentiment strategy with real data
+      if (strategyData['ai-sentiment-fusion']) {
+        const aiStats = strategyData['ai-sentiment-fusion'];
+        realStrategies.push({
+          id: 'ai-sentiment',
+          name: 'AI Sentiment Fusion',
+          description: 'Combines technical analysis with AI-powered sentiment analysis from social media',
+          icon: Brain,
+          category: 'AI-Driven',
+          riskLevel: 'High',
+          leverage: 5,
+          minBalance: 200,
+          isActive: false, // Beta
+          metrics: {
+            totalTrades: Math.round(aiStats.performance.totalTrades || 0),
+            winRate: Number((aiStats.performance.winRate || 0).toFixed(1)),
+            avgReturn: Number((aiStats.performance.avgReturn || 0).toFixed(1)),
+            maxDrawdown: Number((aiStats.performance.maxDrawdown || 0).toFixed(1)),
+            profitFactor: Number((aiStats.performance.profitFactor || 0).toFixed(2)),
+            sharpeRatio: Number((aiStats.performance.sharpeRatio || 0).toFixed(2)),
+            lastUpdated: aiStats.lastUpdate || new Date().toISOString()
+          },
+          features: [
+            'AI Sentiment Analysis',
+            'Social Media Integration',
+            'Technical Fusion',
+            'News Integration'
+          ]
+        });
+      }
+
+      console.log('📈 Converted strategies with real data:', realStrategies.length, 'strategies');
+      setStrategies(realStrategies);
+      setLoading(false);
+    } else if (!statsLoading && !strategyData) {
+      console.warn('⚠️ No strategy data available from hook');
+      setStrategies([]);
+      setLoading(false);
+    }
+  }, [strategyData, statsLoading]);
 
   const getRiskColor = (riskLevel: string) => {
     switch (riskLevel) {
@@ -199,11 +198,11 @@ export function StrategySelection({
     return `${Math.floor(diffHours / 24)}d ago`;
   };
 
-  if (loading) {
+  if (loading || statsLoading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Loading Strategies...</CardTitle>
+          <CardTitle>Loading Real Strategy Data...</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -211,6 +210,19 @@ export function StrategySelection({
               <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
             ))}
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-red-600">⚠️ Error Loading Strategy Data</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">{error}</p>
         </CardContent>
       </Card>
     );
@@ -254,7 +266,12 @@ export function StrategySelection({
                       <Icon className="h-5 w-5" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">{strategy.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg">{strategy.name}</CardTitle>
+                        {strategy.metrics.totalTrades > 0 && (
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Real backtest data" />
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground mt-1">
                         {strategy.description}
                       </p>
@@ -293,7 +310,7 @@ export function StrategySelection({
                 </div>
 
                 {/* Performance Metrics */}
-                {strategy.metrics.totalTrades > 0 && (
+                {strategy.metrics.totalTrades > 0 ? (
                   <div className="grid grid-cols-3 gap-4 p-3 bg-muted/50 rounded-lg">
                     <div className="text-center">
                       <div className="text-lg font-semibold text-green-600">
@@ -312,6 +329,12 @@ export function StrategySelection({
                         {strategy.metrics.profitFactor.toFixed(2)}
                       </div>
                       <div className="text-xs text-muted-foreground">Profit Factor</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-muted/30 rounded-lg text-center">
+                    <div className="text-sm text-muted-foreground">
+                      📊 Real backtest data loading...
                     </div>
                   </div>
                 )}

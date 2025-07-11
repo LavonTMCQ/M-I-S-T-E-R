@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { TrendingUp, TrendingDown, X, Settings, DollarSign } from 'lucide-react';
+import { useWallet } from '@/contexts/WalletContext';
 
 interface Position {
   id: string;
@@ -26,17 +27,53 @@ interface Position {
 export function PositionsSummary() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPrice, setCurrentPrice] = useState<number>(0.5883); // Default fallback
+  const { mainWallet } = useWallet();
+
+  // Fetch current market price
+  const fetchMarketData = async () => {
+    try {
+      const response = await fetch('/api/market-data');
+      const result = await response.json();
+      if (result.success && result.data) {
+        setCurrentPrice(result.data.price);
+        console.log('📊 Updated current ADA price:', result.data.price);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch market data:', error);
+    }
+  };
 
   useEffect(() => {
-    fetchPositions();
-    const interval = setInterval(fetchPositions, 10000); // Update every 10 seconds
-    return () => clearInterval(interval);
-  }, []);
+    if (mainWallet?.address) {
+      fetchPositions();
+      fetchMarketData(); // Fetch market data immediately
+      const positionsInterval = setInterval(fetchPositions, 10000); // Update positions every 10 seconds
+      const priceInterval = setInterval(fetchMarketData, 5000); // Update price every 5 seconds
+      return () => {
+        clearInterval(positionsInterval);
+        clearInterval(priceInterval);
+      };
+    }
+  }, [mainWallet?.address]);
+
+  // Recalculate positions when current price changes
+  useEffect(() => {
+    if (mainWallet?.address && currentPrice > 0) {
+      fetchPositions(); // Recalculate P&L with new price
+    }
+  }, [currentPrice]);
 
   const fetchPositions = async () => {
     try {
-      // Fetch real positions from Strike Finance via bridge server
-      const response = await fetch('http://localhost:4113/api/strike/positions');
+      if (!mainWallet?.address) {
+        console.log('⚠️ No wallet address available for fetching positions');
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch real positions from Strike Finance via bridge server with wallet address
+      const response = await fetch(`http://localhost:4113/api/strike/positions?walletAddress=${encodeURIComponent(mainWallet.address)}`);
       const data = await response.json();
 
       if (data.success && data.data && data.data.length > 0) {
@@ -50,14 +87,14 @@ export function PositionsSummary() {
           const leverage = pos.leverage || 1;
           const entryPrice = pos.entryPrice || 0;
 
-          // Calculate current price (would normally come from market data)
-          const currentPrice = 0.6025; // Current ADA price from the UI
+          // Use real-time current price from market data
+          const realCurrentPrice = currentPrice; // Use state value from market data API
 
           // Calculate P&L based on position
           const positionSize = pos.positionSize || collateralAmount;
           const pnlRaw = pos.position === 'Long'
-            ? (currentPrice - entryPrice) * positionSize
-            : (entryPrice - currentPrice) * positionSize;
+            ? (realCurrentPrice - entryPrice) * positionSize
+            : (entryPrice - realCurrentPrice) * positionSize;
           const pnlPercent = entryPrice > 0 ? (pnlRaw / (collateralAmount * entryPrice)) * 100 : 0;
 
           console.log(`📈 Position ${index + 1}:`, {
@@ -67,7 +104,7 @@ export function PositionsSummary() {
             positionSize,
             leverage,
             entryPrice,
-            currentPrice,
+            currentPrice: realCurrentPrice,
             pnlRaw,
             pnlPercent
           });
@@ -78,7 +115,7 @@ export function PositionsSummary() {
             pair: 'ADA/USD',
             size: collateralAmount, // Show collateral amount as size
             entryPrice: entryPrice,
-            currentPrice: currentPrice,
+            currentPrice: realCurrentPrice, // Use real-time price
             leverage: leverage,
             pnl: pnlRaw,
             pnlPercent: pnlPercent,
@@ -107,13 +144,15 @@ export function PositionsSummary() {
   const handleClosePosition = async (positionId: string) => {
     try {
       console.log('🔄 Closing position:', positionId);
+      console.log('🔍 Auth token:', localStorage.getItem('mister_auth_token') ? 'Present' : 'Missing');
 
-      // Step 1: Get the close position CBOR from our API
-      // Use simpler endpoint with position ID in body
+      // Step 1: Get the close position CBOR from our Next.js API route
+      console.log('🌐 Making close position API request...');
       const response = await fetch('/api/positions/close', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('mister_auth_token')}`
         },
         body: JSON.stringify({
           positionId: positionId,
@@ -121,6 +160,7 @@ export function PositionsSummary() {
           reason: 'Manual close from trading interface'
         })
       });
+      console.log('🌐 Close position API response status:', response.status);
 
       if (!response.ok) {
         console.error('❌ HTTP error closing position:', response.status);
@@ -128,6 +168,7 @@ export function PositionsSummary() {
       }
 
       const result = await response.json();
+      console.log('🔍 Close position API response:', result);
 
       if (!result.success) {
         console.error('❌ Failed to close position:', result.error);
@@ -152,18 +193,19 @@ export function PositionsSummary() {
           return;
         }
 
-        // Step 3: Request wallet signature (partial signing)
+        // Step 3: Request wallet signature (PARTIAL signing - per documentation)
         let witnessSetCbor;
         try {
-          console.log('🔐 Requesting wallet signature (partial signing)...');
-          witnessSetCbor = await walletApi.signTx(result.data.cbor, true);
+          console.log('🔐 Requesting wallet signature (PARTIAL signing - per Strike Finance docs)...');
+          witnessSetCbor = await walletApi.signTx(result.data.cbor, true); // TRUE = partial signing
           console.log('✅ Wallet signature received for close position, length:', witnessSetCbor.length);
         } catch (signError) {
           console.error('❌ Wallet signing failed:', signError);
           return;
         }
 
-        // Step 4: Send to server for proper CBOR combination
+        // Step 4: Send to server for proper CBOR combination using CSL (per documentation)
+        console.log('🔧 Sending to server for CSL transaction combination (per Strike Finance docs)...');
         const signingResponse = await fetch('/api/cardano/sign-transaction', {
           method: 'POST',
           headers: {
@@ -176,22 +218,46 @@ export function PositionsSummary() {
         });
 
         if (!signingResponse.ok) {
-          console.error('❌ Server signing failed:', signingResponse.status);
+          console.error('❌ Server CSL signing failed:', signingResponse.status);
           return;
         }
 
         const signingResult = await signingResponse.json();
 
         if (!signingResult.success) {
-          console.error('❌ Server signing error:', signingResult.error);
+          console.error('❌ Server CSL signing error:', signingResult.error);
           return;
         }
 
-        console.log('✅ Server: Close position transaction signed successfully');
+        console.log('✅ Server: CSL transaction combination successful, length:', signingResult.signedTxCbor.length);
 
-        // Step 5: Submit to Cardano network
-        const txHash = await walletApi.submitTx(signingResult.signedTxCbor);
-        console.log('🎉 Close position transaction successfully submitted! Hash:', txHash);
+        // Step 5: Server-side submission (EXACTLY like Strike Finance - NO wallet submitTx!)
+        console.log('🚀 Submitting transaction server-side (Strike Finance approach - NO wallet submitTx)...');
+        console.log('🔍 Final transaction CBOR length:', signingResult.signedTxCbor.length);
+
+        const submissionResponse = await fetch('/api/cardano/submit-transaction', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            signedTxCbor: signingResult.signedTxCbor
+          })
+        });
+
+        if (!submissionResponse.ok) {
+          console.error('❌ Server submission failed:', submissionResponse.status);
+          return;
+        }
+
+        const submissionResult = await submissionResponse.json();
+
+        if (!submissionResult.success) {
+          console.error('❌ Server submission error:', submissionResult.error);
+          return;
+        }
+
+        console.log('✅ Close position transaction submitted server-side! Hash:', submissionResult.txHash);
 
         // Step 6: Refresh positions to show updated state
         fetchPositions();
@@ -202,6 +268,9 @@ export function PositionsSummary() {
       }
     } catch (error) {
       console.error('❌ Failed to close position:', error);
+      console.error('❌ Close position error details:', JSON.stringify(error, null, 2));
+      console.error('❌ Close position error message:', error.message);
+      console.error('❌ Close position error stack:', error.stack);
     }
   };
 

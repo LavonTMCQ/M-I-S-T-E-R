@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
       currentPrice,
       estimatedPrice: currentPrice + (Math.random() - 0.5) * 0.001, // Small slippage
       collateralAmount,
-      liquidationPrice: calculateLiquidationPrice(currentPrice, side, leverage),
+      liquidationPrice: calculateLiquidationPrice(currentPrice, side || 'long', leverage),
       
       fees: {
         tradingFee: (size * currentPrice) * 0.001, // 0.1%

@@ -35,52 +35,56 @@ export function MarketInfoBar({ marketData }: MarketInfoBarProps) {
   const isPositive = safeMarketData.change24h >= 0;
 
   return (
-    <div className="border-b bg-card/50 backdrop-blur-sm">
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-
-          {/* Left Side - Price & Change Only */}
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">₳</span>
-                </div>
-                <span className="font-semibold text-lg">ADA/USD</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold">${safeMarketData.price.toFixed(4)}</span>
-                <div className={`flex items-center gap-1 ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                  {isPositive ? (
-                    <TrendingUp className="h-4 w-4" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4" />
-                  )}
-                  <span className="font-medium">
-                    {isPositive ? '+' : ''}{safeMarketData.change24h.toFixed(4)}
-                  </span>
-                  <span className="text-sm">
-                    ({isPositive ? '+' : ''}{safeMarketData.change24hPercent.toFixed(2)}%)
-                  </span>
-                </div>
-              </div>
+    <div className="flex items-center justify-between">
+      {/* Left Side - Price & Change */}
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+              <span className="text-white text-lg font-bold">₳</span>
+            </div>
+            <div>
+              <div className="font-bold text-xl">ADA/USD</div>
+              <div className="text-xs text-muted-foreground">Cardano</div>
             </div>
           </div>
 
-          {/* Right Side - Market Status Only */}
           <div className="flex items-center gap-3">
-            <Badge variant="outline" className="flex items-center gap-1.5">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              Market Open
-            </Badge>
-
-            <Badge variant="secondary" className="flex items-center gap-1.5">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              Tomorrow Labs v.1
-            </Badge>
+            <span className="text-3xl font-bold">${safeMarketData.price.toFixed(4)}</span>
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${
+              isPositive
+                ? 'bg-green-500/10 text-green-600 border border-green-500/20'
+                : 'bg-red-500/10 text-red-600 border border-red-500/20'
+            }`}>
+              {isPositive ? (
+                <TrendingUp className="h-4 w-4" />
+              ) : (
+                <TrendingDown className="h-4 w-4" />
+              )}
+              <div className="flex items-center gap-1">
+                <span className="font-semibold">
+                  {isPositive ? '+' : ''}{safeMarketData.change24h.toFixed(4)}
+                </span>
+                <span className="text-sm opacity-80">
+                  ({isPositive ? '+' : ''}{safeMarketData.change24hPercent.toFixed(2)}%)
+                </span>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Right Side - Market Status */}
+      <div className="flex items-center gap-3">
+        <Badge variant="outline" className="flex items-center gap-2 bg-green-50 border-green-200 text-green-700 px-3 py-1.5">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          Market Open
+        </Badge>
+
+        <Badge variant="secondary" className="flex items-center gap-2 bg-primary/10 border-primary/20 text-primary px-3 py-1.5">
+          <div className="w-2 h-2 bg-primary rounded-full"></div>
+          Tomorrow Labs v.1
+        </Badge>
       </div>
     </div>
   );

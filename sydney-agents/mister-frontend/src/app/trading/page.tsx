@@ -225,6 +225,7 @@ export default function TradingPage() {
               <Switch
                 checked={isMisterMode}
                 onCheckedChange={(checked) => {
+                  console.log('🔄 Switch toggled:', checked);
                   setIsMisterMode(checked);
                   if (checked) {
                     setShowStrategySelection(true);
@@ -287,9 +288,9 @@ export default function TradingPage() {
                 <AIThinkingTerminal
                   walletAddress={mainWallet.address}
                   selectedStrategy={selectedStrategy}
-                  isActive={false} // Will be controlled by the terminal's own toggle
+                  isActive={isMisterMode} // Connected to MISTER AI Trading toggle
                   onToggleTrading={() => {
-                    // TODO: Implement MISTER trading start/stop logic
+                    setIsMisterMode(!isMisterMode); // Toggle MISTER trading mode
                     console.log('Toggle MISTER trading');
                   }}
                 />

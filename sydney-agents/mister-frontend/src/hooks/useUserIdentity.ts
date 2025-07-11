@@ -174,11 +174,21 @@ export function useManagedWalletIdentity() {
     getManagedWalletApiIdentifier: (): string | null => {
       // Use the enhanced identity (userIdentity property)
       if (identity.userIdentity?.type === 'wallet') {
-        return identity.userIdentity.walletAddress || null;
+        // Try walletAddress first, then fallback to id (which contains the wallet address)
+        return identity.userIdentity.walletAddress || identity.userIdentity.id || null;
       }
       if (identity.userIdentity?.type === 'email') {
         return identity.userIdentity.id;
       }
+
+      // Debug logging to help troubleshoot
+      console.log('🔍 getManagedWalletApiIdentifier - No valid identifier found:', {
+        hasUserIdentity: !!identity.userIdentity,
+        userIdentityType: identity.userIdentity?.type,
+        walletAddress: identity.userIdentity?.walletAddress,
+        id: identity.userIdentity?.id
+      });
+
       return null;
     },
 

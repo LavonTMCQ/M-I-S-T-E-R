@@ -306,13 +306,13 @@ export function useAuth(): AuthContextType {
  */
 export function useRequireAuth(): AuthContextType {
   const auth = useAuth();
-  
+
   useEffect(() => {
     if (!auth.isLoading && !auth.isAuthenticated) {
-      // For demo purposes, auto-login
-      auth.autoLogin();
+      // Don't auto-login - let users choose authentication method
+      console.log('🔐 Authentication required - please connect wallet or use email authentication');
     }
-  }, [auth.isLoading, auth.isAuthenticated, auth]);
+  }, [auth.isLoading, auth.isAuthenticated]);
 
   return auth;
 }

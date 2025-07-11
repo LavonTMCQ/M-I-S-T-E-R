@@ -24,19 +24,22 @@ export function SingleADAChart({
     // Clear container
     containerRef.current.innerHTML = '';
 
+    // Create unique container ID to avoid conflicts
+    const containerId = `tradingview_${Math.random().toString(36).substr(2, 9)}`;
+
     // Create script element
     const script = document.createElement('script');
     script.type = 'text/javascript';
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.async = true;
 
-    // Optimized configuration for single chart
+    // Professional trading configuration matching your target design
     script.innerHTML = JSON.stringify({
       "autosize": false,
       "width": "100%",
       "height": height,
       "symbol": "BINANCE:ADAUSD",
-      "interval": "D",
+      "interval": "15", // 15-minute timeframe for detailed candles
       "timezone": "Etc/UTC",
       "theme": "dark",
       "style": "1", // Candlestick
@@ -52,16 +55,35 @@ export function SingleADAChart({
       "support_host": "https://www.tradingview.com",
       "studies": [
         "RSI@tv-basicstudies",
-        "MACD@tv-basicstudies"
+        "MACD@tv-basicstudies",
+        "Volume@tv-basicstudies"
       ],
       "show_popup_button": true,
       "popup_width": "1000",
       "popup_height": "650",
-      "container_id": "tradingview_ada_main"
+      "container_id": containerId,
+      // Enhanced professional settings
+      "withdateranges": true,
+      "hide_side_toolbar": false,
+      "allow_symbol_change": false,
+      "details": true,
+      "hotlist": false,
+      "calendar": false,
+      "studies_overrides": {},
+      "overrides": {
+        // Professional price scale styling
+        "paneProperties.background": "#131722",
+        "paneProperties.vertGridProperties.color": "#2a2e39",
+        "paneProperties.horzGridProperties.color": "#2a2e39",
+        "symbolWatermarkProperties.transparency": 90,
+        "scalesProperties.textColor": "#d1d4dc",
+        "scalesProperties.backgroundColor": "#131722"
+      }
     });
 
-    // Create widget container
+    // Create widget container with proper ID
     const widgetDiv = document.createElement('div');
+    widgetDiv.id = containerId;
     widgetDiv.className = 'tradingview-widget-container__widget';
     widgetDiv.style.height = `${height}px`;
     widgetDiv.style.width = '100%';
@@ -155,8 +177,8 @@ export function CompactADAChart({ className = '' }: { className?: string }) {
       <CardHeader className="pb-2">
         <CardTitle className="text-lg">ADA/USD Price Chart</CardTitle>
       </CardHeader>
-      <CardContent className="p-2 h-[350px]">
-        <SingleADAChart height={320} showHeader={false} />
+      <CardContent className="p-2 h-[750px]">
+        <SingleADAChart height={720} showHeader={false} />
       </CardContent>
     </Card>
   );

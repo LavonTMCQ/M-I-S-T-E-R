@@ -58,27 +58,49 @@ app.use('/api/wallets', auditLog);
 // Helper function to call Mastra agents
 async function callMastraAgent(agentName, message) {
   try {
-    const response = await fetch(`http://localhost:4112/api/agents/${agentName}/generate`, {
+    console.log(`🤖 Calling Mastra agent ${agentName} with message: ${message.substring(0, 100)}...`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    const response = await fetch(`https://substantial-scarce-magazin.mastra.cloud/api/agents/${agentName}/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         messages: [{ role: 'user', content: message }]
-      })
+      }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
+
+    console.log(`📡 Mastra API response status: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
-      throw new Error(`Mastra API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`❌ Mastra API error ${response.status}:`, errorText);
+      throw new Error(`Mastra API error: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
+    console.log(`✅ Mastra agent ${agentName} response received:`, typeof result);
+
     return {
       success: true,
       data: result,
     };
   } catch (error) {
-    console.error(`Error calling Mastra agent ${agentName}:`, error);
+    if (error.name === 'AbortError') {
+      console.error(`⏰ Mastra agent ${agentName} call timed out after 30 seconds`);
+      return {
+        success: false,
+        error: 'Request timed out after 30 seconds',
+      };
+    }
+
+    console.error(`❌ Error calling Mastra agent ${agentName}:`, error);
     return {
       success: false,
       error: error.message,
@@ -92,7 +114,7 @@ app.get('/health', (req, res) => {
     status: 'ok',
     service: 'MISTER API Bridge Server',
     timestamp: new Date().toISOString(),
-    mastraConnection: 'http://localhost:4112',
+    mastraConnection: 'https://substantial-scarce-magazin.mastra.cloud',
   });
 });
 
@@ -1344,22 +1366,26 @@ app.get('/api/strike/positions', async (req, res) => {
   try {
     const { walletAddress } = req.query;
 
-    // Always use a default address for testing since we don't have real positions yet
-    const address = walletAddress || 'addr1q82j3cnhky8u0w4wa0ntsgeypraf24jxz5qr6wgwcy97u7t8pvpwk4ker5z2lmfsjlvx0y2tex68ahdwql9xkm9urxks9n2nl8';
+    if (!walletAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'Wallet address is required'
+      });
+    }
 
-    console.log('🔍 Fetching Strike Finance positions for:', address.substring(0, 20) + '...');
+    console.log('🔍 Fetching Strike Finance positions for:', walletAddress.substring(0, 20) + '...');
 
-    // Call Strike Finance getPositions API
-    const response = await fetch(`https://app.strikefinance.org/api/perpetuals/getPositions?address=${address}`, {
+    // Use direct Strike Finance API (more reliable than Mastra agent)
+    const response = await fetch(`https://app.strikefinance.org/api/perpetuals/getPositions?address=${walletAddress}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
+        'User-Agent': 'MISTER-Trading-Platform/1.0',
       }
     });
 
     if (!response.ok) {
       console.log(`⚠️ Strike Finance API returned ${response.status}, returning empty positions`);
-      // Return empty positions instead of error for better UX
       return res.json({
         success: true,
         data: [],
@@ -1368,16 +1394,16 @@ app.get('/api/strike/positions', async (req, res) => {
     }
 
     const positions = await response.json();
-    console.log('✅ Strike Finance positions fetched:', positions);
+    console.log('✅ Strike Finance positions fetched via direct API:', positions);
 
-    // Ensure positions is always an array
     const positionsArray = Array.isArray(positions) ? positions : [];
-
-    res.json({
+    return res.json({
       success: true,
       data: positionsArray,
-      message: `Found ${positionsArray.length} positions`
+      message: `Found ${positionsArray.length} positions via direct API`
     });
+
+
 
   } catch (error) {
     console.error('❌ Failed to fetch positions:', error);
@@ -1408,8 +1434,44 @@ app.post('/api/strike/close-position', async (req, res) => {
     console.log(`🔄 Closing Strike Finance position: ${positionId}`);
     console.log(`📝 Reason: ${reason || 'Manual close'}`);
 
-    // First, get the current positions to find the position details
-    const address = 'addr1q82j3cnhky8u0w4wa0ntsgeypraf24jxz5qr6wgwcy97u7t8pvpwk4ker5z2lmfsjlvx0y2tex68ahdwql9xkm9urxks9n2nl8';
+    // Get the authenticated user's wallet address
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    // Extract user ID from token (same logic as /api/auth/me)
+    const token = authHeader.replace('Bearer ', '');
+    let userId = 'demo_user';
+
+    // If it's a mock token, extract the user ID
+    if (token.startsWith('mock_token_')) {
+      userId = token.replace('mock_token_', '');
+    } else if (token.startsWith('mister_token_')) {
+      // For real wallet tokens, look up in token store
+      const tokenStore = getTokenStore();
+      const storedUserId = tokenStore.get(token);
+      if (storedUserId) {
+        userId = storedUserId;
+      }
+    }
+
+    console.log(`🔍 Close position auth - Token: ${token.substring(0, 20)}..., Extracted userId: ${userId}`);
+
+    // Get user data from token store
+    const userData = getUserData(userId);
+    if (!userData || !userData.walletAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'No wallet found for user'
+      });
+    }
+
+    const address = userData.walletAddress;
+    console.log(`🔍 Using wallet address for close position: ${address.substring(0, 20)}...`);
 
     console.log('🔍 Fetching current positions to find position details...');
     const positionsResponse = await fetch(`https://app.strikefinance.org/api/perpetuals/getPositions?address=${address}`, {
@@ -1866,7 +1928,7 @@ server.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log(`📊 Health check: http://localhost:${port}/health`);
   console.log(`🔗 API Base: http://localhost:${port}/api`);
-  console.log(`🔌 Mastra connection: http://localhost:4112`);
+  console.log(`🔌 Mastra connection: https://substantial-scarce-magazin.mastra.cloud`);
   console.log('\n📋 Available API Endpoints:');
   console.log('   POST /api/auth/wallet - Wallet authentication');
   console.log('   GET  /api/auth/me - Get current user');

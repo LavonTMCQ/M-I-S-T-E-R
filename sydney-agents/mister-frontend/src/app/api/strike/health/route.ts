@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     // Add some issues if not healthy
     if (!isHealthy) {
-      healthData.issues = [
+      (healthData as any).issues = [
         'High latency detected on trading endpoints',
         'WebSocket connection intermittent',
         'Rate limiting active due to high load'

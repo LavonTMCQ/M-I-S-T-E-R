@@ -63,7 +63,7 @@ export interface TradeResult {
 }
 
 export class ManagedWalletTradingAPI {
-  private baseUrl = 'http://localhost:4114/api';
+  private baseUrl = 'https://cnt-trading-api-production.up.railway.app/api';
 
   /**
    * Create a new managed wallet

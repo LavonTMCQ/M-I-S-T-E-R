@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import { TradingDecision } from './signal-service';
 import { StrikeFinanceAPI, OpenPositionRequest, ClosePositionRequest, UpdatePositionRequest, Asset, PerpetualInfo } from './strike-finance-api';
 import { WalletManager } from './wallet-manager';
+import { automatedStrikeTradingService, AutomatedTradeRequest } from './automated-strike-trading-service';
 
 // Unified execution interfaces
 export interface UnifiedExecutionResult {
@@ -84,6 +85,51 @@ export class UnifiedExecutionService extends EventEmitter {
   unregisterConnectedWallet(walletAddress: string): void {
     this.connectedWallets.delete(walletAddress);
     console.log(`🔗 Unregistered connected wallet: ${walletAddress.substring(0, 20)}...`);
+  }
+
+  // ==================== MANAGED WALLET METHODS ====================
+
+  /**
+   * Register a managed wallet for automated trading
+   * Also registers with automated Strike trading service
+   */
+  async registerManagedWallet(walletInfo: ManagedWalletInfo): Promise<boolean> {
+    try {
+      console.log(`🔐 Registering managed wallet ${walletInfo.walletId} for automated trading`);
+
+      this.managedWallets.set(walletInfo.address, walletInfo);
+
+      // Also register with automated Strike trading service
+      const automatedRegistration = await automatedStrikeTradingService.registerManagedWallet({
+        userId: walletInfo.userId,
+        walletId: walletInfo.walletId,
+        address: walletInfo.address,
+        stakeAddress: walletInfo.stakeAddress,
+        encryptedSeed: walletInfo.encryptedSeed,
+        isActive: walletInfo.isActive,
+        tradingConfig: walletInfo.tradingConfig
+      });
+
+      if (!automatedRegistration) {
+        console.warn(`⚠️ Failed to register wallet ${walletInfo.walletId} with automated Strike trading service`);
+      }
+
+      console.log(`✅ Managed wallet ${walletInfo.walletId} registered successfully`);
+      this.emit('managedWalletRegistered', walletInfo);
+
+      return true;
+    } catch (error) {
+      console.error(`❌ Failed to register managed wallet ${walletInfo.walletId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Unregister a managed wallet
+   */
+  unregisterManagedWallet(walletAddress: string): void {
+    this.managedWallets.delete(walletAddress);
+    console.log(`🔐 Unregistered managed wallet: ${walletAddress.substring(0, 20)}...`);
   }
 
   // ==================== UNIFIED TRADING METHODS ====================
@@ -208,7 +254,8 @@ export class UnifiedExecutionService extends EventEmitter {
   // ==================== MANAGED WALLET EXECUTION ====================
 
   /**
-   * Execute trade for managed wallet (we control the private key)
+   * Execute trade for managed wallet (automated signing with seed phrase)
+   * Uses automated Strike trading service for seamless execution
    */
   private async executeManagedWalletTrade(
     decision: TradingDecision,
@@ -218,38 +265,55 @@ export class UnifiedExecutionService extends EventEmitter {
     const startTime = Date.now();
 
     try {
+      console.log(`🤖 Executing managed wallet trade: ${decision.action} (${mode} mode)`);
+
       // Check if managed wallet exists
       const managedWallet = this.walletManager.getWallet(walletAddress);
       if (!managedWallet) {
         throw new Error('Managed wallet not found');
       }
 
-      let txHash: string | undefined;
+      // Convert trading decision to automated trade request
+      const automatedRequest: AutomatedTradeRequest = {
+        walletId: managedWallet.walletId,
+        action: decision.action.toLowerCase() as 'open' | 'close',
+        collateralAmount: decision.params?.collateralAmount ? decision.params.collateralAmount / 1_000_000 : 40, // Convert lovelace to ADA
+        leverage: decision.params?.leverage || 2,
+        stopLoss: decision.params?.stopLoss,
+        takeProfit: decision.params?.takeProfit
+      };
 
-      switch (decision.action) {
-        case "Open":
-          txHash = await this.executeOpenPositionManaged(decision, walletAddress);
-          break;
-        case "Close":
-          txHash = await this.executeClosePositionManaged(decision, walletAddress);
-          break;
-        case "Update":
-          txHash = await this.executeUpdatePositionManaged(decision, walletAddress);
-          break;
-        default:
-          throw new Error(`Unsupported action: ${decision.action}`);
+      // Add side for open positions
+      if (decision.action === 'Open' && decision.params?.position) {
+        automatedRequest.side = decision.params.position as 'Long' | 'Short';
+      }
+
+      // Add position ID for close positions
+      if (decision.action === 'Close' && decision.params?.positionId) {
+        automatedRequest.positionId = decision.params.positionId;
+      }
+
+      console.log('📋 Automated trade request:', JSON.stringify(automatedRequest, null, 2));
+
+      // Execute automated trade using the automated Strike trading service
+      const automatedResult = await automatedStrikeTradingService.executeAutomatedTrade(automatedRequest);
+
+      if (!automatedResult.success) {
+        throw new Error(automatedResult.error || 'Automated trade execution failed');
       }
 
       const result: UnifiedExecutionResult = {
         walletAddress,
         walletType: 'managed',
         success: true,
-        txHash,
+        txHash: automatedResult.txHash,
         timestamp: new Date(),
         executionMode: mode
       };
 
       console.log(`✅ Managed wallet ${mode} trade executed: ${decision.action} (${Date.now() - startTime}ms)`);
+      console.log(`📋 Transaction hash: ${automatedResult.txHash}`);
+
       this.emit('tradeExecuted', { result, decision, mode });
       return result;
 

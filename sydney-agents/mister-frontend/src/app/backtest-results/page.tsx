@@ -311,8 +311,9 @@ export default function BacktestResultsPage() {
         // Run real Fibonacci backtest
         console.log('🔢 Running real Fibonacci backtest...');
 
+        // Use REAL-TIME dates like Fibonacci agent (recent data that exists)
         const endDate = new Date().toISOString();
-        const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(); // Last 90 days
+        const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(); // Last 30 days
 
         const response = await fetch('/api/backtest/fibonacci', {
           method: 'POST',
@@ -339,17 +340,13 @@ export default function BacktestResultsPage() {
         // Run real Multi-Timeframe backtest
         console.log('📊 Running real Multi-Timeframe backtest...');
 
-        const endDate = new Date().toISOString();
-        const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(); // Last 90 days
-
+        // NO DATES - Use count approach like Fibonacci agent
         const response = await fetch('/api/backtest/multi-timeframe', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            startDate,
-            endDate,
             symbol: 'ADAUSD'
           })
         });

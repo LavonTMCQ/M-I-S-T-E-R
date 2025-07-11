@@ -23,6 +23,7 @@ export function Breadcrumbs() {
     'onboarding': 'Create Wallet',
     'dashboard': 'Dashboard',
     'trading': 'Trading',
+    'backtest-results': 'Backtesting',
     'managed-dashboard': 'Managed Trading',
     'login': 'Sign In'
   };

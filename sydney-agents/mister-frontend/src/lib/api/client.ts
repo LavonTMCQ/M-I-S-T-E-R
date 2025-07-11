@@ -8,7 +8,7 @@ export class ApiClient {
   private baseUrl: string;
   private authToken: string | null = null;
 
-  constructor(baseUrl: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4113') {
+  constructor(baseUrl: string = process.env.NEXT_PUBLIC_API_URL || 'https://substantial-scarce-magazin.mastra.cloud') {
     this.baseUrl = baseUrl;
     this.loadAuthToken();
   }

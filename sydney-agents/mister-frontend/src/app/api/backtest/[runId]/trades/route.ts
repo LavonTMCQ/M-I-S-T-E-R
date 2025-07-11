@@ -198,7 +198,7 @@ async function runRealMastraBacktest(symbol: string, startDate: string, endDate:
                   break;
                 }
               } catch (e) {
-                console.log(`Could not parse JSON block ${i}:`, e.message);
+                console.log(`Could not parse JSON block ${i}:`, e instanceof Error ? e.message : String(e));
               }
             }
           }

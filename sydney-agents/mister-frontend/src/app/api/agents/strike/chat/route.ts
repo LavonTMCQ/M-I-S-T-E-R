@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { MASTRA_API_URL } from '@/lib/api-config';
 
 /**
  * Strike Finance Agent Chat API
  * Connects the frontend trading interface to the Mastra Strike Agent
  */
-
-const MASTRA_API_URL = 'http://localhost:4112';
 
 export async function POST(request: NextRequest) {
   try {

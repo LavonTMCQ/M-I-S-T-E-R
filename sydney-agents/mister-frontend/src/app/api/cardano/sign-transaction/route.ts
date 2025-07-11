@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('✅ Server: Transaction properly signed using CSL');
-    console.log('📋 Server: Final transaction length:', result.signedTxCbor.length);
+    console.log('📋 Server: Final transaction length:', result.signedTxCbor?.length || 0);
     
     return NextResponse.json({
       success: true,
