@@ -1,10 +1,65 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { StrategySelector, TradingStrategy } from '@/components/backtesting/StrategySelector';
+import { TradingStrategy } from '@/components/backtesting/StrategySelector';
 import { ImprovedBacktestResults } from '@/components/backtesting/ImprovedBacktestResults';
+import { ApexTradingChart } from '@/components/backtesting/ApexTradingChart';
+import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Play } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  ArrowLeft,
+  Play,
+  BarChart3,
+  Target,
+  Activity,
+  TrendingUp,
+  Zap,
+  Clock
+} from 'lucide-react';
+
+// Available trading strategies
+// TO ADD NEW STRATEGY:
+// 1. Add strategy object here with unique ID
+// 2. Add API endpoint mapping in runBacktestForStrategy function
+// 3. Strategy cards will automatically show REAL data from API calls
+const strategies: TradingStrategy[] = [
+  {
+    id: 'multi-timeframe-ada',
+    name: 'Multi-Timeframe ADA Strategy',
+    description: 'Advanced multi-timeframe analysis with RSI and momentum indicators for ADA trading',
+    timeframe: '15m',
+    type: 'technical',
+    status: 'active',
+    performance: {
+      winRate: 66.67,
+      totalTrades: 45,
+      profitFactor: 2.30,
+      avgReturn: 60.8, // 2736.12 / 45 trades = 60.8 ADA per trade
+      maxDrawdown: 8.2
+    },
+    features: ['RSI Analysis', 'Multi-Timeframe', 'Momentum Detection', 'Risk Management'],
+    icon: <BarChart3 className="w-5 h-5" />
+  },
+  {
+    id: 'fibonacci-retracement',
+    name: 'Fibonacci Retracement Strategy',
+    description: 'Professional 15-minute Fibonacci analysis with real-time swing point detection',
+    timeframe: '15m',
+    type: 'technical',
+    status: 'active',
+    performance: {
+      winRate: 71.0,
+      totalTrades: 31,
+      profitFactor: 2.1,
+      avgReturn: 61.0, // 1890.45 / 31 trades = 61.0 ADA per trade
+      maxDrawdown: 5.2
+    },
+    features: ['Dynamic Fibonacci Levels', 'Swing Point Detection', 'Real-time Analysis', 'Support/Resistance'],
+    icon: <Target className="w-5 h-5" />
+  }
+];
 
 // Sample backtest data for different strategies
 const strategyResults = {
@@ -295,19 +350,38 @@ export default function BacktestResultsPage() {
   const [selectedStrategy, setSelectedStrategy] = useState<TradingStrategy | null>(null);
   const [isRunningBacktest, setIsRunningBacktest] = useState(false);
   const [backtestResults, setBacktestResults] = useState<any>(null);
+  const [realStrategyData, setRealStrategyData] = useState<{[key: string]: any}>({});
+  const [currentTime, setCurrentTime] = useState<string>('');
+  const [isMounted, setIsMounted] = useState(false);
 
-  const handleStrategySelect = (strategy: TradingStrategy) => {
+  // Handle client-side mounting and time updates
+  useEffect(() => {
+    setIsMounted(true);
+    const updateTime = () => {
+      setCurrentTime(new Date().toLocaleTimeString());
+    };
+
+    updateTime(); // Initial time
+    const interval = setInterval(updateTime, 1000); // Update every second
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleStrategySelect = async (strategy: TradingStrategy) => {
     setSelectedStrategy(strategy);
     setBacktestResults(null);
+
+    // Auto-run backtest when strategy is selected
+    if (strategy.status !== 'coming-soon') {
+      await runBacktestForStrategy(strategy);
+    }
   };
 
-  const handleRunBacktest = async () => {
-    if (!selectedStrategy) return;
-
+  const runBacktestForStrategy = async (strategy: TradingStrategy) => {
     setIsRunningBacktest(true);
 
     try {
-      if (selectedStrategy.id === 'fibonacci-retracement') {
+      if (strategy.id === 'fibonacci-retracement') {
         // Run real Fibonacci backtest
         console.log('🔢 Running real Fibonacci backtest...');
 
@@ -331,12 +405,39 @@ export default function BacktestResultsPage() {
           const realResults = await response.json();
           console.log('✅ Real Fibonacci backtest completed:', realResults);
           setBacktestResults(realResults);
+
+          // Update strategy card with REAL data
+          setRealStrategyData(prev => ({
+            ...prev,
+            [strategy.id]: {
+              winRate: realResults.winRate || 0,
+              totalTrades: realResults.totalTrades || 0,
+              totalPnl: realResults.totalNetPnl || 0,
+              maxDrawdown: realResults.maxDrawdown || 0,
+              lastUpdated: new Date().toISOString(),
+              isRealData: true
+            }
+          }));
         } else {
           console.warn('⚠️ Real backtest failed, using sample data');
-          const results = strategyResults[selectedStrategy.id as keyof typeof strategyResults];
+          const results = strategyResults[strategy.id as keyof typeof strategyResults];
           setBacktestResults(results);
+
+          // Update card with fallback data
+          setRealStrategyData(prev => ({
+            ...prev,
+            [strategy.id]: {
+              winRate: results.winRate || 0,
+              totalTrades: results.totalTrades || 0,
+              totalPnl: results.totalNetPnl || 0,
+              maxDrawdown: results.maxDrawdown || 0,
+              lastUpdated: new Date().toISOString(),
+              isRealData: false,
+              isFallback: true
+            }
+          }));
         }
-      } else if (selectedStrategy.id === 'multi-timeframe-ada') {
+      } else if (strategy.id === 'multi-timeframe-ada') {
         // Run real Multi-Timeframe backtest
         console.log('📊 Running real Multi-Timeframe backtest...');
 
@@ -355,92 +456,341 @@ export default function BacktestResultsPage() {
           const realResults = await response.json();
           console.log('✅ Real Multi-Timeframe backtest completed:', realResults);
           setBacktestResults(realResults);
+
+          // Update strategy card with REAL data
+          setRealStrategyData(prev => ({
+            ...prev,
+            [strategy.id]: {
+              winRate: realResults.winRate || 0,
+              totalTrades: realResults.totalTrades || 0,
+              totalPnl: realResults.totalNetPnl || 0,
+              maxDrawdown: realResults.maxDrawdown || 0,
+              lastUpdated: new Date().toISOString(),
+              isRealData: true
+            }
+          }));
         } else {
           console.warn('⚠️ Real backtest failed, using sample data');
-          const results = strategyResults[selectedStrategy.id as keyof typeof strategyResults];
+          const results = strategyResults[strategy.id as keyof typeof strategyResults];
           setBacktestResults(results);
+
+          // Update card with fallback data
+          setRealStrategyData(prev => ({
+            ...prev,
+            [strategy.id]: {
+              winRate: results.winRate || 0,
+              totalTrades: results.totalTrades || 0,
+              totalPnl: results.totalNetPnl || 0,
+              maxDrawdown: results.maxDrawdown || 0,
+              lastUpdated: new Date().toISOString(),
+              isRealData: false,
+              isFallback: true
+            }
+          }));
         }
       } else {
         // Use sample data for other strategies
-        const results = strategyResults[selectedStrategy.id as keyof typeof strategyResults];
+        const results = strategyResults[strategy.id as keyof typeof strategyResults];
         setBacktestResults(results);
+
+        // Update strategy card with sample data (ONLY as fallback)
+        setRealStrategyData(prev => ({
+          ...prev,
+          [strategy.id]: {
+            winRate: results.winRate || 0,
+            totalTrades: results.totalTrades || 0,
+            totalPnl: results.totalNetPnl || 0,
+            maxDrawdown: results.maxDrawdown || 0,
+            lastUpdated: new Date().toISOString(),
+            isRealData: false,
+            isFallback: true
+          }
+        }));
       }
     } catch (error) {
       console.error('❌ Backtest error:', error);
       // Fallback to sample data
-      const results = strategyResults[selectedStrategy.id as keyof typeof strategyResults];
+      const results = strategyResults[strategy.id as keyof typeof strategyResults];
       setBacktestResults(results);
+
+      // Update strategy card with error fallback data
+      setRealStrategyData(prev => ({
+        ...prev,
+        [strategy.id]: {
+          winRate: results.winRate || 0,
+          totalTrades: results.totalTrades || 0,
+          totalPnl: results.totalNetPnl || 0,
+          maxDrawdown: results.maxDrawdown || 0,
+          lastUpdated: new Date().toISOString(),
+          isRealData: false,
+          isError: true
+        }
+      }));
     }
 
     setIsRunningBacktest(false);
   };
 
-  const handleBackToSelection = () => {
-    setSelectedStrategy(null);
-    setBacktestResults(null);
-    setIsRunningBacktest(false);
+  // Helper functions for strategy display
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800 border-green-200';
+      case 'beta': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'coming-soon': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'technical': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'algorithmic': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'hybrid': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        {!selectedStrategy ? (
-          <StrategySelector
-            selectedStrategy={null}
-            onStrategySelect={handleStrategySelect}
-          />
-        ) : (
-          <div className="space-y-6">
-            {/* Back button and run controls */}
-            <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                onClick={handleBackToSelection}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Strategy Selection
-              </Button>
-
-              {!backtestResults && !isRunningBacktest && (
-                <Button
-                  onClick={handleRunBacktest}
-                  className="flex items-center gap-2"
-                >
-                  <Play className="w-4 h-4" />
-                  Run Backtest
-                </Button>
-              )}
+      {/* Page Header with Logo */}
+      <PageHeader
+        title="Backtesting Dashboard"
+        subtitle="Test trading strategies with historical data and analyze performance metrics in real-time"
+        showBackButton={true}
+        backHref="/dashboard"
+      >
+        {/* Header Stats */}
+        <div className="hidden md:flex items-center gap-6">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">
+              {strategies.filter(s => s.status === 'active').length}
             </div>
-
-            {/* Strategy info */}
-            <div className="bg-muted/50 rounded-lg p-4">
-              <h2 className="text-xl font-semibold mb-2">{selectedStrategy.name}</h2>
-              <p className="text-muted-foreground">{selectedStrategy.description}</p>
+            <div className="text-sm text-muted-foreground">Active Strategies</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">
+              {selectedStrategy ? '1' : '0'}
             </div>
+            <div className="text-sm text-muted-foreground">Running Tests</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-600">
+              {Object.keys(realStrategyData).filter(id => realStrategyData[id]?.isRealData).length}
+            </div>
+            <div className="text-sm text-muted-foreground">Live Results</div>
+          </div>
+        </div>
+      </PageHeader>
 
-            {/* Results or loading */}
-            {isRunningBacktest && (
-              <ImprovedBacktestResults
-                results={{
-                  ...strategyResults[selectedStrategy.id as keyof typeof strategyResults],
-                  strategy: selectedStrategy.name
-                }}
-                isLoading={true}
-              />
-            )}
+      <div className="container mx-auto px-6 pt-6 pb-6">
+        {/* Status Bar */}
+        <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg border mb-8">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-sm font-medium">System Online</span>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            Real-time data from Kraken API • Last updated: {isMounted ? currentTime : '--:--:--'}
+          </div>
+          {isRunningBacktest && (
+            <div className="flex items-center gap-2 ml-auto">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-blue-600">Running Backtest...</span>
+            </div>
+          )}
+        </div>
 
-            {backtestResults && !isRunningBacktest && (
-              <ImprovedBacktestResults
-                results={{
-                  ...backtestResults,
-                  strategy: selectedStrategy.name
-                }}
-                isLoading={false}
-              />
+        {/* Enhanced Layout: Strategy Selector + Results */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Panel: Strategy Selector */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Trading Strategies</span>
+                  <Badge variant="outline" className="text-sm">
+                    {strategies.filter(s => s.status === 'active').length} Active
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {strategies.map((strategy) => (
+                  <Card
+                    key={strategy.id}
+                    className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+                      selectedStrategy?.id === strategy.id
+                        ? 'ring-2 ring-primary border-primary bg-primary/5'
+                        : 'hover:border-primary/50'
+                    } ${strategy.status === 'coming-soon' ? 'opacity-60' : ''}`}
+                    onClick={() => strategy.status !== 'coming-soon' && handleStrategySelect(strategy)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          {strategy.icon}
+                          <h3 className="font-semibold text-sm">{strategy.name}</h3>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Badge className={`text-xs ${getStatusColor(strategy.status)}`}>
+                            {strategy.status.replace('-', ' ').toUpperCase()}
+                          </Badge>
+                          {realStrategyData[strategy.id] && (
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${
+                                realStrategyData[strategy.id].isRealData
+                                  ? 'bg-green-50 text-green-700 border-green-200'
+                                  : realStrategyData[strategy.id].isError
+                                    ? 'bg-red-50 text-red-700 border-red-200'
+                                    : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                              }`}
+                            >
+                              {realStrategyData[strategy.id].isRealData
+                                ? 'LIVE DATA'
+                                : realStrategyData[strategy.id].isError
+                                  ? 'API ERROR'
+                                  : 'FALLBACK'
+                              }
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                        {strategy.description}
+                      </p>
+
+                      {strategy.status === 'active' && (
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="text-center p-2 bg-muted/50 rounded">
+                            <div className="font-semibold text-green-600">
+                              {realStrategyData[strategy.id]
+                                ? realStrategyData[strategy.id].winRate.toFixed(1)
+                                : strategy.performance.winRate.toFixed(1)
+                              }%
+                            </div>
+                            <div className="text-muted-foreground">Win Rate</div>
+                          </div>
+                          <div className="text-center p-2 bg-muted/50 rounded">
+                            <div className="font-semibold">
+                              {realStrategyData[strategy.id]
+                                ? realStrategyData[strategy.id].totalTrades
+                                : strategy.performance.totalTrades
+                              }
+                            </div>
+                            <div className="text-muted-foreground">Trades</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {strategy.status === 'coming-soon' && (
+                        <div className="text-center p-2 bg-muted/50 rounded">
+                          <div className="text-sm text-muted-foreground">Coming Soon</div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Panel: Chart + Results */}
+          <div className="lg:col-span-2">
+            {!selectedStrategy ? (
+              <Card className="h-full">
+                <CardContent className="flex items-center justify-center h-96">
+                  <div className="text-center">
+                    <BarChart3 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Select a Strategy</h3>
+                    <p className="text-muted-foreground">
+                      Choose a trading strategy from the left panel to run a backtest and view results
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {/* Chart Section - Always visible */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5" />
+                      ADA Price Chart with{' '}
+                      <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent font-bold animate-pulse drop-shadow-lg" style={{textShadow: '0 0 10px rgba(147, 51, 234, 0.5)'}}>
+                        MISTER
+                      </span>{' '}
+                      Signals
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {backtestResults ? (
+                      <ApexTradingChart
+                        chartData={backtestResults.chartData}
+                        trades={backtestResults.trades}
+                        className="w-full"
+                      />
+                    ) : (
+                      <div className="h-96 bg-muted/20 rounded-lg flex items-center justify-center">
+                        <div className="text-center">
+                          <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-muted-foreground">Run a backtest to see the chart with trading signals</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Strategy: {selectedStrategy.name} • Timeframe: 15m
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Backtest Results Section */}
+                <div className="space-y-4">
+                  {/* Strategy Info Header */}
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h2 className="text-xl font-semibold mb-1">{selectedStrategy.name}</h2>
+                          <p className="text-muted-foreground text-sm">{selectedStrategy.description}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge className={`${getStatusColor(selectedStrategy.status)}`}>
+                            {selectedStrategy.status.replace('-', ' ').toUpperCase()}
+                          </Badge>
+                          <Badge variant="outline" className={`${getTypeColor(selectedStrategy.type)}`}>
+                            {selectedStrategy.type.toUpperCase()}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Backtest Results */}
+                {isRunningBacktest && (
+                  <ImprovedBacktestResults
+                    results={{
+                      ...strategyResults[selectedStrategy.id as keyof typeof strategyResults],
+                      strategy: selectedStrategy.name
+                    }}
+                    isLoading={true}
+                  />
+                )}
+
+                {backtestResults && !isRunningBacktest && (
+                  <ImprovedBacktestResults
+                    results={{
+                      ...backtestResults,
+                      strategy: selectedStrategy.name
+                    }}
+                    isLoading={false}
+                  />
+                )}
+                </div>
+              </div>
             )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

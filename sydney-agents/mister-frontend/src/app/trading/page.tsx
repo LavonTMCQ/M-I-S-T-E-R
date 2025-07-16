@@ -193,7 +193,7 @@ export default function TradingPage() {
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="h-screen bg-background flex flex-col overflow-hidden pt-8">
       {/* Combined Header & Market Info */}
       <div className="border-b bg-gradient-to-r from-card via-card/95 to-card flex-shrink-0 shadow-sm">
         <div className="container mx-auto px-4">

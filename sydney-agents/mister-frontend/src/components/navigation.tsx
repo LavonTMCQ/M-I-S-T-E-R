@@ -5,16 +5,13 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Home, UserPlus, BarChart3, TrendingUp, Bot, Wallet, Loader2, LineChart } from "lucide-react";
+import { Home, BarChart3, TrendingUp, Loader2, LineChart } from "lucide-react";
 
 export function Navigation() {
   const pathname = usePathname();
   const [loadingPath, setLoadingPath] = useState<string | null>(null);
 
-  // Don't show navigation on dashboard and trading pages since they have their own headers
-  if (pathname === '/dashboard' || pathname === '/trading' || pathname === '/managed-dashboard' || pathname === '/managed-wallets') {
-    return null;
-  }
+  // Show navigation on all pages for consistent experience
 
   const handleNavigation = (href: string) => {
     setLoadingPath(href);
@@ -24,16 +21,13 @@ export function Navigation() {
 
   const navItems = [
     { href: "/", label: "Landing", icon: Home },
-    { href: "/onboarding", label: "Onboarding", icon: UserPlus },
     { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
     { href: "/trading", label: "Trading", icon: TrendingUp },
     { href: "/backtest-results", label: "Backtesting", icon: LineChart },
-    { href: "/managed-wallets", label: "Wallets", icon: Wallet },
-    { href: "/managed-dashboard", label: "Managed", icon: Bot },
   ];
 
   return (
-    <nav className="fixed top-4 left-4 z-[9999] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg p-2 shadow-lg pointer-events-auto">
+    <nav className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg p-2 shadow-lg pointer-events-auto">
       <div className="flex gap-1 sm:gap-2">
         {navItems.map((item) => {
           const Icon = item.icon;

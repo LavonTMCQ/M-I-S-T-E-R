@@ -434,7 +434,7 @@ async function runMultiTimeframeStrategy(
 
       if (entrySignal.shouldEnter) {
         const atr = indicators['15'].atr[i - 200] || 0.01; // Adjust index for ATR
-        const stopDistance = atr * 2.5; // 2.5x ATR stop loss
+        const stopDistance = atr * 3.5; // 3.5x ATR stop loss (OPTIMIZED - wider stops)
 
         // Calculate position size with leverage consideration
         const positionSize = calculatePositionSize(
@@ -877,21 +877,21 @@ function checkEntryConditions(
 
   // AGGRESSIVE ENTRY CONDITIONS - Optimized for 40%+ returns
 
-  // 1. HIGH-PROBABILITY TREND FOLLOWING (More aggressive)
-  const strongLongTrend = totalScore >= 0.4 && hourlyAnalysis.score > 0.3 && dailyAnalysis.score > 0.1;
-  const strongShortTrend = totalScore <= -0.4 && hourlyAnalysis.score < -0.3 && dailyAnalysis.score < -0.1;
+  // 1. HIGH-PROBABILITY TREND FOLLOWING (OPTIMIZED - Higher thresholds for quality)
+  const strongLongTrend = totalScore >= 0.6 && hourlyAnalysis.score > 0.5 && dailyAnalysis.score > 0.2;
+  const strongShortTrend = totalScore <= -0.6 && hourlyAnalysis.score < -0.5 && dailyAnalysis.score < -0.2;
 
-  // 2. AGGRESSIVE SCALPING ENTRIES (Lower thresholds, more trades)
-  const scalpLong = fifteenMinAnalysis.score >= 0.4 && hourlyAnalysis.score > -0.1 && totalScore > 0.2;
-  const scalpShort = fifteenMinAnalysis.score <= -0.4 && hourlyAnalysis.score < 0.1 && totalScore < -0.2;
+  // 2. SELECTIVE SCALPING ENTRIES (OPTIMIZED - Higher quality signals only)
+  const scalpLong = fifteenMinAnalysis.score >= 0.7 && hourlyAnalysis.score > 0.2 && totalScore > 0.4;
+  const scalpShort = fifteenMinAnalysis.score <= -0.7 && hourlyAnalysis.score < -0.2 && totalScore < -0.4;
 
-  // 3. MOMENTUM BREAKOUT ENTRIES (More sensitive)
-  const momentumLong = (dailyAnalysis.score > 0.5) || (hourlyAnalysis.score > 0.6 && fifteenMinAnalysis.score > 0.1) || (fifteenMinAnalysis.score > 0.7);
-  const momentumShort = (dailyAnalysis.score < -0.5) || (hourlyAnalysis.score < -0.6 && fifteenMinAnalysis.score < -0.1) || (fifteenMinAnalysis.score < -0.7);
+  // 3. MOMENTUM BREAKOUT ENTRIES (OPTIMIZED - More selective)
+  const momentumLong = (dailyAnalysis.score > 0.7) || (hourlyAnalysis.score > 0.8 && fifteenMinAnalysis.score > 0.3) || (fifteenMinAnalysis.score > 0.9);
+  const momentumShort = (dailyAnalysis.score < -0.7) || (hourlyAnalysis.score < -0.8 && fifteenMinAnalysis.score < -0.3) || (fifteenMinAnalysis.score < -0.9);
 
-  // 4. MEAN REVERSION ENTRIES (More aggressive)
-  const reversalLong = fifteenMinAnalysis.score > 0.3 && totalScore > 0.0 && dailyAnalysis.score > -0.5;
-  const reversalShort = fifteenMinAnalysis.score < -0.3 && totalScore < 0.0 && dailyAnalysis.score < 0.5;
+  // 4. MEAN REVERSION ENTRIES (OPTIMIZED - More conservative)
+  const reversalLong = fifteenMinAnalysis.score > 0.5 && totalScore > 0.2 && dailyAnalysis.score > -0.3;
+  const reversalShort = fifteenMinAnalysis.score < -0.5 && totalScore < -0.2 && dailyAnalysis.score < 0.3;
 
   // ENTRY LOGIC - Multiple strategies
   if (strongLongTrend || scalpLong || momentumLong || reversalLong) {
@@ -1048,15 +1048,21 @@ function checkExitConditions(position: any, currentCandle: TimeframeData, indica
     }
   }
 
-  // 4. RSI REVERSAL EXITS (for all trade types)
+  // 4. RSI REVERSAL EXITS (OPTIMIZED - Less aggressive, let winners run)
   if (currentIndex >= 14) {
     const rsi = indicators15m.rsi[currentIndex - 14] || 50;
 
-    if (position.side === 'long' && rsi > 80 && holdingTime > 0.5) {
-      return { shouldExit: true, reason: 'RSI extremely overbought (80+)' };
+    // Calculate current P&L
+    const currentPnl = position.side === 'long'
+      ? (currentPrice - position.entryPrice) * position.size
+      : (position.entryPrice - currentPrice) * position.size;
+
+    // Only exit on extreme RSI after longer holding time and with profit
+    if (position.side === 'long' && rsi > 85 && holdingTime > 2.0 && currentPnl > 0) {
+      return { shouldExit: true, reason: 'RSI extremely overbought (85+) with profit' };
     }
-    if (position.side === 'short' && rsi < 20 && holdingTime > 0.5) {
-      return { shouldExit: true, reason: 'RSI extremely oversold (20-)' };
+    if (position.side === 'short' && rsi < 15 && holdingTime > 2.0 && currentPnl > 0) {
+      return { shouldExit: true, reason: 'RSI extremely oversold (15-) with profit' };
     }
   }
 

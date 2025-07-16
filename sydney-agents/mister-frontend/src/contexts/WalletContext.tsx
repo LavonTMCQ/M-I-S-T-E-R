@@ -196,10 +196,14 @@ export function WalletProvider({ children }: WalletProviderProps) {
         console.warn('Failed to fetch handle:', error);
       }
 
-      // Fetch real balance using our API with normalized address (with cache busting)
+      // Fetch real balance using the connected wallet's payment address (not stake address)
+      // This gets the balance of ONLY the connected wallet, not all associated addresses
       try {
         const timestamp = Date.now();
-        const balanceResponse = await fetch(`/api/address/${normalizedStakeAddr}/balance?t=${timestamp}&force=true`, {
+        const paymentAddress = paymentAddr || addresses[0]; // Use the actual connected wallet's payment address
+        console.log('💰 Fetching balance for connected wallet payment address:', paymentAddress?.substring(0, 20) + '...');
+
+        const balanceResponse = await fetch(`/api/address/${paymentAddress}/balance?t=${timestamp}&force=true`, {
           cache: 'no-cache',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -211,7 +215,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
           const balanceData = await balanceResponse.json();
           if (balanceData.success && balanceData.balance !== undefined) {
             realBalance = balanceData.balance;
-            console.log('💰 Real balance fetched (force refresh):', realBalance, 'ADA');
+            console.log('💰 Real balance fetched for connected wallet only:', realBalance, 'ADA');
           }
         }
       } catch (error) {
@@ -294,7 +298,8 @@ export function WalletProvider({ children }: WalletProviderProps) {
       if (!storedWallet.stakeAddress) return;
 
       console.log('🔄 Refreshing stored wallet data...');
-      const walletInfo = await getWalletInfo(storedWallet.stakeAddress, true); // Force refresh
+      // Use payment address for balance (not stake address) to get only connected wallet balance
+      const walletInfo = await getWalletInfo(storedWallet.address, true); // Force refresh using payment address
 
       // Get correct payment address from Blockfrost API using stake address
       let correctPaymentAddr = storedWallet.address; // Fallback to current address

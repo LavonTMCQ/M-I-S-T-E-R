@@ -76,7 +76,7 @@ export default function LandingPage() {
     {
       icon: <Target className="w-8 h-8" />,
       title: "Precision Execution",
-      description: "Lightning-fast trade execution with advanced risk management across all your managed wallets"
+      description: "Lightning-fast trade execution with advanced risk management and automated position sizing"
     },
     {
       icon: <Sparkles className="w-8 h-8" />,
@@ -189,33 +189,33 @@ export default function LandingPage() {
                   </Button>
                 </div>
 
-                {/* Managed Trading */}
-                <div className="bg-card border rounded-lg p-6 hover:shadow-lg transition-shadow">
+                {/* Agent Vault Smart Contracts - Coming Soon */}
+                <div className="relative bg-card border rounded-lg p-6 hover:shadow-lg transition-shadow opacity-60">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                       <Bot className="w-6 h-6 text-green-600" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold">AI Managed Trading</h3>
-                      <p className="text-sm text-muted-foreground">Let AI trade for you</p>
+                      <h3 className="text-xl font-semibold">Agent Vault Smart Contracts</h3>
+                      <p className="text-sm text-muted-foreground">Secure automated trading</p>
                     </div>
                   </div>
                   <p className="text-muted-foreground mb-4">
-                    Create a managed wallet and let MISTER AI handle all trading decisions automatically.
+                    Deploy your personal Agent Vault smart contract for fully automated trading while keeping your keys secure.
                   </p>
                   <Button
                     size="lg"
-                    onClick={() => {
-                      // If wallet is connected, go directly to managed wallets
-                      // If no wallet, go to onboarding first
-                      const destination = mainWallet ? '/managed-wallets' : '/onboarding';
-                      window.location.href = destination;
-                    }}
+                    disabled
                     className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
                   >
                     <Bot className="mr-2 h-5 w-5" />
-                    Create Managed Wallet
+                    Coming Soon
                   </Button>
+
+                  {/* Coming Soon Badge */}
+                  <div className="absolute top-4 right-4 bg-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-sm font-medium">
+                    Coming Soon
+                  </div>
                 </div>
               </div>
 

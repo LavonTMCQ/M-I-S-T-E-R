@@ -20,11 +20,9 @@ export function Breadcrumbs() {
 
   // Map path segments to readable labels
   const segmentLabels: Record<string, string> = {
-    'onboarding': 'Create Wallet',
     'dashboard': 'Dashboard',
     'trading': 'Trading',
     'backtest-results': 'Backtesting',
-    'managed-dashboard': 'Managed Trading',
     'login': 'Sign In'
   };
 
@@ -35,21 +33,21 @@ export function Breadcrumbs() {
   });
 
   return (
-    <nav className="flex items-center space-x-1 text-sm text-muted-foreground mb-4">
+    <nav className="flex items-center justify-center space-x-1 text-sm text-muted-foreground mt-8 py-4 border-t border-border/50">
       {breadcrumbItems.map((item, index) => (
         <div key={item.href} className="flex items-center">
-          {index > 0 && <ChevronRight className="w-4 h-4 mx-1" />}
+          {index > 0 && <ChevronRight className="w-4 h-4 mx-2 text-muted-foreground/60" />}
           {index === breadcrumbItems.length - 1 ? (
-            <span className="text-foreground font-medium flex items-center">
-              {item.icon && <item.icon className="w-4 h-4 mr-1" />}
+            <span className="text-foreground font-semibold flex items-center px-3 py-1.5 bg-primary/10 rounded-md">
+              {item.icon && <item.icon className="w-4 h-4 mr-2" />}
               {item.label}
             </span>
           ) : (
-            <Link 
-              href={item.href} 
-              className="hover:text-foreground transition-colors flex items-center"
+            <Link
+              href={item.href}
+              className="hover:text-foreground transition-colors flex items-center px-3 py-1.5 rounded-md hover:bg-muted/50"
             >
-              {item.icon && <item.icon className="w-4 h-4 mr-1" />}
+              {item.icon && <item.icon className="w-4 h-4 mr-2" />}
               {item.label}
             </Link>
           )}

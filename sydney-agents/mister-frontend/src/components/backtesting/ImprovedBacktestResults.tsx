@@ -220,9 +220,8 @@ export function ImprovedBacktestResults({ results, isLoading = false, className 
 
       {/* Detailed Analysis Tabs */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="chart">Chart Analysis</TabsTrigger>
           <TabsTrigger value="trades">Trade Log</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
         </TabsList>
@@ -308,28 +307,6 @@ export function ImprovedBacktestResults({ results, isLoading = false, className 
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="chart" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                ADA Price Chart with{' '}
-                <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent font-bold animate-pulse drop-shadow-lg" style={{textShadow: '0 0 10px rgba(147, 51, 234, 0.5)'}}>
-                  MISTER
-                </span>{' '}
-                Signals
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ApexTradingChart
-                chartData={results.chartData}
-                trades={results.trades}
-                className="w-full"
-              />
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="trades" className="space-y-4">

@@ -85,10 +85,8 @@ export default function OnboardingPage() {
 
   const steps = [
     { id: 1, title: "Welcome", description: "Get started with MISTER" },
-    { id: 2, title: "Create Wallet", description: "Generate your managed wallet" },
-    { id: 3, title: "Backup Phrase", description: "Secure your recovery phrase" },
-    { id: 4, title: "Confirmation", description: "Verify your setup" },
-    { id: 5, title: "Complete", description: "Ready to trade" }
+    { id: 2, title: "Connect Wallet", description: "Connect your Cardano wallet" },
+    { id: 3, title: "Complete", description: "Ready to trade" }
   ];
 
   const handleCreateWallet = async () => {
@@ -322,8 +320,8 @@ export default function OnboardingPage() {
       });
     }
 
-    // Navigate to managed wallet dashboard
-    window.location.href = '/managed-dashboard';
+    // Navigate to main trading page
+    window.location.href = '/trading';
   };
 
   const renderStep = () => {
@@ -343,8 +341,8 @@ export default function OnboardingPage() {
             <div className="space-y-4">
               <h2 className="text-3xl font-bold text-foreground">Welcome to MISTER</h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Let&apos;s create your managed wallet for AI-powered copy trading on Strike Finance.
-                This process takes just a few minutes and ensures your funds remain secure.
+                Connect your Cardano wallet to start AI-powered copy trading on Strike Finance.
+                Your wallet remains in your control while our Agent Vault smart contracts enable automated trading.
               </p>
             </div>
 

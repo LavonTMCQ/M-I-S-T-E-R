@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { bech32 } from 'bech32';
 
 // Get the Blockfrost API key from environment variables
 const getBlockfrostApiKey = (): string => {
@@ -13,9 +14,6 @@ const getBlockfrostApiKey = (): string => {
  */
 const convertHexToBech32 = async (hexAddress: string): Promise<string> => {
   try {
-    // Import bech32 library for encoding
-    const { bech32 } = await import('bech32');
-
     // Remove '0x' prefix if present
     const cleanHex = hexAddress.startsWith('0x') ? hexAddress.slice(2) : hexAddress;
 

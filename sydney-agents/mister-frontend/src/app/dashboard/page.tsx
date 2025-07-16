@@ -40,6 +40,13 @@ import { WinLossChart } from "@/components/charts/WinLossChart";
 import { CompactADAChart } from "@/components/charts/SingleADAChart";
 import { DrawdownChart } from "@/components/charts/DrawdownChart";
 
+// Real Data Components - Additional icons
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus
+} from 'lucide-react';
+
 export default function DashboardPage() {
   const auth = useRequireAuth();
   const { mainWallet, isLoading: walletLoading } = useWallet();
@@ -558,9 +565,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-8">
       {/* Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
@@ -572,36 +579,8 @@ export default function DashboardPage() {
             </div>
             
             <div className="flex items-center gap-4">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => window.location.href = '/trading'}
-                className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
-              >
-                <TrendingUp className="w-4 h-4 mr-2" />
-                Start Trading
-              </Button>
-              <Button variant="outline" size="sm" disabled>
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  // Clear user-specific data first
-                  userStorage.clear();
-                  // Clear all authentication and wallet data
-                  auth.logout();
-                  // Clear any remaining cached data
-                  localStorage.clear();
-                  sessionStorage.clear();
-                  // Redirect to wallet setup for fresh connection
-                  window.location.href = '/wallet-setup';
-                }}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Disconnect & Reconnect
+              <Button variant="outline" size="sm" disabled className="px-2">
+                <Settings className="w-4 h-4" />
               </Button>
             </div>
           </div>
@@ -619,9 +598,9 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-foreground">Welcome back!</h1>
+                <h1 className="text-3xl font-bold text-foreground">Analytics Dashboard</h1>
                 <p className="text-muted-foreground mt-1">
-                  MISTER AI is actively managing your trades on Strike Finance
+                  Comprehensive insights into your trading performance and market signals
                 </p>
               </div>
               <div className="flex items-center gap-4">
@@ -658,158 +637,241 @@ export default function DashboardPage() {
             </div>
           </motion.div>
 
-          {/* Portfolio Overview */}
+          {/* Real Data Metrics - Compact cards */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6"
+            className="grid grid-cols-1 md:grid-cols-3 gap-4"
           >
+            {/* Portfolio Value - Real from wallet */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">ADA Price</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {liveMarketData && liveMarketData.price > 0 && typeof liveMarketData.price === 'number' ? `$${liveMarketData.price.toFixed(4)}` :
-                   marketData && marketData.price > 0 && typeof marketData.price === 'number' ? `$${marketData.price.toFixed(4)}` : '--'}
-                </div>
-                <div className={`flex items-center text-xs mt-1 ${
-                  (liveMarketData?.price > 0 || marketData?.price > 0) && (liveMarketData?.changePercent24h || marketData?.changePercent24h || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {(liveMarketData?.price > 0 || marketData?.price > 0) && (liveMarketData?.changePercent24h || marketData?.changePercent24h || 0) >= 0 ? (
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                  ) : (liveMarketData?.price > 0 || marketData?.price > 0) ? (
-                    <TrendingDown className="w-3 h-3 mr-1" />
-                  ) : null}
-                  {liveMarketData && liveMarketData.price > 0 && typeof liveMarketData.changePercent24h === 'number' ? `${liveMarketData.changePercent24h >= 0 ? '+' : ''}${liveMarketData.changePercent24h.toFixed(2)}% 24h` :
-                   marketData && marketData.price > 0 && typeof marketData.changePercent24h === 'number' ? `${marketData.changePercent24h >= 0 ? '+' : ''}${marketData.changePercent24h.toFixed(2)}% 24h` : '--'}
-                </div>
-                {marketConnected && marketLastUpdate && (
-                  <div className="flex items-center text-xs text-green-600 mt-1">
-                    <div className="w-1 h-1 bg-green-500 rounded-full mr-1 animate-pulse" />
-                    Live
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Portfolio</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {livePortfolioValue && livePortfolioValue > 0 ? formatCurrency(livePortfolioValue) :
-                   dashboardData && dashboardData.portfolio.totalValue > 0 ? formatCurrency(dashboardData.portfolio.totalValue) : '--'}
-                </div>
-                <div className={`flex items-center text-xs mt-1 ${
-                  (livePortfolioValue > 0 || (dashboardData && dashboardData.portfolio.totalValue > 0)) &&
-                  (liveDailyChangePercent !== null ? liveDailyChangePercent : dashboardData?.portfolio.dailyChangePercent || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {(livePortfolioValue > 0 || (dashboardData && dashboardData.portfolio.totalValue > 0)) &&
-                   (liveDailyChangePercent !== null ? liveDailyChangePercent : dashboardData?.portfolio.dailyChangePercent || 0) >= 0 ? (
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                  ) : (livePortfolioValue > 0 || (dashboardData && dashboardData.portfolio.totalValue > 0)) ? (
-                    <TrendingDown className="w-3 h-3 mr-1" />
-                  ) : null}
-                  {livePortfolioValue > 0 && liveDailyChangePercent !== null && typeof liveDailyChangePercent === 'number' ? `${liveDailyChangePercent >= 0 ? '+' : ''}${liveDailyChangePercent.toFixed(2)}% today` :
-                   dashboardData && dashboardData.portfolio.totalValue > 0 && typeof dashboardData.portfolio.dailyChangePercent === 'number' ? `${dashboardData.portfolio.dailyChangePercent >= 0 ? '+' : ''}${dashboardData.portfolio.dailyChangePercent.toFixed(2)}% today` : '--'}
-                </div>
-                {portfolioLastUpdate && (
-                  <div className="flex items-center text-xs text-green-600 mt-1">
-                    <div className="w-1 h-1 bg-green-500 rounded-full mr-1 animate-pulse" />
-                    Live
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Daily P&L</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${
-                  (liveDailyChange !== null && liveDailyChange !== 0) || (dashboardData && dashboardData.portfolio.dailyChange !== 0) ?
-                  ((liveDailyChange !== null ? liveDailyChange : dashboardData?.portfolio.dailyChange || 0) >= 0 ? 'text-green-600' : 'text-red-600') : ''
-                }`}>
-                  {liveDailyChange !== null && liveDailyChange !== 0 ? (
-                    `${liveDailyChange >= 0 ? '+' : ''}${formatCurrency(liveDailyChange)}`
-                  ) : dashboardData && dashboardData.portfolio.dailyChange !== 0 ? (
-                    `${dashboardData.portfolio.dailyChange >= 0 ? '+' : ''}${formatCurrency(dashboardData.portfolio.dailyChange)}`
-                  ) : '--'}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Last 24 hours
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Available Balance</CardTitle>
-                <Wallet className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {dashboardData && dashboardData.portfolio.availableBalance > 0 ? formatCurrency(dashboardData.portfolio.availableBalance) : '--'}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Ready for trading
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">AI Status</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    aiStatus?.isRunning ? 'bg-green-500 animate-pulse' : 'bg-red-500'
-                  }`} />
-                  <span className={`text-sm font-medium ${
-                    aiStatus?.isRunning ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {aiStatus?.isRunning ? 'Active' : 'Inactive'}
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <DollarSign className="w-4 h-4 text-green-600" />
+                  <span className="text-xs font-medium text-green-600">
+                    {livePortfolioValue && liveDailyChangePercent ? `${liveDailyChangePercent >= 0 ? '+' : ''}${liveDailyChangePercent.toFixed(2)}%` : '--'}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {aiStatus?.strategy || 'Tomorrow Labs v.1'} strategy {aiStatus?.isRunning ? 'running' : 'stopped'}
-                </p>
+                <div>
+                  <h3 className="text-xs font-medium text-muted-foreground">Portfolio Value</h3>
+                  <p className="text-lg font-bold text-foreground">
+                    ${livePortfolioValue ? livePortfolioValue.toFixed(2) : (mainWallet?.balance ? (mainWallet.balance * (marketData?.price || 0.75)).toFixed(2) : '--')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {mainWallet?.balance?.toFixed(2) || '--'} ADA
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Daily P&L - Real from positions */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <TrendingDown className="w-4 h-4 text-red-600" />
+                  <span className="text-xs font-medium text-red-600">
+                    {liveDailyChangePercent ? `${liveDailyChangePercent.toFixed(2)}%` : '--'}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-xs font-medium text-muted-foreground">Daily P&L</h3>
+                  <p className="text-lg font-bold text-foreground">
+                    ${liveDailyChange ? liveDailyChange.toFixed(2) : '--'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    24h performance
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Active Positions - Real from Strike Finance */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Activity className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-medium text-gray-600">0%</span>
+                </div>
+                <div>
+                  <h3 className="text-xs font-medium text-muted-foreground">Active Positions</h3>
+                  <p className="text-lg font-bold text-foreground">
+                    {livePositions?.length || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Open positions
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+
+          </motion.div>
+
+          {/* TapTools Account Balance Visualization */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5 text-blue-600" />
+                  Wallet Overview
+                  <span className="text-sm text-muted-foreground">
+                    ({mainWallet?.address?.substring(0, 12)}...)
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-foreground">
+                      {mainWallet?.balance?.toFixed(2) || '--'} ADA
+                    </div>
+                    <div className="text-lg text-muted-foreground">
+                      ${mainWallet?.balance && marketData?.price ?
+                        (mainWallet.balance * marketData.price).toFixed(2) :
+                        '--'
+                      } USD
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="font-medium">ADA Price</div>
+                      <div className="text-lg font-bold">
+                        ${marketData?.price?.toFixed(4) || '--'}
+                      </div>
+                      <div className={`text-xs ${
+                        (marketData?.changePercent24h || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {marketData?.changePercent24h !== undefined ?
+                          `${marketData.changePercent24h >= 0 ? '+' : ''}${marketData.changePercent24h.toFixed(2)}%` :
+                          'Loading...'
+                        }
+                      </div>
+                    </div>
+
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="font-medium">Available</div>
+                      <div className="text-lg font-bold text-green-600">
+                        {mainWallet?.balance ? (mainWallet.balance - (livePositions?.reduce((sum, pos) => sum + (pos.collateralAmount || 0), 0) || 0)).toFixed(2) : '--'}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Free ADA
+                      </div>
+                    </div>
+
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="font-medium">In Use</div>
+                      <div className="text-lg font-bold text-orange-600">
+                        {livePositions?.reduce((sum, pos) => sum + (pos.collateralAmount || 0), 0)?.toFixed(2) || '0.00'}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Trading ADA
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
 
-          {/* Main Dashboard Tabs */}
+          {/* ADA Price Chart - Moved to top for better visibility */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            <Card>
+              <CardContent className="p-6">
+                <CompactADAChart />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Real Analytics - Only show actual trading data */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            {/* Placeholder for future real analytics */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center text-muted-foreground">
+                  <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="font-medium mb-2">Advanced Analytics Coming Soon</h3>
+                  <p className="text-sm">
+                    Detailed performance analytics will be available when we have sufficient trading data.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Future Features - Only show when real data is available */}
+          {false && ( // TODO: Enable when real CNT signals API is ready
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bot className="w-5 h-5 text-blue-600" />
+                    CNT Bot Signals
+                    <Badge variant="outline">Coming Soon</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Live trading signals from the CNT bot will appear here when the Discord integration is complete.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="w-5 h-5 text-purple-600" />
+                    Managed Wallets
+                    <Badge variant="outline">Coming Soon</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Multiple wallet management will be available when the wallet creation agent is integrated.
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Real Analytics - Only show actual trading data */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <Tabs defaultValue="positions" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4 h-9">
-                <TabsTrigger value="positions" className="text-sm py-1">Positions</TabsTrigger>
-                <TabsTrigger value="activity" className="text-sm py-1">Activity</TabsTrigger>
-                <TabsTrigger value="signals" className="text-sm py-1">Signals</TabsTrigger>
-                <TabsTrigger value="analytics" className="text-sm py-1">Analytics</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-1 h-9">
+                <TabsTrigger value="positions" className="text-sm py-1">Trading Positions</TabsTrigger>
               </TabsList>
 
               <TabsContent value="positions" className="space-y-4">
-                {/* ADA Price Chart for Positions */}
-                <CompactADAChart />
-
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Target className="w-5 h-5" />
-                      Active Positions
+                      Strike Finance Positions
+                      <span className="text-sm text-muted-foreground">
+                        ({livePositions?.length || 0} active)
+                      </span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -925,330 +987,11 @@ export default function DashboardPage() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="activity" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <Bot className="w-5 h-5" />
-                        Recent AI Activity
-                      </CardTitle>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={forceSignalCheck}
-                        disabled={isRefreshing}
-                      >
-                        <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-                        Force Signal Check
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {liveAIActivities.length > 0 && (
-                      <div className="mb-4 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-                        <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                          <span className="font-medium">Live AI Activity</span>
-                          <span className="text-xs">({liveAIActivities.length} new)</span>
-                        </div>
-                      </div>
-                    )}
+              {/* Activity tab removed - focusing on positions only */}
 
-                    <div className="space-y-4">
-                      {/* Show live activities first */}
-                      {liveAIActivities.slice(0, 5).map((activity) => (
-                        <div key={activity.id} className="flex items-start gap-4 p-4 border rounded-lg bg-green-50/50 dark:bg-green-950/50">
-                          <div className="flex-shrink-0 mt-1">
-                            {activity.status === 'success' && <CheckCircle className="w-4 h-4 text-green-600" />}
-                            {activity.status === 'info' && <AlertCircle className="w-4 h-4 text-blue-600" />}
-                            {activity.status === 'error' && <AlertCircle className="w-4 h-4 text-red-600" />}
-                            {activity.status === 'pending' && <Clock className="w-4 h-4 text-yellow-600" />}
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium">{activity.action}</div>
-                            {activity.description && (
-                              <div className="text-sm text-muted-foreground mt-1">{activity.description}</div>
-                            )}
-                            <div className="flex items-center gap-2 mt-2">
-                              <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
-                              <span className="text-xs text-green-600 font-medium">LIVE</span>
-                            </div>
-                          </div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {formatTime(activity.timestamp)}
-                          </div>
-                        </div>
-                      ))}
+              {/* Removed signals tab - will be added back when real CNT signals are available */}
 
-                      {/* Show historical activities */}
-                      {aiActivity.length > 0 ? (
-                        aiActivity.slice(0, Math.max(0, 10 - liveAIActivities.length)).map((activity) => (
-                          <div key={activity.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                            <div className="flex-shrink-0 mt-1">
-                              {activity.status === 'success' && <CheckCircle className="w-4 h-4 text-green-600" />}
-                              {activity.status === 'info' && <AlertCircle className="w-4 h-4 text-blue-600" />}
-                              {activity.status === 'error' && <AlertCircle className="w-4 h-4 text-red-600" />}
-                              {activity.status === 'pending' && <Clock className="w-4 h-4 text-yellow-600" />}
-                            </div>
-                            <div className="flex-1">
-                              <div className="font-medium">{activity.action}</div>
-                              {activity.description && (
-                                <div className="text-sm text-muted-foreground mt-1">{activity.description}</div>
-                              )}
-                              {activity.pair && (
-                                <div className="text-sm text-muted-foreground mt-1">
-                                  {activity.pair} • {activity.amount?.toLocaleString()} ADA • ${activity.price?.toFixed(4)}
-                                </div>
-                              )}
-                              {activity.txHash && (
-                                <div className="text-xs text-muted-foreground mt-1 font-mono">
-                                  Tx: {activity.txHash.substring(0, 20)}...
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {formatTime(activity.timestamp)}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-12">
-                          <Bot className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold mb-2">No Recent Activity</h3>
-                          <p className="text-muted-foreground max-w-md mx-auto">
-                            MISTER AI activity will appear here as the system analyzes markets and executes trades.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="signals" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-2xl font-bold">{signalStats?.totalSignals || 0}</div>
-                      <p className="text-xs text-muted-foreground">Total Signals</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-2xl font-bold text-green-600">{signalStats?.openSignals || 0}</div>
-                      <p className="text-xs text-muted-foreground">Open Signals</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-2xl font-bold text-red-600">{signalStats?.closeSignals || 0}</div>
-                      <p className="text-xs text-muted-foreground">Close Signals</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-2xl font-bold">{signalStats?.avgConfidence || 0}%</div>
-                      <p className="text-xs text-muted-foreground">Avg Confidence</p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <Target className="w-5 h-5" />
-                        Signal History
-                      </CardTitle>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => forceSignalCheck()}
-                        disabled={isRefreshing}
-                      >
-                        <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-                        Generate Signal
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {signalHistory.length > 0 ? (
-                        signalHistory.map((signal) => (
-                          <div key={signal.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                            <div className="flex-shrink-0 mt-1">
-                              {signal.action === 'Open' && <TrendingUp className="w-4 h-4 text-green-600" />}
-                              {signal.action === 'Close' && <TrendingDown className="w-4 h-4 text-red-600" />}
-                              {signal.action === 'Hold' && <Clock className="w-4 h-4 text-yellow-600" />}
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium">{signal.action}</span>
-                                {signal.side && (
-                                  <Badge variant={signal.side === 'Long' ? 'default' : 'secondary'} className="text-xs">
-                                    {signal.side}
-                                  </Badge>
-                                )}
-                                <Badge variant="outline" className="text-xs">
-                                  {signal.confidence}% confidence
-                                </Badge>
-                              </div>
-                              <div className="text-sm text-muted-foreground mb-2">
-                                {signal.reasoning}
-                              </div>
-                              {signal.positionSize && (
-                                <div className="text-xs text-muted-foreground">
-                                  Size: {signal.positionSize.toLocaleString()} ADA • Leverage: {signal.leverage}x
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {formatTime(signal.timestamp)}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-12">
-                          <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold mb-2">No Signal History</h3>
-                          <p className="text-muted-foreground max-w-md mx-auto">
-                            AI signal history will appear here as MISTER analyzes market conditions.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="analytics" className="space-y-4">
-                {/* Portfolio Analytics Only - Price analysis moved to Positions tab */}
-
-                  {/* Portfolio Analytics */}
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {/* AI Performance Metrics */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-lg">AI Performance</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Total Signals:</span>
-                            <span className="font-semibold">{aiStatus?.totalSignals || 0}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Successful Trades:</span>
-                            <span className="font-semibold text-green-600">{aiStatus?.successfulTrades || 0}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Failed Trades:</span>
-                            <span className="font-semibold text-red-600">{aiStatus?.failedTrades || 0}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Success Rate:</span>
-                            <span className="font-semibold">
-                              {aiStatus && aiStatus.totalSignals > 0
-                                ? `${((aiStatus.successfulTrades / aiStatus.totalSignals) * 100).toFixed(1)}%`
-                                : '0%'
-                              }
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                  {/* Portfolio Metrics */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Portfolio Metrics</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Open Positions:</span>
-                        <span className="font-semibold">{positions.filter(p => p.status === 'open').length}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Total P&L:</span>
-                        <span className={`font-semibold ${
-                          dashboardData && dashboardData.portfolio.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {dashboardData ? formatCurrency(dashboardData.portfolio.totalPnL) : '--'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Total Return:</span>
-                        <span className={`font-semibold ${
-                          dashboardData && dashboardData.portfolio.totalPnLPercent >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {dashboardData && typeof dashboardData.portfolio.totalPnLPercent === 'number' ? `${dashboardData.portfolio.totalPnLPercent >= 0 ? '+' : ''}${dashboardData.portfolio.totalPnLPercent.toFixed(2)}%` : '--'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Strategy:</span>
-                        <span className="font-semibold">{aiStatus?.strategy || 'Tomorrow Labs v.1'}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* System Status */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">System Status</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">AI Status:</span>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${
-                            aiStatus?.isRunning ? 'bg-green-500' : 'bg-red-500'
-                          }`} />
-                          <span className="font-semibold">{aiStatus?.isRunning ? 'Active' : 'Inactive'}</span>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Last Check:</span>
-                        <span className="font-semibold text-xs">
-                          {aiStatus?.lastCheck ? formatTime(aiStatus.lastCheck) : '--'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Next Check:</span>
-                        <span className="font-semibold text-xs">
-                          {aiStatus?.nextCheck ? formatTime(aiStatus.nextCheck) : '--'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Backend:</span>
-                        <span className={`font-semibold ${error ? 'text-red-600' : 'text-green-600'}`}>
-                          {error ? 'Disconnected' : 'Connected'}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Performance Charts */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <PerformanceChart
-                    className="lg:col-span-2"
-                    data={portfolioPerformance}
-                    isLoading={isLoading}
-                    error={error}
-                    onTimeframeChange={loadPortfolioPerformance}
-                    currentTimeframe={portfolioTimeframe}
-                  />
-                  <PnLChart />
-                  <WinLossChart />
-                </div>
-
-                    {/* Risk Analysis */}
-                    <DrawdownChart />
-                  </div>
-              </TabsContent>
+              {/* Removed analytics tab - will be added back when real performance data is available */}
             </Tabs>
           </motion.div>
         </div>

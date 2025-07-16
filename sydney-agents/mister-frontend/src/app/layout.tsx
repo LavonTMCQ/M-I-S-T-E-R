@@ -57,10 +57,10 @@ export default function RootLayout({
             <AuthProvider>
               <Navigation />
               <WalletHeader />
-              <div className="container mx-auto px-4">
+              {children}
+              <div className="container mx-auto px-6 pb-8">
                 <Breadcrumbs />
               </div>
-              {children}
             </AuthProvider>
           </WalletProvider>
         </ErrorBoundary>
