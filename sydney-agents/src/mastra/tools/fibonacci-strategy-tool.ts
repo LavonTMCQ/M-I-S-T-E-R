@@ -47,7 +47,7 @@ export const fibonacciStrategyTool = createTool({
     minRetracementPercent: z.number().default(5).describe('Minimum retracement percentage to consider'),
     maxPositionSize: z.number().default(1000).describe('Maximum position size in ADA'),
     riskPercentage: z.number().default(2).describe('Risk percentage per trade'),
-    speakResults: z.boolean().default(true).describe('Whether to announce results via voice')
+    speakResults: z.boolean().default(false).describe('Voice disabled for faster testing')
   }),
   outputSchema: z.object({
     signal: z.object({
@@ -409,25 +409,32 @@ function generateFibonacciSignal(
   let confidence = 0;
   let reason = 'No clear Fibonacci signal';
   
-  // Look for bounces at key Fibonacci levels
-  if (closestLevel.level === 0.382 || closestLevel.level === 0.618) {
-    if (distance / currentPrice < 0.005) { // Within 0.5% of Fibonacci level
-      if (rsi < 40 && pricePosition === 'above') {
+  // MRLABS-INSPIRED: More conservative Fibonacci entries with trend confirmation
+  if (closestLevel.level === 0.382 || closestLevel.level === 0.5 || closestLevel.level === 0.618) {
+    if (distance / currentPrice < 0.003) { // Tighter: Within 0.3% of Fibonacci level
+
+      // TREND CONFIRMATION: Check if we're in the right trend direction
+      const trendDirection = swingHigh.time > swingLow.time ? 'up' : 'down';
+
+      // LONG entries: Fibonacci bounce in uptrend with conservative RSI
+      if (rsi > 35 && rsi < 65 && pricePosition === 'above' && trendDirection === 'up' && volumeRatio > 1.1) {
         action = 'LONG';
-        confidence = 75 + (volumeRatio > 1.2 ? 10 : 0);
-        reason = `Bounce at ${closestLevel.label} Fibonacci level with oversold RSI`;
-      } else if (rsi > 60 && pricePosition === 'below') {
+        confidence = 70 + (closestLevel.level === 0.618 ? 10 : 0) + (volumeRatio > 1.5 ? 10 : 0);
+        reason = `Fibonacci ${closestLevel.label} bounce in uptrend (RSI: ${rsi.toFixed(0)})`;
+      }
+      // SHORT entries: Fibonacci rejection in downtrend with conservative RSI
+      else if (rsi > 35 && rsi < 65 && pricePosition === 'below' && trendDirection === 'down' && volumeRatio > 1.1) {
         action = 'SHORT';
-        confidence = 75 + (volumeRatio > 1.2 ? 10 : 0);
-        reason = `Rejection at ${closestLevel.label} Fibonacci level with overbought RSI`;
+        confidence = 70 + (closestLevel.level === 0.618 ? 10 : 0) + (volumeRatio > 1.5 ? 10 : 0);
+        reason = `Fibonacci ${closestLevel.label} rejection in downtrend (RSI: ${rsi.toFixed(0)})`;
       }
     }
   }
   
-  // Calculate position sizing and risk management
+  // MRLABS-INSPIRED: Tighter risk management for better hit rates
   const range = Math.abs(swingHigh.price - swingLow.price);
-  const stopDistance = range * 0.1; // 10% of swing range
-  const targetDistance = range * 0.25; // 25% of swing range
+  const stopDistance = range * 0.05; // TIGHTER: 5% of swing range (vs 10%)
+  const targetDistance = range * 0.15; // CONSERVATIVE: 15% target (vs 25%) for 3:1 R/R
   
   const stopLoss = action === 'LONG' 
     ? currentPrice - stopDistance 
@@ -438,13 +445,19 @@ function generateFibonacciSignal(
     : currentPrice - targetDistance;
   
   const riskReward = Math.abs(takeProfit - currentPrice) / Math.abs(currentPrice - stopLoss);
-  
+
+  // MRLABS-INSPIRED: Only trade high-confidence setups
+  if (action !== 'HOLD' && confidence < 75) {
+    action = 'HOLD';
+    reason = `Low confidence (${confidence}%) - waiting for better setup`;
+  }
+
   return {
     action,
     entryPrice: currentPrice,
     stopLoss,
     takeProfit,
-    leverage: action !== 'HOLD' ? 3 : 1, // 3x leverage for Fibonacci signals
+    leverage: action !== 'HOLD' ? 2 : 1, // CONSERVATIVE: 2x leverage (vs 3x) for better risk control
     confidence,
     reason,
     fibLevel: closestLevel.label,
