@@ -336,7 +336,7 @@ export default function BacktestResultsPage() {
           const results = strategyResults[selectedStrategy.id as keyof typeof strategyResults];
           setBacktestResults(results);
         }
-      } else if (selectedStrategy.id === 'multi-timeframe') {
+      } else if (selectedStrategy.id === 'multi-timeframe-ada') {
         // Run real Multi-Timeframe backtest
         console.log('📊 Running real Multi-Timeframe backtest...');
 

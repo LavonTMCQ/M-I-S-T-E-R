@@ -90,30 +90,48 @@ export function PositionsSummary() {
           // Use real-time current price from market data
           const realCurrentPrice = currentPrice; // Use state value from market data API
 
-          // Calculate P&L based on position
-          const positionSize = pos.positionSize || collateralAmount;
-          const pnlRaw = pos.position === 'Long'
-            ? (realCurrentPrice - entryPrice) * positionSize
-            : (entryPrice - realCurrentPrice) * positionSize;
-          const pnlPercent = entryPrice > 0 ? (pnlRaw / (collateralAmount * entryPrice)) * 100 : 0;
+          // FIXED P&L calculation - use Strike Finance API position size directly
+          const positionSize = pos.positionSize || (collateralAmount * leverage);
 
-          console.log(`📈 Position ${index + 1}:`, {
+          // Calculate price difference correctly
+          const priceDiff = pos.position === 'Long'
+            ? (realCurrentPrice - entryPrice)
+            : (entryPrice - realCurrentPrice);
+
+          // Calculate P&L - this should be the profit/loss in USD
+          const pnlRaw = priceDiff * positionSize;
+
+          // Calculate percentage based on collateral invested
+          const collateralValueUSD = collateralAmount * entryPrice;
+          const pnlPercent = collateralValueUSD > 0 ? (pnlRaw / collateralValueUSD) * 100 : 0;
+
+          // Enhanced debugging for P&L calculation
+          console.log(`🔍 P&L Debug - Position ${index + 1}:`, {
             positionId,
             side: pos.position,
             collateralAmount,
-            positionSize,
             leverage,
+            positionSize,
             entryPrice,
             currentPrice: realCurrentPrice,
+            priceDiff,
             pnlRaw,
-            pnlPercent
+            pnlPercent,
+            collateralValueUSD,
+            calculation: {
+              formula: pos.position === 'Long' ? '(current - entry) * size' : '(entry - current) * size',
+              step1: `(${pos.position === 'Long' ? realCurrentPrice : entryPrice} - ${pos.position === 'Long' ? entryPrice : realCurrentPrice})`,
+              step2: `${priceDiff} * ${positionSize}`,
+              result: `$${pnlRaw.toFixed(2)}`
+            },
+            timestamp: new Date().toISOString()
           });
 
           return {
             id: positionId,
             side: pos.position || 'Long', // Strike Finance uses 'position' field
             pair: 'ADA/USD',
-            size: collateralAmount, // Show collateral amount as size
+            size: positionSize, // Use correct position size from API
             entryPrice: entryPrice,
             currentPrice: realCurrentPrice, // Use real-time price
             leverage: leverage,

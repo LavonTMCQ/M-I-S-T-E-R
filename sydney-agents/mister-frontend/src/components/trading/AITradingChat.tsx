@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Send, Mic, MicOff, Bot, User, TrendingUp, TrendingDown, Maximize2, Settings, Copy, RefreshCw } from 'lucide-react';
 import { useWallet } from '@/contexts/WalletContext';
-import { EnhancedTransactionSigner } from '@/utils/wasmTransactionSigning';
+// Removed WASM dependency - using server-side CSL signing API instead
 
 // TODO: Future integration with AGUI from Copilot for enhanced AI interface
 // Consider integrating @mastra/agui for advanced chat features, voice commands,
@@ -49,7 +49,7 @@ export function AITradingChat() {
       id: '1',
       type: 'agent',
       content: mainWallet
-        ? `Hello! I'm your Strike Agent. I can see you're connected with ${mainWallet.handle || 'your wallet'} (${mainWallet.balance.toFixed(2)} ADA). I can help you execute trades, analyze market conditions, and manage your positions. Try saying "Go long 1000 ADA" or "What's the market sentiment?"`
+        ? `Hello! I'm your Strike Agent. I can see you're connected with ${mainWallet.handle || 'your wallet'} (${mainWallet.balance.toFixed(2)} ADA). I can help you execute trades, analyze market conditions, and manage your positions. Try saying "Go long 50 ADA" or "What's the market sentiment?"`
         : 'Hello! I\'m your Strike Agent. Please connect your wallet first to start trading. I can help you execute trades, analyze market conditions, and manage your positions.',
       timestamp: new Date(Date.now() - 60000)
     }
@@ -243,11 +243,10 @@ export function AITradingChat() {
 
   const quickCommands = [
     { label: 'Market Analysis', command: 'Analyze the current ADA market conditions' },
-    { label: 'Long 1000 ADA', command: 'Go long 1000 ADA with 5x leverage' },
-    { label: 'Short 500 ADA', command: 'Go short 500 ADA with 3x leverage' },
+    { label: 'Long 50 ADA', command: 'Go long 50 ADA with 3x leverage' },
+    { label: 'Short 50 ADA', command: 'Go short 50 ADA with 3x leverage' },
     { label: 'Close Positions', command: 'Close all my open positions' },
-    { label: 'Portfolio Status', command: 'Show me my current portfolio and P&L' },
-    { label: 'TITAN2K Status', command: 'What is the TITAN2K strategy recommending?' }
+    { label: 'Portfolio Status', command: 'Show me my current portfolio and P&L' }
   ];
 
   return (

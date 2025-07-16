@@ -86,6 +86,43 @@ export interface MarketInfo {
   shortInterest: number;
 }
 
+export interface PoolInfo {
+  totalAssetAmount: number;
+  availableAssetAmount: number;
+  totalLpMinted: number;
+  totalValueLocked: number;
+}
+
+export interface PerpetualTransactionInfo {
+  contract: "Perpetual";
+  action: string;
+  assetTicker: string;
+  type: "Perpetual";
+  pair: string;
+  time: number;
+  address: string;
+  txHash: string;
+  status: string;
+  enteredPrice: number;
+  positionSize: number;
+  positionType: string;
+  collateralAmount: number;
+  description: string;
+  pnl: number;
+  usdPrice?: number;
+  leverage?: number;
+  currentPrice: number;
+}
+
+export interface LiquidityTransactionInfo {
+  txHash: string;
+  depositedAssetAmount: number;
+  recievedAssetAmount: number;
+  assetTicker: string;
+  date: number;
+  action: "Assets recieved" | "LP assets recieved" | "Provide Liquidity" | "Withdraw Liquidity";
+}
+
 export interface PerpetualTransactionInfo {
   contract: "Perpetual";
   action: string;
@@ -290,6 +327,58 @@ export class StrikeFinanceAPI {
     } catch (error) {
       console.error('❌ Request validation failed:', error);
       return false;
+    }
+  }
+
+  /**
+   * Retrieves pool information V2 with enhanced data
+   */
+  async getPoolInfoV2(): Promise<{ data: PoolInfo }> {
+    try {
+      const response = await this.client.get("/api/perpetuals/getPoolInfoV2");
+      return response.data;
+    } catch (error) {
+      console.error('❌ Failed to get pool info V2:', error);
+      throw new Error(`Failed to get pool info V2: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Retrieves LP profit information
+   */
+  async getLPProfit(): Promise<{ data: any }> {
+    try {
+      const response = await this.client.get("/api/perpetuals/getLPProfit");
+      return response.data;
+    } catch (error) {
+      console.error('❌ Failed to get LP profit:', error);
+      throw new Error(`Failed to get LP profit: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Retrieves perpetual transaction history for an address
+   */
+  async getPerpetualHistory(address: string): Promise<{ transactions: PerpetualTransactionInfo[] }> {
+    try {
+      const response = await this.client.get(`/api/perpetuals/getPerpetualHistory?address=${address}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Failed to get perpetual history:', error);
+      throw new Error(`Failed to get perpetual history: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Retrieves liquidity history transactions for an address
+   */
+  async getLiquidityHistory(address: string): Promise<{ transactions: LiquidityTransactionInfo[] }> {
+    try {
+      const response = await this.client.get(`/api/perpetuals/getLiquidityHistoryTransactions?address=${address}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Failed to get liquidity history:', error);
+      throw new Error(`Failed to get liquidity history: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

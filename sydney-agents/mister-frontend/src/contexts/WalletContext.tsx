@@ -196,14 +196,22 @@ export function WalletProvider({ children }: WalletProviderProps) {
         console.warn('Failed to fetch handle:', error);
       }
 
-      // Fetch real balance using our API with normalized address
+      // Fetch real balance using our API with normalized address (with cache busting)
       try {
-        const balanceResponse = await fetch(`/api/address/${normalizedStakeAddr}/balance`);
+        const timestamp = Date.now();
+        const balanceResponse = await fetch(`/api/address/${normalizedStakeAddr}/balance?t=${timestamp}&force=true`, {
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
         if (balanceResponse.ok) {
           const balanceData = await balanceResponse.json();
           if (balanceData.success && balanceData.balance !== undefined) {
             realBalance = balanceData.balance;
-            console.log('💰 Real balance fetched:', realBalance, 'ADA');
+            console.log('💰 Real balance fetched (force refresh):', realBalance, 'ADA');
           }
         }
       } catch (error) {
@@ -286,7 +294,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       if (!storedWallet.stakeAddress) return;
 
       console.log('🔄 Refreshing stored wallet data...');
-      const walletInfo = await getWalletInfo(storedWallet.stakeAddress);
+      const walletInfo = await getWalletInfo(storedWallet.stakeAddress, true); // Force refresh
 
       // Get correct payment address from Blockfrost API using stake address
       let correctPaymentAddr = storedWallet.address; // Fallback to current address

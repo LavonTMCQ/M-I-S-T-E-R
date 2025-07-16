@@ -7,17 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { useStrategyStats } from "@/hooks/useStrategyStats";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Target, 
-  Shield, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Target,
+  Shield,
   Zap,
   BarChart3,
   Activity,
   CheckCircle,
   Clock,
-  DollarSign
+  DollarSign,
+  Brain
 } from "lucide-react";
 
 interface StrategyMetrics {

@@ -4,18 +4,18 @@ import { useState, useEffect } from 'react';
 import { useWallet } from '@/contexts/WalletContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Wallet, RefreshCw, LogOut } from 'lucide-react';
+import { Wallet, RefreshCw, LogOut, X } from 'lucide-react';
 
 export function WalletHeader() {
   const { mainWallet, refreshWalletData, disconnectWallet, isLoading } = useWallet();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
-  // Auto-hide after 8 seconds on page load
+  // Auto-hide after 5 seconds on page load (reduced from 8)
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-    }, 8000);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -101,7 +101,17 @@ export function WalletHeader() {
           >
             <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-          
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsVisible(false)}
+            className="h-8 w-8 p-0"
+            title="Hide wallet display"
+          >
+            <X className="w-3 h-3" />
+          </Button>
+
           <Button
             variant="ghost"
             size="sm"

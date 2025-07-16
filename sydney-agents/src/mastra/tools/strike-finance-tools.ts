@@ -632,6 +632,160 @@ export const getAvailableWallets = createTool({
   }
 });
 
+/**
+ * Tool for getting detailed Strike Finance pool information
+ */
+export const getPoolInfoV2 = createTool({
+  id: 'get_pool_info_v2',
+  description: 'Gets detailed Strike Finance pool information including TVL and available liquidity',
+  inputSchema: z.object({}),
+  execute: async () => {
+    try {
+      console.log('🏊 Getting Strike Finance pool info V2...');
+
+      const poolInfo = await strikeAPI.getPoolInfoV2();
+
+      return {
+        success: true,
+        data: {
+          ...poolInfo.data,
+          timestamp: new Date()
+        }
+      };
+    } catch (error) {
+      console.error('❌ Failed to get pool info V2:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+});
+
+/**
+ * Tool for getting LP profit information
+ */
+export const getLPProfit = createTool({
+  id: 'get_lp_profit',
+  description: 'Gets liquidity provider profit information from Strike Finance',
+  inputSchema: z.object({}),
+  execute: async () => {
+    try {
+      console.log('💰 Getting LP profit information...');
+
+      const lpProfit = await strikeAPI.getLPProfit();
+
+      return {
+        success: true,
+        data: {
+          ...lpProfit.data,
+          timestamp: new Date()
+        }
+      };
+    } catch (error) {
+      console.error('❌ Failed to get LP profit:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+});
+
+/**
+ * Tool for getting perpetual transaction history
+ */
+export const getPerpetualHistory = createTool({
+  id: 'get_perpetual_history',
+  description: 'Gets perpetual trading history for a wallet address',
+  inputSchema: z.object({
+    address: z.string().describe('Wallet address to get history for')
+  }),
+  execute: async ({ address }) => {
+    try {
+      console.log(`📜 Getting perpetual history for: ${address.substring(0, 20)}...`);
+
+      const history = await strikeAPI.getPerpetualHistory(address);
+
+      return {
+        success: true,
+        data: {
+          address,
+          transactions: history.transactions || history,
+          transactionCount: (history.transactions || history).length,
+          timestamp: new Date()
+        }
+      };
+    } catch (error) {
+      console.error('❌ Failed to get perpetual history:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+});
+
+/**
+ * Tool for getting comprehensive Strike Finance market analysis
+ */
+export const getComprehensiveMarketAnalysis = createTool({
+  id: 'get_comprehensive_market_analysis',
+  description: 'Gets comprehensive Strike Finance market analysis including all available data',
+  inputSchema: z.object({}),
+  execute: async () => {
+    try {
+      console.log('📊 Getting comprehensive Strike Finance market analysis...');
+
+      const [marketInfo, poolInfo, lpProfit] = await Promise.all([
+        strikeAPI.getOverallInfo(),
+        strikeAPI.getPoolInfoV2(),
+        strikeAPI.getLPProfit().catch(() => ({ data: null })) // LP profit might not be available
+      ]);
+
+      // Calculate additional metrics
+      const totalInterest = marketInfo.data.longInterest + marketInfo.data.shortInterest;
+      const longPercentage = totalInterest > 0 ? (marketInfo.data.longInterest / totalInterest) * 100 : 0;
+      const shortPercentage = totalInterest > 0 ? (marketInfo.data.shortInterest / totalInterest) * 100 : 0;
+
+      const utilizationRate = poolInfo.data.totalAssetAmount > 0
+        ? ((poolInfo.data.totalAssetAmount - poolInfo.data.availableAssetAmount) / poolInfo.data.totalAssetAmount) * 100
+        : 0;
+
+      return {
+        success: true,
+        data: {
+          market: {
+            ...marketInfo.data,
+            totalInterest,
+            longPercentage: Math.round(longPercentage * 100) / 100,
+            shortPercentage: Math.round(shortPercentage * 100) / 100,
+            sentiment: longPercentage > 60 ? 'Bullish' : shortPercentage > 60 ? 'Bearish' : 'Neutral'
+          },
+          pool: {
+            ...poolInfo.data,
+            utilizationRate: Math.round(utilizationRate * 100) / 100,
+            availabilityPercentage: Math.round((poolInfo.data.availableAssetAmount / poolInfo.data.totalAssetAmount) * 10000) / 100
+          },
+          lpProfit: lpProfit.data,
+          analysis: {
+            liquidityHealth: utilizationRate < 80 ? 'Healthy' : utilizationRate < 90 ? 'Moderate' : 'High Risk',
+            marketSentiment: longPercentage > 60 ? 'Bullish' : shortPercentage > 60 ? 'Bearish' : 'Neutral',
+            tradingRecommendation: utilizationRate > 85 ? 'Caution: High utilization' : 'Normal trading conditions'
+          },
+          timestamp: new Date()
+        }
+      };
+    } catch (error) {
+      console.error('❌ Failed to get comprehensive market analysis:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+});
+
 // Export all tools as an object for Mastra agent registration
 export const strikeFinanceTools = {
   createManagedWallet,
@@ -649,5 +803,10 @@ export const strikeFinanceTools = {
   // New unified execution tools
   executeManualTrade,
   registerConnectedWallet,
-  getAvailableWallets
+  getAvailableWallets,
+  // Enhanced Strike Finance data tools
+  getPoolInfoV2,
+  getLPProfit,
+  getPerpetualHistory,
+  getComprehensiveMarketAnalysis
 };

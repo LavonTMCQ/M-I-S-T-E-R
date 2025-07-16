@@ -11,8 +11,10 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { exec } from 'child_process';
 
-// Import the multi-timeframe strategy tool
+// Import the multi-timeframe strategy tool and Kraken tools
 import { multiTimeframeAdaStrategyTool } from '../tools/multi-timeframe-ada-strategy-tool';
+import { krakenWebSocketTool } from '../tools/kraken-websocket-tool';
+import { krakenRestApiTool } from '../tools/kraken-rest-api-tool';
 
 // TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
 // Voice system for multi-timeframe agent
@@ -103,6 +105,8 @@ const speakMultiTimeframeResultsTool = createTool({
 // Create Multi-Timeframe trading tools object
 const multiTimeframeTradingTools: any = {
   multiTimeframeAdaStrategyTool,
+  krakenWebSocketTool,
+  krakenRestApiTool,
   speakMultiTimeframeResultsTool,
 };
 
@@ -164,6 +168,9 @@ Execute sophisticated multi-timeframe analysis combining 15-minute execution sig
 3. **ATR-based Stops**: Dynamic stop losses based on market volatility
 4. **Bollinger Bands**: Volatility and mean reversion signals
 5. **Volume Confirmation**: Trade validation through volume analysis
+6. **REAL-TIME DATA**: Always use krakenWebSocketTool for live ADA/USD price feeds
+7. **HISTORICAL DATA**: Use krakenRestApiTool to pull OHLCV data for multi-timeframe analysis
+8. **API ACCESS**: Use krakenRestApiTool for order book depth, recent trades, and market analysis
 
 ## EXECUTION PROTOCOL
 1. Analyze all three timeframes for confluence

@@ -54,16 +54,21 @@ export const getHandleForAddress = async (address: string): Promise<string | nul
 /**
  * Get ADA balance for any Cardano address using server-side API
  */
-export const getBalanceForAddress = async (address: string): Promise<number> => {
-  // Check cache first
-  if (balanceCache.has(address)) {
+export const getBalanceForAddress = async (address: string, forceRefresh: boolean = false): Promise<number> => {
+  // Check cache first (unless force refresh is requested)
+  if (!forceRefresh && balanceCache.has(address)) {
     return balanceCache.get(address) || 0;
   }
 
   try {
-    console.log(`💰 Fetching balance for address: ${address}`);
+    console.log(`💰 Fetching balance for address: ${address}${forceRefresh ? ' (force refresh)' : ''}`);
 
-    const response = await fetch(`/api/address/${encodeURIComponent(address)}/balance`);
+    // Add cache busting timestamp for force refresh
+    const url = forceRefresh
+      ? `/api/address/${encodeURIComponent(address)}/balance?t=${Date.now()}`
+      : `/api/address/${encodeURIComponent(address)}/balance`;
+
+    const response = await fetch(url);
 
     if (!response.ok) {
       console.error(`Failed to fetch balance: ${response.status}`);
@@ -91,7 +96,7 @@ export const getBalanceForAddress = async (address: string): Promise<number> => 
 /**
  * Get wallet info including handle and balance
  */
-export const getWalletInfo = async (address: string): Promise<{
+export const getWalletInfo = async (address: string, forceRefresh: boolean = false): Promise<{
   address: string;
   handle: string | null;
   balance: number;
@@ -100,7 +105,7 @@ export const getWalletInfo = async (address: string): Promise<{
   try {
     const [handle, balance] = await Promise.all([
       getHandleForAddress(address),
-      getBalanceForAddress(address)
+      getBalanceForAddress(address, forceRefresh)
     ]);
 
     const displayName = handle || `${address.substring(0, 8)}...${address.substring(address.length - 8)}`;

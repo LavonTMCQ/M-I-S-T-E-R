@@ -3,11 +3,7 @@ import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
 import { fastembed } from '@mastra/fastembed';
-// import { TokenLimiter, ToolCallFilter } from '@mastra/memory';
-// Temporarily disable voice for Mastra Cloud deployment
-// import { CompositeVoice } from '@mastra/core/voice';
-// import { GoogleVoice } from '@mastra/voice-google';
-// import { OpenAIVoice } from '@mastra/voice-openai';
+// Voice integration disabled for Mastra Cloud deployment
 import { strikeFinanceTools } from '../tools/strike-finance-tools';
 
 // Create comprehensive memory system for Strike Finance agent
@@ -108,44 +104,8 @@ const strikeMemory = new Memory({
   // ],
 });
 
-// Voice configuration for Strike Finance agent - using Google Voice only
-let strikeVoice;
-
-// Temporarily disable voice for Mastra Cloud deployment
-try {
-  console.log('⚡ Strike Agent: Voice temporarily disabled for cloud deployment');
-  strikeVoice = undefined;
-
-  // TODO: Re-enable voice after fixing Mastra Cloud voice package imports
-  /*
-  const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4';
-
-  if (GOOGLE_API_KEY) {
-    const googleVoice = new GoogleVoice({
-      speechModel: {
-        apiKey: GOOGLE_API_KEY,
-      },
-      listeningModel: {
-        apiKey: GOOGLE_API_KEY,
-      },
-      speaker: 'en-US-Wavenet-A', // Professional neutral voice for trading
-    });
-
-    strikeVoice = new CompositeVoice({
-      input: googleVoice,  // Google STT for speech recognition
-      output: googleVoice, // Google TTS for speech synthesis
-    });
-
-    console.log('⚡ Strike Agent: Using Google Voice (professional trading voice)');
-  } else {
-    console.log('❌ Strike Agent: No voice API keys found - voice capabilities disabled');
-    strikeVoice = undefined;
-  }
-  */
-} catch (error) {
-  console.error('❌ Strike Agent: Voice initialization failed:', error instanceof Error ? error.message : String(error));
-  strikeVoice = undefined;
-}
+// Voice disabled for Mastra Cloud deployment
+const strikeVoice = undefined;
 
 /**
  * Strike Finance Agent - Managed Wallet Copy Trading Service
@@ -158,7 +118,9 @@ try {
  */
 export const strikeAgent = new Agent({
   name: 'Strike Finance Agent',
-  instructions: ({ context }) => {
+  instructions: ({ runtimeContext }) => {
+    // Extract context from runtimeContext (may be empty for HTTP API calls)
+    const context = runtimeContext as any;
     // Detect wallet type from context
     const isConnectedWallet = context?.walletType && !['managed'].includes(context.walletType);
     const isManagedWallet = context?.walletType === 'managed' || context?.tradingMode === 'managed';
@@ -169,14 +131,41 @@ export const strikeAgent = new Agent({
 You are the Strike Finance Agent, a specialized AI assistant for trading on Cardano perpetual swaps through the Strike Finance platform. You support both managed wallet copy trading and direct connected wallet trading.
 
 ## Current User Context
-- **Wallet Address**: ${context?.walletAddress || 'Not connected'}
-- **Stake Address**: ${context?.stakeAddress || 'Not available'}
-- **Balance**: ${context?.balance || 'Unknown'} ADA
-- **Wallet Type**: ${context?.walletType || 'Unknown'}
-- **ADA Handle**: ${context?.handle || 'None'}
+- **Wallet Address**: ${context?.walletAddress || 'Will be parsed from message'}
+- **Stake Address**: ${context?.stakeAddress || 'Will be parsed from message'}
+- **Balance**: ${context?.balance || 'Will be parsed from message'} ADA
+- **Wallet Type**: ${context?.walletType || 'Will be parsed from message'}
+- **ADA Handle**: ${context?.handle || 'Will be parsed from message'}
 - **Trading Mode**: ${isManagedWallet ? 'MANAGED (Automated)' : 'CONNECTED (Manual)'}
 
 ## Detected Trading Mode: ${isManagedWallet ? '🤖 MANAGED WALLET' : '🔐 CONNECTED WALLET'}
+
+## IMPORTANT: Wallet Context Parsing
+If the user message starts with "WALLET_CONTEXT:", extract the wallet information from the message:
+- Look for "Wallet Address:", "Stake Address:", "Balance:", "Wallet Type:", "ADA Handle:" lines
+- Use this information for all wallet-related operations
+- The actual user message will be after "USER_MESSAGE:"
+
+## Enhanced Strike Finance Data Access
+You have access to comprehensive Strike Finance market data:
+
+### Market Analysis Tools:
+- **getComprehensiveMarketAnalysis**: Get complete market overview with sentiment analysis
+- **getMarketInfo**: Get basic long/short interest data
+- **getPoolInfoV2**: Get detailed liquidity pool information and TVL
+- **getLPProfit**: Get liquidity provider profit data
+
+### Position & History Tools:
+- **getWalletPositions**: Get user's current positions
+- **getPerpetualHistory**: Get detailed trading history with P&L
+- **getWalletHistory**: Get wallet transaction history
+
+### Key Metrics to Highlight:
+- **Long vs Short Interest**: Show market sentiment (bullish/bearish/neutral)
+- **Pool Utilization**: Available liquidity vs total pool size
+- **Position Leaders**: Top performing positions and strategies
+- **Fee Information**: Hourly borrow fees, open fees, liquidation risks
+- **Market Health**: Liquidity availability and trading conditions
 
 ${isManagedWallet ? `
 ### MANAGED WALLET MODE ACTIVE

@@ -22,18 +22,18 @@ export async function POST(request: NextRequest) {
     console.log('📍 Context:', context);
     console.log('👛 User Wallet:', userWallet ? `${userWallet.stakeAddress?.substring(0, 20)}...` : 'Not provided');
 
-    // Build enhanced message with user wallet context
+    // Build enhanced message with wallet context since runtimeContext may not work via HTTP API
     let enhancedMessage = message;
-
     if (userWallet) {
-      enhancedMessage = `User Context:
+      enhancedMessage = `WALLET_CONTEXT:
 - Wallet Address: ${userWallet.address}
 - Stake Address: ${userWallet.stakeAddress}
 - Balance: ${userWallet.balance} ADA
 - Wallet Type: ${userWallet.walletType}
 ${userWallet.handle ? `- ADA Handle: ${userWallet.handle}` : ''}
+- Trading Mode: connected
 
-User Message: ${message}`;
+USER_MESSAGE: ${message}`;
     }
 
     // Call the Mastra Strike Agent
@@ -48,7 +48,9 @@ User Message: ${message}`;
             role: 'user',
             content: enhancedMessage
           }
-        ]
+        ],
+        resourceId: userWallet?.address || 'anonymous',
+        threadId: `trading-${Date.now()}`
       })
     });
 

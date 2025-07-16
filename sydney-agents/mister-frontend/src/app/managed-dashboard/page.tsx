@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Bot,
   Wallet,
@@ -73,37 +73,11 @@ export default function ManagedDashboardPage() {
   const isSystemLoading = walletLoading || identityLoading;
   const isSystemReady = !isSystemLoading && (mainWallet?.isConnected || isAuthenticated);
 
-
-
-  useEffect(() => {
-    // Skip the retry mechanism entirely - just load data when system is ready
-    if (!isSystemLoading && isSystemReady) {
-      console.log('✅ System ready, loading managed wallet data...');
-      loadManagedWalletData();
-    }
-  }, [isSystemLoading, isSystemReady]); // React when loading states change
-
-  // Also try to reload when wallet or auth state changes
-  useEffect(() => {
-    if (mainWallet?.isConnected && !isLoading) {
-      console.log('🔄 Wallet connected, refreshing user identity...');
-      refreshUserIdentity();
-      // Small delay to let identity update, then reload
-      setTimeout(() => {
-        const userDisplayName = getUserDisplayName();
-        if (userDisplayName !== 'Unknown User') {
-          console.log('🔄 Reloading managed wallet data after wallet connection...');
-          loadManagedWalletData();
-        }
-      }, 1000);
-    }
-  }, [mainWallet?.isConnected, mainWallet?.displayName]);
-
   /**
    * Try to migrate wallet data from other user authentication methods
    * This handles cases where a user created a wallet with email auth but is now using wallet auth
    */
-  const tryMigrateWalletData = async (): Promise<string | null> => {
+  const tryMigrateWalletData = useCallback(async (): Promise<string | null> => {
     try {
       console.log('🔄 Attempting to migrate managed wallet data from other user types...');
       console.log('🔍 Current user:', getUserDisplayName());
@@ -163,9 +137,9 @@ export default function ManagedDashboardPage() {
       console.error('❌ Error during wallet data migration:', error);
       return null;
     }
-  };
+  }, [getUserDisplayName, userStorage]);
 
-  const loadManagedWalletData = async () => {
+  const loadManagedWalletData = useCallback(async () => {
     try {
       setIsLoading(true);
 
@@ -290,7 +264,31 @@ export default function ManagedDashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userStorage, isAuthenticated, getUserDisplayName, mainWallet, tryMigrateWalletData]);
+
+  useEffect(() => {
+    // Skip the retry mechanism entirely - just load data when system is ready
+    if (!isSystemLoading && isSystemReady) {
+      console.log('✅ System ready, loading managed wallet data...');
+      loadManagedWalletData();
+    }
+  }, [isSystemLoading, isSystemReady, loadManagedWalletData]); // React when loading states change
+
+  // Also try to reload when wallet or auth state changes
+  useEffect(() => {
+    if (mainWallet?.isConnected && !isLoading) {
+      console.log('🔄 Wallet connected, refreshing user identity...');
+      refreshUserIdentity();
+      // Small delay to let identity update, then reload
+      setTimeout(() => {
+        const userDisplayName = getUserDisplayName();
+        if (userDisplayName !== 'Unknown User') {
+          console.log('🔄 Reloading managed wallet data after wallet connection...');
+          loadManagedWalletData();
+        }
+      }, 1000);
+    }
+  }, [mainWallet?.isConnected, mainWallet?.displayName, isLoading, refreshUserIdentity, getUserDisplayName, loadManagedWalletData]);
 
   const toggleAgent = async () => {
     try {
@@ -435,7 +433,7 @@ export default function ManagedDashboardPage() {
               walletId: `managed_${managedWallet.address.substring(0, 12)}`, // Create a proper walletId
               address: managedWallet.address,
               balance: managedWallet.balance,
-              userId: userIdentity?.userId || `user_${managedWallet.address.substring(0, 12)}`
+              userId: userIdentity?.id || `user_${managedWallet.address.substring(0, 12)}`
             }}
           />
         ) : (

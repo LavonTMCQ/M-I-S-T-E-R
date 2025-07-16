@@ -9,10 +9,15 @@ export async function POST(request: NextRequest) {
     const { startDate, endDate, symbol = 'ADAUSD' } = await request.json();
 
     console.log('🔢 Running Multi-Timeframe strategy backtest...');
-    console.log(`📊 Parameters: ${symbol} from ${startDate} to ${endDate}`);
+
+    // If no dates provided, use recent 30-day period like Fibonacci
+    const actualEndDate = endDate || new Date().toISOString();
+    const actualStartDate = startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    console.log(`📊 Parameters: ${symbol} from ${actualStartDate} to ${actualEndDate}`);
 
     // Get real historical data from Kraken for the specified period (SAME AS FIBONACCI)
-    const historicalData = await getHistoricalADAData(startDate, endDate);
+    const historicalData = await getHistoricalADAData(actualStartDate, actualEndDate);
 
     if (!historicalData || historicalData.length === 0) {
       throw new Error('Failed to fetch historical data');
@@ -21,15 +26,15 @@ export async function POST(request: NextRequest) {
     console.log(`📈 Loaded ${historicalData.length} 15-minute candles for backtesting`);
 
     // Run the Multi-Timeframe strategy simulation (SAME PATTERN AS FIBONACCI)
-    const backtestResults = await runMultiTimeframeBacktest(historicalData, startDate, endDate);
+    const backtestResults = await runMultiTimeframeBacktest(historicalData, actualStartDate, actualEndDate);
 
     return NextResponse.json({
       success: true,
       strategy: 'Multi-Timeframe ADA Strategy',
       symbol,
       timeframe: '15m',
-      startDate,
-      endDate,
+      startDate: actualStartDate,
+      endDate: actualEndDate,
       ...backtestResults
     });
 
@@ -214,26 +219,41 @@ async function runMultiTimeframeBacktest(chartData: any[], startDate: string, en
 
   console.log(`✅ Multi-Timeframe backtest completed: ${trades.length} trades, ${winRate.toFixed(1)}% win rate, $${totalPnl.toFixed(2)} total P&L`);
 
+  // Calculate additional metrics to match Fibonacci pattern
+  const avgTradeDuration = calculateAvgHoldingPeriod(trades) * 60; // Convert to minutes
+  const sharpeRatio = calculateSharpeRatio(trades);
+
+  // Format trades to match Fibonacci structure
+  const formattedTrades = trades.map(trade => ({
+    id: `mt_trade_${trade.id}`,
+    entryTime: trade.entryTime,
+    exitTime: trade.exitTime,
+    side: trade.type, // 'LONG' or 'SHORT'
+    entryPrice: trade.entryPrice,
+    exitPrice: trade.exitPrice,
+    size: trade.size,
+    netPnl: trade.pnl,
+    reason: `Multi-timeframe ${trade.type} signal (confluence: ${trade.confluenceScore?.toFixed(1) || 'N/A'})`,
+    duration: Math.floor((new Date(trade.exitTime).getTime() - new Date(trade.entryTime).getTime()) / (1000 * 60))
+  }));
+
   return {
-    chartData: chartData,
-    trades: trades,
+    totalNetPnl: totalPnl,
+    winRate: winRate,
+    maxDrawdown: calculateMaxDrawdown(trades),
+    sharpeRatio: sharpeRatio,
+    totalTrades: trades.length,
+    avgTradeDuration: avgTradeDuration,
+    trades: formattedTrades, // CRITICAL for chart rendering
+    chartData: chartData, // CRITICAL for chart rendering
     performance: {
-      totalTrades: trades.length,
-      winRate: winRate,
-      totalReturn: totalPnl,
-      totalReturnPercent: ((currentCapital - 5000) / 5000) * 100,
+      winningTrades: winningTrades.length,
+      losingTrades: losingTrades.length,
+      avgWin: avgWin,
+      avgLoss: avgLoss,
       profitFactor: profitFactor,
-      maxDrawdown: calculateMaxDrawdown(trades),
-      finalCapital: currentCapital
-    },
-    summary: `🚀 Multi-Timeframe ADAUSD Strategy (10x Leverage)
-📊 Total Trades: ${trades.length}
-🎯 Hit Rate: ${winRate.toFixed(1)}%
-💰 Total Return: $${totalPnl.toFixed(2)} (${(((currentCapital - 5000) / 5000) * 100).toFixed(2)}%)
-📈 Profit Factor: ${profitFactor.toFixed(2)}
-📉 Max Drawdown: ${calculateMaxDrawdown(trades).toFixed(2)}%
-⏱️ Avg Holding: ${calculateAvgHoldingPeriod(trades).toFixed(1)} hours
-🔥 Sophisticated multi-timeframe analysis with leverage risk management`
+      totalReturn: ((currentCapital - 5000) / 5000) * 100
+    }
   };
 }
 
@@ -319,4 +339,14 @@ function calculateAvgHoldingPeriod(trades: any[]): number {
   }, 0);
 
   return totalHours / trades.length;
+}
+
+function calculateSharpeRatio(trades: any[]): number {
+  if (trades.length === 0) return 0;
+
+  const returns = trades.map(t => (t.pnl / 5000) * 100); // % returns
+  const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
+  const stdDev = Math.sqrt(returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length);
+
+  return stdDev > 0 ? avgReturn / stdDev : 0;
 }
