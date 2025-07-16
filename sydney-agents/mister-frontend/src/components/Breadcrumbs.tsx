@@ -23,6 +23,7 @@ export function Breadcrumbs() {
     'dashboard': 'Dashboard',
     'trading': 'Trading',
     'backtest-results': 'Backtesting',
+    'chat': 'AI Chat',
     'login': 'Sign In'
   };
 

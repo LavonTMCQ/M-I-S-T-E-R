@@ -1,0 +1,458 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Send, 
+  Bot, 
+  User, 
+  Sparkles, 
+  MessageCircle, 
+  History,
+  Settings,
+  Plus,
+  Trash2,
+  Download,
+  Upload
+} from 'lucide-react';
+
+interface Message {
+  id: string;
+  content: string;
+  role: 'user' | 'assistant';
+  timestamp: Date;
+  agentName?: string;
+  isTyping?: boolean;
+}
+
+interface ChatSession {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: Date;
+  updatedAt: Date;
+  agentType: string;
+}
+
+export default function ChatPage() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [selectedAgent] = useState('tomorrow-labs'); // Fixed to network agent only
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Network agent only - connects to Strike Finance and crypto backtesting
+  const networkAgent = {
+    id: 'tomorrow-labs',
+    name: 'Tomorrow Labs Network',
+    description: 'AI Network specialized in Strike Finance trading and crypto backtesting',
+    avatar: '🚀',
+    color: 'from-blue-500 to-purple-600',
+    capabilities: ['Strike Finance Trading', 'Crypto Backtesting', 'Natural Language Strategy Analysis']
+  };
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Load chat sessions from localStorage
+  useEffect(() => {
+    const savedSessions = localStorage.getItem('mister-chat-sessions');
+    if (savedSessions) {
+      const sessions = JSON.parse(savedSessions);
+      setChatSessions(sessions);
+      
+      // Load the most recent session
+      if (sessions.length > 0) {
+        const mostRecent = sessions[0];
+        setCurrentSessionId(mostRecent.id);
+        setMessages(mostRecent.messages);
+        // Always use network agent
+      }
+    }
+  }, []);
+
+  // Save chat sessions to localStorage
+  const saveChatSessions = (sessions: ChatSession[]) => {
+    localStorage.setItem('mister-chat-sessions', JSON.stringify(sessions));
+    setChatSessions(sessions);
+  };
+
+  // Create new chat session
+  const createNewChat = () => {
+    const newSession: ChatSession = {
+      id: `chat_${Date.now()}`,
+      title: 'New Chat',
+      messages: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      agentType: selectedAgent
+    };
+
+    const updatedSessions = [newSession, ...chatSessions];
+    saveChatSessions(updatedSessions);
+    setCurrentSessionId(newSession.id);
+    setMessages([]);
+  };
+
+  // Update current session
+  const updateCurrentSession = (newMessages: Message[]) => {
+    if (!currentSessionId) return;
+
+    const updatedSessions = chatSessions.map(session => {
+      if (session.id === currentSessionId) {
+        return {
+          ...session,
+          messages: newMessages,
+          updatedAt: new Date(),
+          title: newMessages.length > 0 ? 
+            newMessages[0].content.substring(0, 50) + '...' : 
+            'New Chat'
+        };
+      }
+      return session;
+    });
+
+    saveChatSessions(updatedSessions);
+  };
+
+  // Send message to agent
+  const sendMessage = async () => {
+    if (!inputValue.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: `msg_${Date.now()}`,
+      content: inputValue,
+      role: 'user',
+      timestamp: new Date()
+    };
+
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    setInputValue('');
+    setIsLoading(true);
+
+    // Add typing indicator
+    const typingMessage: Message = {
+      id: `typing_${Date.now()}`,
+      content: '',
+      role: 'assistant',
+      timestamp: new Date(),
+      agentName: networkAgent.name,
+      isTyping: true
+    };
+
+    setMessages([...newMessages, typingMessage]);
+
+    try {
+      // Call Tomorrow Labs Network API
+      const response = await fetch('/api/chat/tomorrow-labs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: inputValue,
+          agentType: selectedAgent,
+          chatHistory: messages.slice(-10) // Last 10 messages for context
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response');
+      }
+
+      const data = await response.json();
+
+      // Remove typing indicator and add real response
+      const assistantMessage: Message = {
+        id: `msg_${Date.now()}`,
+        content: data.response || 'Sorry, I encountered an error.',
+        role: 'assistant',
+        timestamp: new Date(),
+        agentName: networkAgent.name
+      };
+
+      const finalMessages = [...newMessages, assistantMessage];
+      setMessages(finalMessages);
+      updateCurrentSession(finalMessages);
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      
+      // Remove typing indicator and show error
+      const errorMessage: Message = {
+        id: `msg_${Date.now()}`,
+        content: 'Sorry, I encountered an error. Please try again.',
+        role: 'assistant',
+        timestamp: new Date(),
+        agentName: 'System'
+      };
+
+      const finalMessages = [...newMessages, errorMessage];
+      setMessages(finalMessages);
+      updateCurrentSession(finalMessages);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle Enter key
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="container mx-auto px-4 pt-2 pb-4 h-screen flex">
+        
+        {/* Left Sidebar - Network Info & Chat History */}
+        <div className="w-80 mr-6 space-y-4">
+
+          {/* Network Agent Info */}
+          <Card className="backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-0 shadow-xl">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Sparkles className="w-5 h-5 text-purple-500" />
+                AI Network
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`w-full p-4 rounded-lg bg-gradient-to-r ${networkAgent.color} text-white shadow-lg`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="text-2xl">{networkAgent.avatar}</div>
+                  <div>
+                    <div className="font-bold">{networkAgent.name}</div>
+                    <div className="text-sm opacity-90">{networkAgent.description}</div>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs font-medium opacity-90">Specialized in:</div>
+                  {networkAgent.capabilities.map((capability, index) => (
+                    <div key={index} className="text-xs opacity-80 flex items-center gap-1">
+                      <div className="w-1 h-1 bg-white rounded-full"></div>
+                      {capability}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Chat History */}
+          <Card className="backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-0 shadow-xl flex-1">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <History className="w-5 h-5 text-blue-500" />
+                  Chat History
+                </CardTitle>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={createNewChat}
+                  className="h-8 w-8 p-0"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-96">
+                <div className="space-y-2">
+                  {chatSessions.map((session) => (
+                    <motion.div
+                      key={session.id}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button
+                        variant={currentSessionId === session.id ? "secondary" : "ghost"}
+                        className="w-full justify-start h-auto p-3 text-left"
+                        onClick={() => {
+                          setCurrentSessionId(session.id);
+                          setMessages(session.messages);
+                          // Always use network agent
+                        }}
+                      >
+                        <div className="flex items-center gap-2 w-full">
+                          <MessageCircle className="w-4 h-4 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{session.title}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {session.updatedAt.toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                      </Button>
+                    </motion.div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Chat Area */}
+        <div className="flex-1 flex flex-col">
+          <Card className="flex-1 backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-0 shadow-xl">
+            
+            {/* Chat Header */}
+            <CardHeader className="border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${networkAgent.color} flex items-center justify-center text-white text-lg font-bold shadow-lg`}>
+                    {networkAgent.avatar}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold">
+                      {networkAgent.name}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      {networkAgent.description}
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="bg-green-100 text-green-700">
+                  Online
+                </Badge>
+              </div>
+            </CardHeader>
+
+            {/* Messages Area */}
+            <CardContent className="flex-1 p-0">
+              <ScrollArea className="h-[calc(100vh-280px)] p-6">
+                <AnimatePresence>
+                  {messages.length === 0 ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-center py-12"
+                    >
+                      <div className="text-6xl mb-4">
+                        {networkAgent.avatar}
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2">
+                        Welcome to {networkAgent.name}
+                      </h3>
+                      <p className="text-muted-foreground max-w-md mx-auto">
+                        Ask me about Strike Finance trading, crypto backtesting,
+                        or natural language strategy analysis. I'm here to help!
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <div className="space-y-4">
+                      {messages.map((message) => (
+                        <motion.div
+                          key={message.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          className={`flex gap-3 ${
+                            message.role === 'user' ? 'justify-end' : 'justify-start'
+                          }`}
+                        >
+                          {message.role === 'assistant' && (
+                            <Avatar className="w-8 h-8 mt-1">
+                              <AvatarFallback className={`bg-gradient-to-r ${networkAgent.color} text-white text-sm`}>
+                                {networkAgent.avatar}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          
+                          <div className={`max-w-[70%] ${
+                            message.role === 'user' ? 'order-first' : ''
+                          }`}>
+                            <div className={`rounded-2xl px-4 py-3 ${
+                              message.role === 'user'
+                                ? 'bg-blue-500 text-white ml-auto'
+                                : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100'
+                            }`}>
+                              {message.isTyping ? (
+                                <div className="flex items-center gap-1">
+                                  <div className="flex gap-1">
+                                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" />
+                                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-100" />
+                                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-200" />
+                                  </div>
+                                  <span className="text-sm text-slate-500 ml-2">
+                                    {message.agentName} is thinking...
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="whitespace-pre-wrap">{message.content}</div>
+                              )}
+                            </div>
+                            <div className={`text-xs text-muted-foreground mt-1 ${
+                              message.role === 'user' ? 'text-right' : 'text-left'
+                            }`}>
+                              {message.agentName && `${message.agentName} • `}
+                              {message.timestamp.toLocaleTimeString()}
+                            </div>
+                          </div>
+
+                          {message.role === 'user' && (
+                            <Avatar className="w-8 h-8 mt-1">
+                              <AvatarFallback className="bg-blue-500 text-white">
+                                <User className="w-4 h-4" />
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </AnimatePresence>
+                <div ref={messagesEndRef} />
+              </ScrollArea>
+            </CardContent>
+
+            {/* Input Area */}
+            <div className="border-t border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+              <div className="p-4">
+                <div className="flex gap-3">
+                  <div className="flex-1 relative">
+                    <Input
+                      ref={inputRef}
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder={`Message ${networkAgent.name}...`}
+                      className="pr-12 h-12 text-base border-2 focus:border-blue-500 transition-colors bg-white dark:bg-slate-900"
+                      disabled={isLoading}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={sendMessage}
+                      disabled={!inputValue.trim() || isLoading}
+                      className="absolute right-2 top-2 h-8 w-8 p-0 bg-blue-500 hover:bg-blue-600 shadow-lg"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground mt-2 text-center">
+                  Press Enter to send • Shift+Enter for new line
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

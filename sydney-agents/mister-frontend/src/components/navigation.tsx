@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Home, BarChart3, TrendingUp, Loader2, LineChart } from "lucide-react";
+import { Home, BarChart3, TrendingUp, Loader2, LineChart, MessageCircle } from "lucide-react";
 
 export function Navigation() {
   const pathname = usePathname();
@@ -24,10 +24,11 @@ export function Navigation() {
     { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
     { href: "/trading", label: "Trading", icon: TrendingUp },
     { href: "/backtest-results", label: "Backtesting", icon: LineChart },
+    { href: "/chat", label: "Chat", icon: MessageCircle },
   ];
 
   return (
-    <nav className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg p-2 shadow-lg pointer-events-auto">
+    <nav className="fixed top-2 left-1/2 -translate-x-1/2 z-[9999] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg p-2 shadow-lg pointer-events-auto">
       <div className="flex gap-1 sm:gap-2">
         {navItems.map((item) => {
           const Icon = item.icon;
