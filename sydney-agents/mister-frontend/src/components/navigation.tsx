@@ -28,7 +28,7 @@ export function Navigation() {
   ];
 
   return (
-    <nav className="fixed top-2 left-1/2 -translate-x-1/2 z-[9999] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg p-2 shadow-lg pointer-events-auto">
+    <nav className="fixed top-0 left-1/2 -translate-x-1/2 z-[9999] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-l border-r rounded-b-lg p-2 shadow-lg pointer-events-auto">
       <div className="flex gap-1 sm:gap-2">
         {navItems.map((item) => {
           const Icon = item.icon;

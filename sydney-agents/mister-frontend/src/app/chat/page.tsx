@@ -218,7 +218,7 @@ export default function ChatPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="container mx-auto px-4 pt-2 pb-4 h-screen flex">
+      <div className="container mx-auto px-4 pt-16 pb-4 h-screen flex">
         
         {/* Left Sidebar - Network Info & Chat History */}
         <div className="w-80 mr-6 space-y-4">
@@ -309,7 +309,7 @@ export default function ChatPage() {
 
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col">
-          <Card className="flex-1 backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-0 shadow-xl">
+          <Card className="h-[calc(100vh-80px)] backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-0 shadow-xl">
             
             {/* Chat Header */}
             <CardHeader className="border-b border-slate-200 dark:border-slate-700">
@@ -335,7 +335,7 @@ export default function ChatPage() {
 
             {/* Messages Area */}
             <CardContent className="flex-1 p-0">
-              <ScrollArea className="h-[calc(100vh-280px)] p-6">
+              <ScrollArea className="h-[calc(100vh-320px)] p-6">
                 <AnimatePresence>
                   {messages.length === 0 ? (
                     <motion.div
