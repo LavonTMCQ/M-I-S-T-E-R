@@ -9,18 +9,20 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Send, 
-  Bot, 
-  User, 
-  Sparkles, 
-  MessageCircle, 
+import { MisterLogo } from '@/components/ui/mister-logo';
+import {
+  Send,
+  Bot,
+  User,
+  Sparkles,
+  MessageCircle,
   History,
   Settings,
   Plus,
   Trash2,
   Download,
-  Upload
+  Upload,
+  Activity
 } from 'lucide-react';
 
 interface Message {
@@ -217,8 +219,37 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="container mx-auto px-4 pt-16 pb-4 h-screen flex">
+    <div className="min-h-screen bg-background pt-8">
+      {/* Header */}
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <MisterLogo size="lg" />
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                  AI Chat
+                </h1>
+                <Badge variant="outline" className="flex items-center gap-1 bg-primary/5 border-primary/20 text-primary">
+                  <Activity className="h-3 w-3" />
+                  Tomorrow Labs Network
+                </Badge>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Badge variant="default" className="bg-green-500/10 text-green-600 border-green-500/20">
+                <Bot className="w-3 h-3 mr-1" />
+                AI Online
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="h-[calc(100vh-160px)] flex gap-6">
         
         {/* Left Sidebar - Network Info & Chat History */}
         <div className="w-80 mr-6 space-y-4">
@@ -309,7 +340,7 @@ export default function ChatPage() {
 
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col">
-          <Card className="h-[calc(100vh-80px)] backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-0 shadow-xl">
+          <Card className="h-full backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-0 shadow-xl">
             
             {/* Chat Header */}
             <CardHeader className="border-b border-slate-200 dark:border-slate-700">
@@ -335,7 +366,7 @@ export default function ChatPage() {
 
             {/* Messages Area */}
             <CardContent className="flex-1 p-0">
-              <ScrollArea className="h-[calc(100vh-320px)] p-6">
+              <ScrollArea className="h-[calc(100vh-400px)] p-6">
                 <AnimatePresence>
                   {messages.length === 0 ? (
                     <motion.div
@@ -452,7 +483,8 @@ export default function ChatPage() {
             </div>
           </Card>
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

@@ -14,3 +14,27 @@ mister ada mcp
 cd MMISTERMCP && npm start
 
 https://substantial-scarce-magazin.mastra.cloud/api/agents/strikeAgent/generate
+
+
+
+
+
+
+HOW TO PUSH
+
+cd MMISTERMMCP
+railway up
+
+
+cd sydney-agents
+git add -A
+git commit -m "🚀 Enhanced Strike Finance integration for Mastra Cloud
+
+- Added comprehensive market analysis tools (getPoolInfoV2, getLPProfit, getPerpetualHistory)
+- Enhanced Strike Agent with detailed market sentiment analysis
+- Added liquidity health assessment and trading recommendations
+- Improved wallet context parsing for HTTP API calls
+- Fixed P&L calculation stability in frontend
+- Added comprehensive Strike Finance data matching live website"
+
+git push origin main
