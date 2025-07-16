@@ -6,9 +6,10 @@ import { fastembed } from '@mastra/fastembed';
 import { TokenLimiter, ToolCallFilter } from '@mastra/memory/processors';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { CompositeVoice } from '@mastra/core/voice';
-import { GoogleVoice } from '@mastra/voice-google';
-import { OpenAIVoice } from '@mastra/voice-openai';
+// Voice imports removed for deployment compatibility
+// import { CompositeVoice } from '@mastra/core/voice';
+// import { GoogleVoice } from '@mastra/voice-google';
+// import { OpenAIVoice } from '@mastra/voice-openai';
 import { writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { exec } from 'child_process';
@@ -608,54 +609,9 @@ const cashFinancialTools: Record<string, any> = {
 // Create CASH's voice system with Google Orbit (smooth male voice)
 let cashVoice: any;
 
-try {
-  // Use Google Voice with Orbit (smooth male voice)
-  const GOOGLE_API_KEY = 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4';
-
-  if (GOOGLE_API_KEY) {
-    const googleVoice = new GoogleVoice({
-      speechModel: {
-        apiKey: GOOGLE_API_KEY,
-      },
-      listeningModel: {
-        apiKey: GOOGLE_API_KEY,
-      },
-      speaker: 'en-US-Wavenet-D', // DEEPEST male voice - premium Wavenet
-    });
-
-    cashVoice = new CompositeVoice({
-      input: googleVoice,  // Google STT for speech recognition
-      output: googleVoice, // Google TTS for speech synthesis
-    });
-
-    console.log('💰 CASH: Using Google Voice with Orbit (smooth male voice)');
-
-  } else if (process.env.OPENAI_API_KEY) {
-    // Fallback to OpenAI Voice
-    const openaiVoice = new OpenAIVoice({
-      speechModel: {
-        name: 'tts-1-hd',
-        apiKey: process.env.OPENAI_API_KEY,
-      },
-      listeningModel: {
-        name: 'whisper-1',
-        apiKey: process.env.OPENAI_API_KEY,
-      },
-      speaker: 'onyx', // Deep male voice
-    });
-
-    cashVoice = openaiVoice;
-    console.log('⚠️  CASH: Using OpenAI Voice (fallback - Google API key not found)');
-
-  } else {
-    console.log('❌ CASH: No voice API keys found - voice capabilities disabled');
-    cashVoice = undefined;
-  }
-
-} catch (error) {
-  console.error('❌ CASH: Voice initialization failed:', error instanceof Error ? error.message : String(error));
-  cashVoice = undefined;
-}
+// Voice initialization disabled for deployment compatibility
+console.log('❌ CASH: Voice capabilities disabled for Mastra Cloud deployment');
+cashVoice = undefined;
 
 // Create the CASH Agent
 export const cashAgent = new Agent({

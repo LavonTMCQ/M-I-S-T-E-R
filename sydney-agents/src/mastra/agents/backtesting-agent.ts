@@ -4,8 +4,9 @@ import { Memory } from '@mastra/memory';
 import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
 import { fastembed } from '@mastra/fastembed';
 import { TokenLimiter, ToolCallFilter } from '@mastra/memory/processors';
-import { CompositeVoice } from '@mastra/core/voice';
-import { GoogleVoice } from '@mastra/voice-google';
+// Voice imports removed for deployment compatibility
+// import { CompositeVoice } from '@mastra/core/voice';
+// import { GoogleVoice } from '@mastra/voice-google';
 // Import backtesting tools
 import { runBacktestTool, manageStrategiesTool, manageDataTool, macdHistogramBacktest } from '../tools/backtesting-tools.js';
 
@@ -124,15 +125,8 @@ const backtestingMemory = new Memory({
   ],
 });
 
-// Voice system for backtesting results
-const backtestingVoice = new CompositeVoice({
-  speakProvider: new GoogleVoice({
-    speechModel: {
-      apiKey: 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4',
-    },
-    speaker: 'en-US-Journey-F', // Professional female voice for Sydney
-  }),
-});
+// Voice system disabled for deployment compatibility
+const backtestingVoice = undefined;
 
 // Tools are now imported from separate files
 

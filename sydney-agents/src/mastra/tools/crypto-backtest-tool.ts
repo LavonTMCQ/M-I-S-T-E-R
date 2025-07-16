@@ -1,10 +1,8 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { GoogleVoice } from '@mastra/voice-google';
+// Voice import removed for deployment compatibility
+// import { GoogleVoice } from '@mastra/voice-google';
 import { exec } from 'child_process';
-import { createWriteStream } from 'fs';
-import * as fs from 'fs';
-import * as path from 'path';
 
 /**
  * Crypto Backtesting Tool - Advanced Cryptocurrency Strategy Testing
@@ -513,64 +511,16 @@ async function speakCryptoResults(metrics: any, symbol: string, strategy: string
     
     console.log(`🔊 SPEAKING OUT LOUD: ${announcement}`);
     
-    // Use Google Voice (same as other agents)
-    try {
-      const googleVoice = new GoogleVoice({
-        speechModel: {
-          apiKey: 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4',
-        },
-        speaker: 'en-US-Studio-O',
-      });
-
-      console.log('🎤 Generating Google Voice audio for crypto results...');
-      const audioStream = await googleVoice.speak(announcement);
-      
-      if (audioStream) {
-        const tempAudioPath = path.join(process.cwd(), '.mastra', 'output', 'temp-crypto-voice.wav');
-        const outputDir = path.dirname(tempAudioPath);
-        
-        if (!fs.existsSync(outputDir)) {
-          fs.mkdirSync(outputDir, { recursive: true });
-        }
-        
-        const writer = createWriteStream(tempAudioPath);
-        audioStream.pipe(writer);
-        
-        writer.on('finish', () => {
-          console.log('🔊 Playing crypto backtest audio through speakers...');
-          exec(`afplay "${tempAudioPath}"`, (error) => {
-            if (error) {
-              console.error('❌ Audio playback error:', error);
-              exec(`say "${announcement}"`, (sayError) => {
-                if (!sayError) console.log('✅ Fallback voice announcement completed');
-              });
-            } else {
-              console.log('✅ Google Voice crypto announcement played successfully!');
-              setTimeout(() => {
-                try { fs.unlinkSync(tempAudioPath); } catch {}
-              }, 1000);
-            }
-          });
-        });
-        
-        writer.on('error', () => {
-          exec(`say "${announcement}"`, (sayError) => {
-            if (!sayError) console.log('✅ Fallback voice announcement completed');
-          });
-        });
-        
+    // Voice functionality disabled for deployment compatibility
+    // Use system say command as fallback
+    exec(`say "${announcement}"`, (error: any) => {
+      if (error) {
+        console.log('📝 Voice announcement logged to console only');
       } else {
-        exec(`say "${announcement}"`, (sayError) => {
-          if (!sayError) console.log('✅ Fallback voice announcement completed');
-        });
+        console.log('✅ System voice announcement completed');
       }
-    } catch (voiceError) {
-      console.error('❌ Google Voice Error:', voiceError);
-      exec(`say "${announcement}"`, (sayError) => {
-        if (!sayError) console.log('✅ Fallback voice announcement completed');
-      });
-    }
-    
+    });
+
   } catch (error) {
     console.error('❌ Error in crypto voice announcement:', error);
   }

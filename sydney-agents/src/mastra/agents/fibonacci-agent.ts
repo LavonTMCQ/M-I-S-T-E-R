@@ -4,8 +4,8 @@ import { Memory } from '@mastra/memory';
 import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
 import { fastembed } from '@mastra/fastembed';
 import { TokenLimiter, ToolCallFilter } from '@mastra/memory/processors';
-import { CompositeVoice } from '@mastra/core/voice';
-// TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
+// Voice imports removed for deployment compatibility
+// import { CompositeVoice } from '@mastra/core/voice';
 // import { GoogleVoice } from '@mastra/voice-google';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
@@ -19,29 +19,9 @@ import { krakenRestApiTool } from '../tools/kraken-rest-api-tool';
 // Initialize Google Voice for Fibonacci agent
 let fibonacciVoiceInstance: any;
 
-try {
-  const GOOGLE_API_KEY = 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4';
-
-  const googleVoiceForFibonacci = new GoogleVoice({
-    speechModel: {
-      apiKey: GOOGLE_API_KEY,
-    },
-    listeningModel: {
-      apiKey: GOOGLE_API_KEY,
-    },
-    speaker: 'en-US-Studio-M', // Professional male voice for trading
-  });
-
-  fibonacciVoiceInstance = new CompositeVoice({
-    input: googleVoiceForFibonacci,
-    output: googleVoiceForFibonacci,
-  });
-
-  console.log('✅ Fibonacci Agent: Using Google Voice (primary)');
-} catch (error) {
-  console.error('❌ Fibonacci Agent: Voice initialization failed:', error instanceof Error ? error.message : String(error));
-  fibonacciVoiceInstance = undefined;
-}
+// Voice initialization disabled for deployment compatibility
+console.log('❌ Fibonacci Agent: Voice capabilities disabled for Mastra Cloud deployment');
+fibonacciVoiceInstance = undefined;
 
 // Voice tool for Fibonacci trading results
 const speakFibonacciResultsTool = createTool({

@@ -4,7 +4,7 @@ import { Memory } from '@mastra/memory';
 import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
 import { fastembed } from '@mastra/fastembed';
 import { TokenLimiter, ToolCallFilter } from '@mastra/memory/processors';
-// TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
+// Voice imports removed for deployment compatibility
 // import { CompositeVoice } from '@mastra/core/voice';
 // import { GoogleVoice } from '@mastra/voice-google';
 import { createTool } from '@mastra/core/tools';
@@ -44,40 +44,30 @@ const speakMultiTimeframeResultsTool = createTool({
     text: z.string().describe('Text to announce via voice'),
     priority: z.enum(['low', 'medium', 'high']).default('medium').describe('Announcement priority level')
   }),
-  execute: async ({ text, priority }) => {
+  execute: async ({ context }) => {
+    const { text, priority } = context;
     console.log(`🔊 Multi-Timeframe Voice Priority: ${priority}`);
 
     try {
       console.log(`🔊 MULTI-TIMEFRAME VOICE SPEAKING: ${text}`);
 
-      if (!multiTimeframeVoiceInstance) {
-        console.error('❌ Multi-timeframe voice system not available');
-        exec(`say "${text}"`, (sayError) => {
-          if (sayError) {
-            console.error('❌ Say command failed:', sayError);
-          } else {
-            console.log('✅ Fallback multi-timeframe voice announcement completed');
-          }
-        });
-        return {
-          success: false,
-          error: "Voice system not available"
-        };
-      }
+      // Voice functionality disabled for deployment compatibility
+      // Use system say command as fallback
+      console.log(`🎤 Multi-Timeframe: Voice disabled, using system fallback: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
 
-      console.log(`🎤 Multi-Timeframe: Converting text to speech: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
-
-      const audioStream = await multiTimeframeVoiceInstance.speak(text, {
-        speaker: 'en-US-Studio-O' // Different voice from Fibonacci agent
+      exec(`say "${text}"`, (sayError) => {
+        if (sayError) {
+          console.error('❌ Say command failed:', sayError);
+        } else {
+          console.log('✅ Multi-timeframe voice announcement completed via system');
+        }
       });
-
-      console.log('✅ Multi-timeframe voice announcement completed successfully');
 
       return {
         success: true,
-        message: "Multi-timeframe analysis announced via voice",
-        audioGenerated: true,
-        speaker: 'en-US-Studio-O',
+        message: "Multi-timeframe analysis announced via system voice",
+        audioGenerated: false,
+        speaker: 'system',
         priority: priority
       };
 
