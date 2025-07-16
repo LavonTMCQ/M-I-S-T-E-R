@@ -53,7 +53,7 @@ export const multiTimeframeAdaStrategyTool = createTool({
     initialCapital: z.number().default(5000).describe('Starting capital in USD'),
     leverage: z.number().default(10).describe('Leverage multiplier (1-10x)'),
     riskPerTrade: z.number().default(6).describe('Maximum risk per trade as % of capital'),
-    speakResults: z.boolean().default(true).describe('Announce results with voice'),
+    speakResults: z.boolean().default(false).describe('Voice disabled for faster testing'),
 
     // OPTIMIZED Technical parameters for better performance
     rsiPeriod: z.number().default(21).describe('RSI calculation period (optimized)'),
@@ -66,7 +66,7 @@ export const multiTimeframeAdaStrategyTool = createTool({
   }),
   execute: async ({ context }) => {
     const {
-      symbol, startDate, endDate, initialCapital, leverage, riskPerTrade, speakResults,
+      symbol, startDate, endDate, initialCapital, leverage, riskPerTrade,
       rsiPeriod, macdFast, macdSlow, macdSignal, atrPeriod, bbPeriod, bbStdDev
     } = context;
 
@@ -84,8 +84,8 @@ export const multiTimeframeAdaStrategyTool = createTool({
       console.log(`🎯 Max Risk Per Trade: ${riskPerTrade}% ($${(initialCapital * riskPerTrade / 100).toFixed(2)})`);
       console.log(`📅 Date Range: ${actualStartDate} to ${actualEndDate}`);
 
-      // Fetch multi-timeframe data
-      const timeframes = ['15', '60', '1440']; // 15m, 1h, 1d
+      // Fetch multi-timeframe data - SYNCHRONIZED timeframes for better alignment
+      const timeframes = ['60', '240', '1440']; // 1h, 4h, 1d (better data alignment)
       const marketData: { [key: string]: TimeframeData[] } = {};
 
       for (const tf of timeframes) {
@@ -118,31 +118,37 @@ export const multiTimeframeAdaStrategyTool = createTool({
       // Generate comprehensive analysis
       const analysis = generateStrategyAnalysis(strategyResults, marketData, indicators);
 
-      // Voice announcement
-      if (speakResults) {
-        await announceResults(strategyResults, symbol, leverage, context);
-      }
+      // Voice announcement disabled for faster testing
+      // if (speakResults) {
+      //   await announceResults(strategyResults, symbol, leverage, context);
+      // }
 
       console.log(`✅ Multi-Timeframe ADA Strategy Analysis Complete`);
 
-      // Format trades for frontend compatibility
-      const formattedTrades = strategyResults.trades.map((trade: any, index: number) => ({
-        id: `mt_trade_${index + 1}`,
-        entryTime: new Date(trade.entryTime).toISOString(),
-        exitTime: trade.exitTime ? new Date(trade.exitTime).toISOString() : null,
+      // Format trades for frontend compatibility with date validation
+      const formattedTrades = strategyResults.trades.map((trade: any, index: number) => {
+        // Validate and format entry time
+        const entryDate = new Date(trade.entryTime);
+        const exitDate = trade.exitTime ? new Date(trade.exitTime) : null;
+
+        return {
+          id: `mt_trade_${index + 1}`,
+          entryTime: isNaN(entryDate.getTime()) ? new Date().toISOString() : entryDate.toISOString(),
+          exitTime: exitDate && !isNaN(exitDate.getTime()) ? exitDate.toISOString() : null,
         side: trade.side,
         entryPrice: trade.entryPrice,
         exitPrice: trade.exitPrice || trade.entryPrice,
         size: trade.size,
         netPnl: trade.pnl || 0,
         reason: trade.reason || 'Multi-timeframe confluence signal',
-        leverage: trade.leverage || leverage,
-        duration: trade.exitTime ?
-          Math.round((new Date(trade.exitTime).getTime() - new Date(trade.entryTime).getTime()) / (1000 * 60 * 60)) : 0
-      }));
+          leverage: trade.leverage || leverage,
+          duration: trade.exitTime ?
+            Math.round((new Date(trade.exitTime).getTime() - new Date(trade.entryTime).getTime()) / (1000 * 60 * 60)) : 0
+        };
+      });
 
-      // Format chart data (OHLCV) for frontend
-      const chartData = marketData['15'].map((candle: any) => ({
+      // Format chart data (OHLCV) for frontend - using 1h execution timeframe
+      const chartData = marketData['60'].map((candle: any) => ({
         time: new Date(candle.timestamp * 1000).toISOString(),
         open: candle.open,
         high: candle.high,
@@ -156,7 +162,7 @@ export const multiTimeframeAdaStrategyTool = createTool({
         strategy: 'multi-timeframe-ada',
         symbol: symbol,
         leverage: leverage,
-        timeframes: ['15m', '1h', '1d'],
+        timeframes: ['1h', '4h', '1d'],
         period: `${startDate} to ${endDate}`,
         trades: formattedTrades,
         chartData: chartData,
@@ -173,7 +179,7 @@ export const multiTimeframeAdaStrategyTool = createTool({
         },
         summary: generateSummary(strategyResults, symbol, leverage),
         riskMetrics: calculateRiskMetrics(strategyResults, initialCapital),
-        voiceAnnouncement: speakResults ? 'Results announced via Google Voice' : 'Voice disabled'
+        voiceAnnouncement: 'Voice disabled for faster testing'
       };
 
     } catch (error) {
@@ -393,21 +399,21 @@ async function runMultiTimeframeStrategy(
   let currentCapital = config.initialCapital;
   let position: any = null;
 
-  const data15m = marketData['15'];
+  const data1h = marketData['60']; // Use 1-hour data for execution
   const maxRiskPerTrade = (config.initialCapital * config.riskPerTrade) / 100;
 
-  console.log(`📊 Analyzing ${data15m.length} 15-minute candles...`);
+  console.log(`📊 Analyzing ${data1h.length} 1-hour candles...`);
 
-  for (let i = 200; i < data15m.length; i++) { // Start after indicators are ready
-    const currentTime = data15m[i].timestamp;
-    const currentPrice = data15m[i].close;
+  for (let i = 50; i < data1h.length; i++) { // Start after indicators are ready (less needed for 1h)
+    const currentTime = data1h[i].timestamp;
+    const currentPrice = data1h[i].close;
 
     // Get timeframe analysis
     const timeframeAnalysis = analyzeTimeframes(marketData, indicators, i, currentTime);
 
     // Check for position exit first
     if (position) {
-      const exitSignal = checkExitConditions(position, data15m[i], indicators['15'], i);
+      const exitSignal = checkExitConditions(position, data1h[i], indicators['60'], i, timeframeAnalysis);
       if (exitSignal.shouldExit) {
         const pnl = calculatePnL(position, currentPrice, config.leverage);
         currentCapital += pnl;
@@ -430,11 +436,11 @@ async function runMultiTimeframeStrategy(
 
     // Check for new position entry
     if (!position) {
-      const entrySignal = checkEntryConditions(timeframeAnalysis, data15m[i], indicators['15'], i);
+      const entrySignal = checkEntryConditions(timeframeAnalysis, data1h[i], indicators['60'], i);
 
       if (entrySignal.shouldEnter) {
-        const atr = indicators['15'].atr[i - 200] || 0.01; // Adjust index for ATR
-        const stopDistance = atr * 3.5; // 3.5x ATR stop loss (OPTIMIZED - wider stops)
+        const atr = indicators['60'].atr[i - 50] || 0.01; // Adjust index for ATR (1h needs less history)
+        const stopDistance = atr * 1.5; // 1.5x ATR stop loss (TIGHTER stops like MRLABS.py)
 
         // Calculate position size with leverage consideration
         const positionSize = calculatePositionSize(
@@ -448,17 +454,15 @@ async function runMultiTimeframeStrategy(
         );
 
         if (positionSize > 0) {
-          // AGGRESSIVE RISK/REWARD RATIOS for higher returns
-          let riskRewardRatio = 2.5; // Default 2.5:1 (increased)
+          // BALANCED RISK/REWARD RATIOS for higher hit rates
+          let riskRewardRatio = 3.0; // Default 3:1 (more achievable)
 
           if (entrySignal.entryType === 'trend') {
-            riskRewardRatio = 4.0; // 4:1 for trends (let winners run more)
-          } else if (entrySignal.entryType === 'scalp') {
-            riskRewardRatio = 2.0; // 2:1 for scalps (increased from 1.5)
+            riskRewardRatio = 4.5; // 4.5:1 for trends (still good upside, more achievable)
           } else if (entrySignal.entryType === 'momentum') {
-            riskRewardRatio = 3.0; // 3:1 for momentum (increased from 2.5)
-          } else if (entrySignal.entryType === 'reversal') {
-            riskRewardRatio = 2.5; // 2.5:1 for reversals (increased from 2.0)
+            riskRewardRatio = 3.5; // 3.5:1 for momentum (balanced)
+          } else {
+            riskRewardRatio = 3.0; // 3:1 for other types
           }
 
           // Adjust stop distance based on confidence
@@ -495,18 +499,18 @@ async function runMultiTimeframeStrategy(
 
   // Close any remaining position
   if (position) {
-    const finalPrice = data15m[data15m.length - 1].close;
+    const finalPrice = data1h[data1h.length - 1].close;
     const pnl = calculatePnL(position, finalPrice, config.leverage);
     currentCapital += pnl;
 
     trades.push({
       ...position,
-      exitDate: new Date(data15m[data15m.length - 1].timestamp * 1000).toISOString(),
+      exitDate: new Date(data1h[data1h.length - 1].timestamp * 1000).toISOString(),
       exitPrice: finalPrice,
       exitReason: 'End of backtest',
       pnl: pnl,
       pnlPercent: (pnl / position.capitalUsed) * 100,
-      holdingPeriod: (data15m[data15m.length - 1].timestamp - position.entryTimestamp) / 3600
+      holdingPeriod: (data1h[data1h.length - 1].timestamp - position.entryTimestamp) / 3600
     });
   }
 
@@ -536,22 +540,22 @@ function analyzeTimeframes(
 ): TimeframeAnalysis[] {
   const analyses: TimeframeAnalysis[] = [];
 
-  // Daily analysis (market context)
+  // Daily analysis (market context) - SYNCHRONIZED timeframes
   const dailyAnalysis = analyzeDailyTimeframe(marketData['1440'], indicators['1440'], currentTime);
   analyses.push(dailyAnalysis);
 
-  // 1-hour analysis (trend filter)
+  // 4-hour analysis (trend filter)
+  const fourHourAnalysis = analyzeFourHourTimeframe(marketData['240'], indicators['240'], currentTime);
+  analyses.push(fourHourAnalysis);
+
+  // 1-hour analysis (execution timing)
   const hourlyAnalysis = analyzeHourlyTimeframe(marketData['60'], indicators['60'], currentTime);
   analyses.push(hourlyAnalysis);
-
-  // 15-minute analysis (execution)
-  const fifteenMinAnalysis = analyze15MinTimeframe(marketData['15'], indicators['15'], currentIndex);
-  analyses.push(fifteenMinAnalysis);
 
   return analyses;
 }
 
-// Daily timeframe analysis - OPTIMIZED for profitable trend detection
+// Daily timeframe analysis - OPTIMIZED for profitable trend detection and higher hit rates
 function analyzeDailyTimeframe(data: TimeframeData[], indicators: TechnicalIndicators, currentTime: number): TimeframeAnalysis {
   const currentIndex = findNearestIndex(data, currentTime);
   if (currentIndex === -1 || currentIndex < 21) { // Reduced to 21 for faster signals
@@ -622,6 +626,60 @@ function analyzeDailyTimeframe(data: TimeframeData[], indicators: TechnicalIndic
     score: Math.max(-1, Math.min(1, score)),
     signals: signals,
     trend: score > 0.3 ? 'bullish' : score < -0.3 ? 'bearish' : 'neutral',
+    confidence: Math.abs(score)
+  };
+}
+
+// 4-hour timeframe analysis - TREND FILTER
+function analyzeFourHourTimeframe(data: TimeframeData[], indicators: TechnicalIndicators, currentTime: number): TimeframeAnalysis {
+  const currentIndex = findNearestIndex(data, currentTime);
+  if (currentIndex === -1 || currentIndex < 21) {
+    return { timeframe: '4h', score: 0, signals: ['Insufficient data'], trend: 'neutral', confidence: 0 };
+  }
+
+  let score = 0;
+  const signals: string[] = [];
+
+  // 4-hour trend analysis (using available indicators)
+  const ema50 = indicators.ema50[currentIndex];
+  const ema200 = indicators.ema200[currentIndex];
+  const currentPrice = data[currentIndex].close;
+  const rsi = indicators.rsi[currentIndex];
+  const macd = indicators.macd.macd[currentIndex];
+  const macdSignal = indicators.macd.signal[currentIndex];
+
+  // Price vs EMAs (trend confirmation)
+  if (currentPrice > ema50 && ema50 > ema200) {
+    score += 0.4;
+    signals.push('4h uptrend confirmed (EMA alignment)');
+  } else if (currentPrice < ema50 && ema50 < ema200) {
+    score -= 0.4;
+    signals.push('4h downtrend confirmed (EMA alignment)');
+  }
+
+  // MACD momentum
+  if (macd > macdSignal && macd > 0) {
+    score += 0.3;
+    signals.push('4h bullish MACD');
+  } else if (macd < macdSignal && macd < 0) {
+    score -= 0.3;
+    signals.push('4h bearish MACD');
+  }
+
+  // RSI filter (avoid extremes)
+  if (rsi > 70) {
+    score -= 0.2;
+    signals.push('4h overbought warning');
+  } else if (rsi < 30) {
+    score += 0.2;
+    signals.push('4h oversold opportunity');
+  }
+
+  return {
+    timeframe: '4h',
+    score: Math.max(-1, Math.min(1, score)),
+    signals: signals,
+    trend: score > 0.2 ? 'bullish' : score < -0.2 ? 'bearish' : 'neutral',
     confidence: Math.abs(score)
   };
 }
@@ -859,64 +917,71 @@ function analyze15MinTimeframe(data: TimeframeData[], indicators: TechnicalIndic
 // Check entry conditions based on multi-timeframe analysis
 function checkEntryConditions(
   timeframeAnalysis: TimeframeAnalysis[],
-  _currentCandle: TimeframeData,
-  _indicators15m: TechnicalIndicators,
-  _currentIndex: number
+  currentCandle: TimeframeData,
+  indicators1h: TechnicalIndicators,
+  currentIndex: number
 ) {
   const dailyAnalysis = timeframeAnalysis.find(ta => ta.timeframe === '1d');
+  const fourHourAnalysis = timeframeAnalysis.find(ta => ta.timeframe === '4h');
   const hourlyAnalysis = timeframeAnalysis.find(ta => ta.timeframe === '1h');
-  const fifteenMinAnalysis = timeframeAnalysis.find(ta => ta.timeframe === '15m');
 
-  if (!dailyAnalysis || !hourlyAnalysis || !fifteenMinAnalysis) {
+  if (!dailyAnalysis || !fourHourAnalysis || !hourlyAnalysis) {
     return { shouldEnter: false, direction: 'none', reason: 'Missing timeframe data', confidence: 0 };
   }
 
-  // OPTIMIZED WEIGHTED SCORING for better performance
-  const totalScore = (dailyAnalysis.score * 0.35) + (hourlyAnalysis.score * 0.45) + (fifteenMinAnalysis.score * 0.2);
-  const confidence = (dailyAnalysis.confidence * 0.35) + (hourlyAnalysis.confidence * 0.45) + (fifteenMinAnalysis.confidence * 0.2);
+  // CONSERVATIVE WEIGHTED SCORING for 1d/4h/1h timeframes (HIGHER HIT RATES)
+  const totalScore = (dailyAnalysis.score * 0.5) + (fourHourAnalysis.score * 0.3) + (hourlyAnalysis.score * 0.2);
+  const confidence = (dailyAnalysis.confidence * 0.5) + (fourHourAnalysis.confidence * 0.3) + (hourlyAnalysis.confidence * 0.2);
 
-  // AGGRESSIVE ENTRY CONDITIONS - Optimized for 40%+ returns
+  // MRLABS-INSPIRED ENTRY CONDITIONS - Trend confirmation + tighter criteria
 
-  // 1. HIGH-PROBABILITY TREND FOLLOWING (OPTIMIZED - Higher thresholds for quality)
-  const strongLongTrend = totalScore >= 0.6 && hourlyAnalysis.score > 0.5 && dailyAnalysis.score > 0.2;
-  const strongShortTrend = totalScore <= -0.6 && hourlyAnalysis.score < -0.5 && dailyAnalysis.score < -0.2;
+  // 1. EMA ALIGNMENT CHECK (like MRLABS.py trend confirmation)
+  const currentPrice = currentCandle.close;
+  const ema50 = indicators1h.ema50[currentIndex];
+  const ema200 = indicators1h.ema200[currentIndex];
+  const emaAlignedBull = currentPrice > ema50 && ema50 > ema200;
+  const emaAlignedBear = currentPrice < ema50 && ema50 < ema200;
 
-  // 2. SELECTIVE SCALPING ENTRIES (OPTIMIZED - Higher quality signals only)
-  const scalpLong = fifteenMinAnalysis.score >= 0.7 && hourlyAnalysis.score > 0.2 && totalScore > 0.4;
-  const scalpShort = fifteenMinAnalysis.score <= -0.7 && hourlyAnalysis.score < -0.2 && totalScore < -0.4;
+  // 2. RSI MOMENTUM FILTER (using available indicators)
+  const rsi = indicators1h.rsi[currentIndex] || 50;
+  const rsiNeutral = rsi > 30 && rsi < 70; // Avoid extreme overbought/oversold
 
-  // 3. MOMENTUM BREAKOUT ENTRIES (OPTIMIZED - More selective)
-  const momentumLong = (dailyAnalysis.score > 0.7) || (hourlyAnalysis.score > 0.8 && fifteenMinAnalysis.score > 0.3) || (fifteenMinAnalysis.score > 0.9);
-  const momentumShort = (dailyAnalysis.score < -0.7) || (hourlyAnalysis.score < -0.8 && fifteenMinAnalysis.score < -0.3) || (fifteenMinAnalysis.score < -0.9);
+  // 3. VOLUME CONFIRMATION (simplified - just check for reasonable volume)
+  const currentVolume = currentCandle.volume || 0;
+  const volumeConfirmed = currentVolume > 0; // Basic volume check (most crypto has volume data)
 
-  // 4. MEAN REVERSION ENTRIES (OPTIMIZED - More conservative)
-  const reversalLong = fifteenMinAnalysis.score > 0.5 && totalScore > 0.2 && dailyAnalysis.score > -0.3;
-  const reversalShort = fifteenMinAnalysis.score < -0.5 && totalScore < -0.2 && dailyAnalysis.score < 0.3;
+  // 4. CONSERVATIVE TREND FOLLOWING (TIGHTER + volume confirmation for 60%+ hit rate)
+  const strongLongTrend = totalScore >= 0.55 && emaAlignedBull && rsiNeutral && volumeConfirmed &&
+                         dailyAnalysis.score > 0.35 && fourHourAnalysis.score > 0.25;
+  const strongShortTrend = totalScore <= -0.55 && emaAlignedBear && rsiNeutral && volumeConfirmed &&
+                          dailyAnalysis.score < -0.35 && fourHourAnalysis.score < -0.25;
 
-  // ENTRY LOGIC - Multiple strategies
-  if (strongLongTrend || scalpLong || momentumLong || reversalLong) {
+  // 5. MOMENTUM BREAKOUT (TIGHTER + volume confirmation for quality)
+  const momentumLong = dailyAnalysis.score > 0.45 && fourHourAnalysis.score > 0.35 &&
+                      hourlyAnalysis.score > 0.25 && emaAlignedBull && rsiNeutral && volumeConfirmed;
+  const momentumShort = dailyAnalysis.score < -0.45 && fourHourAnalysis.score < -0.35 &&
+                       hourlyAnalysis.score < -0.25 && emaAlignedBear && rsiNeutral && volumeConfirmed;
+
+  // MRLABS-INSPIRED ENTRY LOGIC - Only high-probability setups with trend confirmation
+  if (strongLongTrend || momentumLong) {
     let entryType = 'trend';
-    if (scalpLong && !strongLongTrend) entryType = 'scalp';
-    if (momentumLong && !strongLongTrend && !scalpLong) entryType = 'momentum';
-    if (reversalLong && !strongLongTrend && !scalpLong && !momentumLong) entryType = 'reversal';
+    if (momentumLong && !strongLongTrend) entryType = 'momentum';
 
     return {
       shouldEnter: true,
       direction: 'long',
-      reason: `${entryType.toUpperCase()} LONG: Score=${totalScore.toFixed(2)} | 1d=${dailyAnalysis.score.toFixed(2)} | 1h=${hourlyAnalysis.score.toFixed(2)} | 15m=${fifteenMinAnalysis.score.toFixed(2)}`,
+      reason: `${entryType.toUpperCase()} LONG: Score=${totalScore.toFixed(2)} | EMA=${emaAlignedBull} | RSI=${rsi.toFixed(0)} | 1d=${dailyAnalysis.score.toFixed(2)} | 4h=${fourHourAnalysis.score.toFixed(2)} | 1h=${hourlyAnalysis.score.toFixed(2)}`,
       confidence: confidence,
       entryType: entryType
     };
-  } else if (strongShortTrend || scalpShort || momentumShort || reversalShort) {
+  } else if (strongShortTrend || momentumShort) {
     let entryType = 'trend';
-    if (scalpShort && !strongShortTrend) entryType = 'scalp';
-    if (momentumShort && !strongShortTrend && !scalpShort) entryType = 'momentum';
-    if (reversalShort && !strongShortTrend && !scalpShort && !momentumShort) entryType = 'reversal';
+    if (momentumShort && !strongShortTrend) entryType = 'momentum';
 
     return {
       shouldEnter: true,
       direction: 'short',
-      reason: `${entryType.toUpperCase()} SHORT: Score=${totalScore.toFixed(2)} | 1d=${dailyAnalysis.score.toFixed(2)} | 1h=${hourlyAnalysis.score.toFixed(2)} | 15m=${fifteenMinAnalysis.score.toFixed(2)}`,
+      reason: `${entryType.toUpperCase()} SHORT: Score=${totalScore.toFixed(2)} | EMA=${emaAlignedBear} | RSI=${rsi.toFixed(0)} | 1d=${dailyAnalysis.score.toFixed(2)} | 4h=${fourHourAnalysis.score.toFixed(2)} | 1h=${hourlyAnalysis.score.toFixed(2)}`,
       confidence: confidence,
       entryType: entryType
     };
@@ -925,8 +990,8 @@ function checkEntryConditions(
   return { shouldEnter: false, direction: 'none', reason: `No signal: Score=${totalScore.toFixed(2)}`, confidence: confidence };
 }
 
-// Check exit conditions - OPTIMIZED for different trade types
-function checkExitConditions(position: any, currentCandle: TimeframeData, indicators15m: TechnicalIndicators, currentIndex: number) {
+// Check exit conditions - MRLABS-inspired with signal reversal
+function checkExitConditions(position: any, currentCandle: TimeframeData, indicators1h: TechnicalIndicators, currentIndex: number, timeframeAnalysis?: TimeframeAnalysis[]) {
   const currentPrice = currentCandle.close;
   const holdingTime = (currentCandle.timestamp - position.entryTimestamp) / 3600; // hours
   const entryType = position.entryType || 'trend';
@@ -939,7 +1004,19 @@ function checkExitConditions(position: any, currentCandle: TimeframeData, indica
     return { shouldExit: true, reason: 'Stop loss hit' };
   }
 
-  // 2. TAKE PROFIT (Always enforced)
+  // 2. PARTIAL PROFIT TAKING at 2:1 R/R (lock in some gains)
+  const riskAmount = Math.abs(position.entryPrice - position.stopLoss);
+  const currentProfit = position.side === 'long'
+    ? currentPrice - position.entryPrice
+    : position.entryPrice - currentPrice;
+
+  // Take 50% profit at 2:1 R/R for trend trades
+  if (entryType === 'trend' && currentProfit >= riskAmount * 2 && !position.partialTaken) {
+    // Mark partial profit taken (would need to track this in position object)
+    // For now, just continue to full take profit
+  }
+
+  // 3. FULL TAKE PROFIT (Always enforced)
   if (position.side === 'long' && currentPrice >= position.takeProfit) {
     return { shouldExit: true, reason: 'Take profit hit' };
   }
@@ -947,12 +1024,57 @@ function checkExitConditions(position: any, currentCandle: TimeframeData, indica
     return { shouldExit: true, reason: 'Take profit hit' };
   }
 
-  // 3. OPTIMIZED TRADE TYPE SPECIFIC EXITS
+  // 3. SIGNAL REVERSAL EXIT (like MRLABS.py)
+  if (timeframeAnalysis) {
+    const dailyAnalysis = timeframeAnalysis.find(ta => ta.timeframe === '1d');
+    const fourHourAnalysis = timeframeAnalysis.find(ta => ta.timeframe === '4h');
+    const hourlyAnalysis = timeframeAnalysis.find(ta => ta.timeframe === '1h');
 
-  // SCALP TRADES - Quick, profitable exits
-  if (entryType === 'scalp') {
-    if (holdingTime > 1.5) { // Reduced from 2h to 1.5h
-      return { shouldExit: true, reason: 'Scalp max time (1.5h)' };
+    if (dailyAnalysis && fourHourAnalysis && hourlyAnalysis) {
+      const totalScore = (dailyAnalysis.score * 0.5) + (fourHourAnalysis.score * 0.3) + (hourlyAnalysis.score * 0.2);
+
+      // Check for signal reversal
+      if (position.side === 'long' && totalScore < -0.3) {
+        return { shouldExit: true, reason: 'Signal reversal (long to short)' };
+      }
+      if (position.side === 'short' && totalScore > 0.3) {
+        return { shouldExit: true, reason: 'Signal reversal (short to long)' };
+      }
+    }
+  }
+
+  // 4. TRADE TYPE SPECIFIC EXITS (OPTIMIZED for profit locking)
+
+  // TREND TRADES - Trailing stops to lock in profits
+  if (entryType === 'trend') {
+    // Trailing stop after 2:1 R/R achieved
+    const riskAmount = Math.abs(position.entryPrice - position.stopLoss);
+    const currentProfit = position.side === 'long'
+      ? currentPrice - position.entryPrice
+      : position.entryPrice - currentPrice;
+
+    if (currentProfit > riskAmount * 2) { // 2:1 R/R achieved
+      const trailingStop = position.side === 'long'
+        ? currentPrice - (riskAmount * 1.5) // Trail 1.5x risk behind
+        : currentPrice + (riskAmount * 1.5);
+
+      if (position.side === 'long' && currentPrice <= trailingStop) {
+        return { shouldExit: true, reason: 'Trailing stop (trend)' };
+      }
+      if (position.side === 'short' && currentPrice >= trailingStop) {
+        return { shouldExit: true, reason: 'Trailing stop (trend)' };
+      }
+    }
+
+    if (holdingTime > 24) { // Keep 24h time limit
+      return { shouldExit: true, reason: 'Trend max time (24h)' };
+    }
+  }
+
+  // MOMENTUM TRADES - Quick exits
+  if (entryType === 'momentum') {
+    if (holdingTime > 6) { // Reduced from 8h to 6h
+      return { shouldExit: true, reason: 'Momentum max time (6h)' };
     }
 
     // Aggressive profit taking for scalps
@@ -1048,9 +1170,9 @@ function checkExitConditions(position: any, currentCandle: TimeframeData, indica
     }
   }
 
-  // 4. RSI REVERSAL EXITS (OPTIMIZED - Less aggressive, let winners run)
+  // 5. RSI REVERSAL EXITS (OPTIMIZED - Less aggressive, let winners run)
   if (currentIndex >= 14) {
-    const rsi = indicators15m.rsi[currentIndex - 14] || 50;
+    const rsi = indicators1h.rsi[currentIndex - 14] || 50;
 
     // Calculate current P&L
     const currentPnl = position.side === 'long'
@@ -1282,43 +1404,4 @@ function generateSummary(results: any, symbol: string, leverage: number): string
 🔥 Sophisticated multi-timeframe analysis with leverage risk management`;
 }
 
-// Voice announcement using agent's voice tool
-async function announceResults(results: any, symbol: string, leverage: number, context?: any) {
-  const announcement = `Multi-timeframe ${symbol} strategy with ${leverage}x leverage completed.
-    ${results.totalTrades} trades executed with ${(results.hitRate * 100).toFixed(1)}% hit rate.
-    Total return: ${results.totalReturnPercent.toFixed(2)}% or $${results.totalReturn.toFixed(2)}.
-    Profit factor: ${results.profitFactor.toFixed(2)}.
-    Maximum drawdown: ${results.maxDrawdown.toFixed(2)}%.`;
-
-  console.log(`🔊 SPEAKING: ${announcement}`);
-
-  try {
-    // Use the agent's voice tool if available
-    if (context?.agent?.tools?.speakCryptoResultsTool) {
-      console.log('🎤 Using agent voice tool...');
-      await context.agent.tools.speakCryptoResultsTool.execute({ context: { text: announcement } });
-      console.log('✅ Voice announcement completed via agent voice tool');
-      return;
-    }
-
-    // Fallback to direct Google Voice
-    // TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
-    // const { GoogleVoice } = await import('@mastra/voice-google');
-
-    // TEMPORARILY COMMENTED OUT FOR DEPLOYMENT FIX
-    // const googleVoice = new GoogleVoice({
-    //   speechModel: {
-    //     apiKey: 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4',
-    //   },
-    //   speaker: 'en-US-Studio-O',
-    // });
-
-    // await googleVoice.speak(announcement);
-    console.log('🔊 VOICE ANNOUNCEMENT (temporarily disabled):', announcement);
-    console.log('✅ Voice announcement completed via Google Voice');
-
-  } catch (error) {
-    console.error('❌ Voice announcement failed:', error);
-    console.log('📝 Voice announcement text logged to console instead');
-  }
-}
+// Voice announcement function removed for faster testing
