@@ -31,7 +31,6 @@
     "@mastra/loggers": "^0.10.2",
     "@mastra/mcp": "^0.10.3",
     "@mastra/memory": "^0.10.3",
-    "@mastra/voice-google": "^0.10.4",
     "@modelcontextprotocol/sdk": "^1.12.3",
     "@stricahq/bip32ed25519": "^1.1.1",
     "axios": "^1.7.9",
