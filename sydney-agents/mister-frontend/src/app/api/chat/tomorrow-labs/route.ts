@@ -40,22 +40,23 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Determine which agent to use based on message content - Strike Finance and Crypto only
+ * Determine which agent to use based on message content - Tomorrow Labs Network coordination
  */
 function determineAgent(message: string, selectedAgent: string): string {
   const lowerMessage = message.toLowerCase();
 
-  // Smart routing for Strike Finance and Crypto only
-  if (lowerMessage.includes('strike') || lowerMessage.includes('trading') || lowerMessage.includes('position') || lowerMessage.includes('leverage')) {
+  // For specific Strike Finance queries, route directly to Strike agent
+  if (lowerMessage.includes('strike finance') || lowerMessage.includes('perpetual') || lowerMessage.includes('leverage position')) {
     return 'strike-agent';
   }
 
-  if (lowerMessage.includes('backtest') || lowerMessage.includes('performance') || lowerMessage.includes('crypto') || lowerMessage.includes('strategy')) {
+  // For specific backtesting queries, route directly to backtesting agent
+  if (lowerMessage.includes('backtest this strategy') || lowerMessage.includes('test this algorithm') || lowerMessage.includes('performance analysis')) {
     return 'crypto-backtesting';
   }
 
-  // Default to crypto backtesting for general queries
-  return 'crypto-backtesting';
+  // Default to Tomorrow Labs Network for coordination and general queries
+  return 'tomorrow-labs';
 }
 
 /**
@@ -68,10 +69,10 @@ async function callMastraAgent(agentType: string, message: string, chatHistory: 
   const agentEndpoints = {
     'strike-agent': '/api/agents/strikeAgent/generate',
     'crypto-backtesting': '/api/agents/cryptoBacktestingAgent/generate',
-    'tomorrow-labs': '/api/agents/cryptoBacktestingAgent/generate' // Default to crypto backtesting
+    'tomorrow-labs': '/api/agents/tomorrowLabsNetworkAgent/generate' // Tomorrow Labs Network Agent
   };
 
-  const endpoint = agentEndpoints[agentType as keyof typeof agentEndpoints] || agentEndpoints['crypto-backtesting'];
+  const endpoint = agentEndpoints[agentType as keyof typeof agentEndpoints] || agentEndpoints['tomorrow-labs'];
 
   try {
     console.log(`🌐 Calling Mastra Cloud: ${MASTRA_CLOUD_URL}${endpoint}`);
@@ -143,7 +144,7 @@ async function callMastraAgent(agentType: string, message: string, chatHistory: 
     const fallbackResponses = {
       'strike-agent': 'I\'m having trouble connecting to the Strike Finance agent right now. Please try again in a moment.',
       'crypto-backtesting': 'The crypto backtesting agent is currently unavailable. Please try again later.',
-      'tomorrow-labs': 'The Tomorrow Labs network is temporarily unavailable. Please try again.'
+      'tomorrow-labs': 'The Tomorrow Labs Network is temporarily unavailable. I\'m a master coordinator for Strike Finance trading and crypto backtesting. Please try your request again.'
     };
 
     return fallbackResponses[agentType as keyof typeof fallbackResponses] || 

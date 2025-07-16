@@ -1,4 +1,5 @@
 import { Agent } from '@mastra/core';
+import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
 // Import all available tools for the network
@@ -19,6 +20,7 @@ import { strikeFinanceTools } from '../tools/strike-finance-tools';
 
 export const tomorrowLabsNetworkAgent = new Agent({
   name: 'Tomorrow Labs Network',
+  description: 'Master coordinator agent for Strike Finance trading and crypto backtesting. Routes requests to specialized agents and orchestrates complex trading workflows.',
   instructions: `
 You are the Tomorrow Labs Network, a master coordinator AI agent that serves as the central hub for the MISTER trading ecosystem. You have access to all specialized agents and tools, and your role is to:
 
@@ -69,11 +71,7 @@ You are the Tomorrow Labs Network, a master coordinator AI agent that serves as 
 Remember: You are the friendly, intelligent face of the entire MISTER ecosystem. Make complex trading and DeFi concepts accessible while maintaining technical accuracy.
   `,
   
-  model: {
-    provider: 'OPEN_AI',
-    name: 'gpt-4o',
-    toolChoice: 'auto',
-  },
+  model: openai('gpt-4o'),
 
   tools: {
     // Trading Strategy Tools
