@@ -274,78 +274,19 @@ async function checkForTradingSignals() {
 
 async function announceVoice(text: string) {
   try {
-    console.log(`🔊 LIVE MONITOR SPEAKING: ${text}`);
+    console.log(`🔊 LIVE MONITOR SPEAKING (voice disabled): ${text}`);
 
-    // Use Google Voice TTS for high-quality audio output
-    const { GoogleVoice } = require('@mastra/voice-google');
+    // Voice functionality disabled for deployment compatibility
+    // Use system say command as fallback
     const { exec } = require('child_process');
-    const fs = require('fs');
-    const path = require('path');
-    const os = require('os');
 
-    const googleVoice = new GoogleVoice({
-      speechModel: {
-        apiKey: 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4',
-      },
-      speaker: 'en-US-Studio-O',
+    exec(`say "${text}"`, (error: any) => {
+      if (error) {
+        console.log('📝 Voice announcement logged to console only');
+      } else {
+        console.log('✅ System voice announcement completed');
+      }
     });
-
-    const audioStream = await googleVoice.speak(text, {
-      speaker: 'en-US-Studio-O',
-      audioConfig: {
-        audioEncoding: 'MP3',
-      },
-    });
-
-    if (audioStream) {
-      // Save to temporary file and play it
-      const tempAudioPath = path.join(os.tmpdir(), `live-monitor-voice-${Date.now()}.mp3`);
-      const writer = fs.createWriteStream(tempAudioPath);
-
-      audioStream.pipe(writer);
-
-      // Wait for file to be written, then play it
-      writer.on('finish', () => {
-        console.log('🔊 Playing live monitor audio through Mac speakers...');
-        exec(`afplay "${tempAudioPath}"`, (error: any) => {
-          if (error) {
-            console.error('❌ Live monitor audio playback error:', error);
-          } else {
-            console.log('✅ Live monitor Google Voice audio played successfully!');
-          }
-          // Clean up temp file
-          setTimeout(() => {
-            try {
-              fs.unlinkSync(tempAudioPath);
-            } catch (cleanupError: any) {
-              // Ignore cleanup errors
-            }
-          }, 2000);
-        });
-      });
-
-      writer.on('error', (error: any) => {
-        console.error('❌ Live monitor audio file write error:', error);
-        // Fallback to say command
-        exec(`say "${text}"`, (sayError: any) => {
-          if (sayError) {
-            console.error('❌ Live monitor say command also failed:', sayError);
-          } else {
-            console.log('✅ Live monitor fallback voice announcement completed');
-          }
-        });
-      });
-    } else {
-      // Fallback to say command if no audio stream
-      console.log('⚠️ No audio stream from Google Voice, using fallback...');
-      exec(`say "${text}"`, (sayError: any) => {
-        if (sayError) {
-          console.error('❌ Live monitor say command failed:', sayError);
-        } else {
-          console.log('✅ Live monitor fallback voice announcement completed');
-        }
-      });
-    }
 
   } catch (error) {
     console.error('❌ Live monitor voice announcement failed:', error);

@@ -1,10 +1,8 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { GoogleVoice } from '@mastra/voice-google';
+// Voice import removed for deployment compatibility
+// import { GoogleVoice } from '@mastra/voice-google';
 import { exec } from 'child_process';
-import { createWriteStream } from 'fs';
-import * as fs from 'fs';
-import * as path from 'path';
 
 /**
  * Tomorrow Labs ORB Real-Time Monitor
@@ -324,95 +322,22 @@ class TomorrowLabsOrbMonitor {
   }
 
   private async speak(message: string): Promise<void> {
-    console.log(`🔊 SPEAKING OUT LOUD: ${message}`);
+    console.log(`🔊 SPEAKING OUT LOUD (voice disabled): ${message}`);
 
-    // Actually speak out loud using Google Voice (same as backtesting) and PLAY IT
+    // Voice functionality disabled for deployment compatibility
+    // Use system say command as fallback
     try {
-      const googleVoice = new GoogleVoice({
-        speechModel: {
-          apiKey: 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4', // Same API key as Sone
-        },
-        speaker: 'en-US-Studio-O', // Same professional female voice as Sone
-      });
-
-      console.log('🎤 Generating Google Voice audio for live trading...');
-      const audioStream = await googleVoice.speak(message);
-
-      if (audioStream) {
-        // Save audio to temporary file
-        const tempAudioPath = path.join(process.cwd(), '.mastra', 'output', 'temp-monitor-voice.wav');
-        const outputDir = path.dirname(tempAudioPath);
-
-        if (!fs.existsSync(outputDir)) {
-          fs.mkdirSync(outputDir, { recursive: true });
-        }
-
-        const writer = createWriteStream(tempAudioPath);
-        audioStream.pipe(writer);
-
-        // Wait for file to be written, then play it
-        writer.on('finish', () => {
-          console.log('🔊 Playing live trading audio through speakers...');
-          // Use macOS afplay to actually play the audio out loud
-          exec(`afplay "${tempAudioPath}"`, (error) => {
-            if (error) {
-              console.error('❌ Audio playback error:', error);
-              // Fallback to say command
-              exec(`say "${message}"`, (sayError) => {
-                if (sayError) {
-                  console.error('❌ Say command also failed:', sayError);
-                } else {
-                  console.log('✅ Fallback voice announcement completed');
-                }
-              });
-            } else {
-              console.log('✅ Google Voice live trading audio played successfully!');
-              // Clean up temp file
-              setTimeout(() => {
-                try {
-                  fs.unlinkSync(tempAudioPath);
-                } catch (cleanupError) {
-                  // Ignore cleanup errors
-                }
-              }, 1000);
-            }
-          });
-        });
-
-        writer.on('error', (writeError) => {
-          console.error('❌ Audio file write error:', writeError);
-          // Fallback to say command
-          exec(`say "${message}"`, (sayError) => {
-            if (sayError) {
-              console.error('❌ Say command also failed:', sayError);
-            } else {
-              console.log('✅ Fallback voice announcement completed');
-            }
-          });
-        });
-
-      } else {
-        console.log('❌ Failed to generate Google Voice audio, using fallback');
-        // Fallback to say command
-        exec(`say "${message}"`, (sayError) => {
-          if (sayError) {
-            console.error('❌ Say command failed:', sayError);
-          } else {
-            console.log('✅ Fallback voice announcement completed');
-          }
-        });
-      }
-    } catch (voiceError) {
-      console.error('❌ Google Voice Error:', voiceError);
-      console.log('🔊 Using fallback voice system...');
-      // Fallback to say command
-      exec(`say "${message}"`, (sayError) => {
-        if (sayError) {
-          console.error('❌ Say command failed:', sayError);
+      exec(`say "${message}"`, (error: any) => {
+        if (error) {
+          console.log('📝 Voice announcement logged to console only');
         } else {
-          console.log('✅ Fallback voice announcement completed');
+          console.log('✅ System voice announcement completed');
         }
       });
+
+    } catch (voiceError) {
+      console.error('❌ Voice Error:', voiceError);
+      console.log('📝 Voice announcement logged to console only');
     }
   }
 }

@@ -14,10 +14,11 @@ import {
   ContentSimilarityMetric,
   ToneConsistencyMetric
 } from '@mastra/evals/nlp';
-import { CompositeVoice } from '@mastra/core/voice';
-import { GoogleVoice } from '@mastra/voice-google';
-import { OpenAIVoice } from '@mastra/voice-openai';
-import { ElevenLabsVoice } from '@mastra/voice-elevenlabs';
+// Voice imports removed for deployment compatibility
+// import { CompositeVoice } from '@mastra/core/voice';
+// import { GoogleVoice } from '@mastra/voice-google';
+// import { OpenAIVoice } from '@mastra/voice-openai';
+// import { ElevenLabsVoice } from '@mastra/voice-elevenlabs';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { writeFileSync } from 'fs';
@@ -1834,67 +1835,9 @@ const evalModel = google('gemini-2.0-flash');
 // Create voice system with fallback strategy
 let soneVoice: any;
 
-try {
-  // Try Google Voice first (hard-coded API key for testing)
-  const GOOGLE_API_KEY = 'AIzaSyBNU1uWipiCzM8dxCv0X2hpkiVX5Uk0QX4';
-
-  if (GOOGLE_API_KEY) {
-    const googleVoice = new GoogleVoice({
-      speechModel: {
-        apiKey: GOOGLE_API_KEY,
-      },
-      listeningModel: {
-        apiKey: GOOGLE_API_KEY,
-      },
-      speaker: 'en-US-Studio-O', // Professional female voice
-    });
-
-    soneVoice = new CompositeVoice({
-      input: googleVoice,  // Google STT for speech recognition
-      output: googleVoice, // Google TTS for speech synthesis
-    });
-
-    console.log('✅ Sone: Using Google Voice (primary)');
-
-  } else if (process.env.OPENAI_API_KEY) {
-    // Fallback to OpenAI Voice
-    const openaiVoice = new OpenAIVoice({
-      speechModel: {
-        name: 'tts-1-hd',
-        apiKey: process.env.OPENAI_API_KEY,
-      },
-      listeningModel: {
-        name: 'whisper-1',
-        apiKey: process.env.OPENAI_API_KEY,
-      },
-      speaker: 'nova', // Professional female voice
-    });
-
-    soneVoice = openaiVoice;
-    console.log('⚠️  Sone: Using OpenAI Voice (fallback - Google API key not found)');
-
-  } else if (process.env.ELEVENLABS_API_KEY) {
-    // Fallback to ElevenLabs (TTS only)
-    const elevenLabsVoice = new ElevenLabsVoice({
-      speechModel: {
-        name: 'eleven_multilingual_v2',
-        apiKey: process.env.ELEVENLABS_API_KEY,
-      },
-      speaker: '9BWtsMINqrJLrRacOk9x', // Aria - professional female voice
-    });
-
-    soneVoice = elevenLabsVoice;
-    console.log('⚠️  Sone: Using ElevenLabs Voice (TTS only - no STT available)');
-
-  } else {
-    console.log('❌ Sone: No voice API keys found - voice capabilities disabled');
-    soneVoice = undefined;
-  }
-
-} catch (error) {
-  console.error('❌ Sone: Voice initialization failed:', error instanceof Error ? error.message : String(error));
-  soneVoice = undefined;
-}
+// Voice initialization disabled for deployment compatibility
+console.log('❌ Sone: Voice capabilities disabled for Mastra Cloud deployment');
+soneVoice = undefined;
 
 export const soneAgent = new Agent({
   name: 'Sone',
