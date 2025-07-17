@@ -545,18 +545,24 @@ export default function BacktestResultsPage() {
             ...realResults,
             // Map chart_data.candlestick to chartData for ApexTradingChart
             chartData: realResults.chart_data?.candlestick || [],
+            // Add entry and exit markers for proper chart display
+            entryMarkers: realResults.chart_data?.entry_markers || [],
+            exitMarkers: realResults.chart_data?.exit_markers || [],
             // Transform Railway API trades to match expected format
             trades: (realResults.trades || []).map((trade, index) => {
-              // Railway API might use different field names
+              // Ensure proper timestamp conversion for chart display
+              const entryTime = trade.entry_timestamp || trade.entry_time || trade.entryTime;
+              const exitTime = trade.exit_timestamp || trade.exit_time || trade.exitTime;
+
               const transformedTrade = {
                 id: trade.id || `trade-${index}`,
-                entryTime: trade.entry_timestamp || trade.entry_time || trade.entryTime,
-                exitTime: trade.exit_timestamp || trade.exit_time || trade.exitTime,
+                entryTime: entryTime ? new Date(entryTime).toISOString() : null,
+                exitTime: exitTime ? new Date(exitTime).toISOString() : null,
                 entryPrice: parseFloat(trade.entry_price || trade.entryPrice || 0),
                 exitPrice: parseFloat(trade.exit_price || trade.exitPrice || 0),
                 side: (trade.type === 'long' || trade.side === 'long') ? 'LONG' : 'SHORT',
                 netPnl: parseFloat(trade.pnl || trade.net_pnl || trade.netPnl || 0),
-                size: parseFloat(trade.size || trade.quantity || 0),
+                size: parseFloat(trade.amount || trade.size || trade.quantity || 50),
                 reason: trade.reason || trade.exit_reason || 'Algorithm signal',
                 duration: trade.duration || 0
               };
@@ -589,10 +595,10 @@ export default function BacktestResultsPage() {
 
           // Update strategy card with REAL data from Railway API
           const cardData = {
-            winRate: parseFloat(transformedResults.performance?.win_rate || transformedResults.winRate || 0),
-            totalTrades: parseInt(transformedResults.performance?.total_trades || transformedResults.totalTrades || 0),
-            totalPnl: parseFloat(transformedResults.performance?.total_pnl || transformedResults.totalNetPnl || 0),
-            maxDrawdown: parseFloat(transformedResults.performance?.max_drawdown || transformedResults.maxDrawdown || 0),
+            winRate: parseFloat(realResults.performance?.win_rate || 0),
+            totalTrades: parseInt(realResults.performance?.total_trades || 0),
+            totalPnl: parseFloat(realResults.performance?.total_pnl || 0),
+            maxDrawdown: parseFloat(realResults.performance?.max_drawdown || 0),
             lastUpdated: new Date().toISOString(),
             isRealData: true
           };
