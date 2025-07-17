@@ -8,6 +8,7 @@ interface ApiConfig {
   MISTER_API_URL: string;
   STRIKE_API_URL: string;
   CNT_API_URL: string;
+  ADA_ALGORITHM_API_URL: string;
 }
 
 const API_CONFIG: Record<string, ApiConfig> = {
@@ -16,12 +17,14 @@ const API_CONFIG: Record<string, ApiConfig> = {
     MISTER_API_URL: 'https://substantial-scarce-magazin.mastra.cloud',
     STRIKE_API_URL: 'https://substantial-scarce-magazin.mastra.cloud', // Use hosted Mastra Cloud for Strike Agent
     CNT_API_URL: 'https://cnt-trading-api-production.up.railway.app',
+    ADA_ALGORITHM_API_URL: 'https://m-i-s-t-e-r-production.up.railway.app/api',
   },
   production: {
     MASTRA_API_URL: 'https://substantial-scarce-magazin.mastra.cloud',
     MISTER_API_URL: 'https://substantial-scarce-magazin.mastra.cloud',
     STRIKE_API_URL: 'https://strike-bridge-server-production.up.railway.app',
     CNT_API_URL: 'https://cnt-trading-api-production.up.railway.app',
+    ADA_ALGORITHM_API_URL: 'https://m-i-s-t-e-r-production.up.railway.app/api',
   }
 };
 
@@ -36,7 +39,8 @@ export const {
   MASTRA_API_URL,
   MISTER_API_URL,
   STRIKE_API_URL,
-  CNT_API_URL
+  CNT_API_URL,
+  ADA_ALGORITHM_API_URL
 } = apiConfig;
 
 // Default export
