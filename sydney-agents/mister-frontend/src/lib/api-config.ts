@@ -17,14 +17,14 @@ const API_CONFIG: Record<string, ApiConfig> = {
     MISTER_API_URL: 'https://substantial-scarce-magazin.mastra.cloud',
     STRIKE_API_URL: 'https://substantial-scarce-magazin.mastra.cloud', // Use hosted Mastra Cloud for Strike Agent
     CNT_API_URL: 'https://cnt-trading-api-production.up.railway.app',
-    ADA_ALGORITHM_API_URL: 'https://m-i-s-t-e-r-production.up.railway.app/api',
+    ADA_ALGORITHM_API_URL: 'https://ada-backtesting-service-production.up.railway.app',
   },
   production: {
     MASTRA_API_URL: 'https://substantial-scarce-magazin.mastra.cloud',
     MISTER_API_URL: 'https://substantial-scarce-magazin.mastra.cloud',
     STRIKE_API_URL: 'https://strike-bridge-server-production.up.railway.app',
     CNT_API_URL: 'https://cnt-trading-api-production.up.railway.app',
-    ADA_ALGORITHM_API_URL: 'https://m-i-s-t-e-r-production.up.railway.app/api',
+    ADA_ALGORITHM_API_URL: 'https://ada-backtesting-service-production.up.railway.app',
   }
 };
 
