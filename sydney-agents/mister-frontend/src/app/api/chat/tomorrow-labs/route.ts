@@ -112,8 +112,10 @@ async function callMastraAgent(agentType: string, message: string, chatHistory: 
     
     // Extract the response content
     let responseContent = '';
-    
-    if (data.content) {
+
+    if (data.text) {
+      responseContent = data.text;
+    } else if (data.content) {
       responseContent = data.content;
     } else if (data.response) {
       responseContent = data.response;
@@ -123,10 +125,15 @@ async function callMastraAgent(agentType: string, message: string, chatHistory: 
       responseContent = data;
     } else {
       // Try to extract from common response formats
-      responseContent = data.choices?.[0]?.message?.content || 
-                      data.result?.content || 
+      responseContent = data.choices?.[0]?.message?.content ||
+                      data.result?.content ||
                       data.output ||
                       'I received your message but had trouble formatting the response.';
+    }
+
+    // Ensure responseContent is a string
+    if (typeof responseContent !== 'string') {
+      responseContent = JSON.stringify(responseContent);
     }
 
     console.log('✅ Mastra Cloud response received:', {

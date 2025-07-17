@@ -49,16 +49,26 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
   // Format data for ApexCharts candlestick
   const candlestickData = useMemo(() => {
     if (!chartData || chartData.length === 0) return [];
-    
-    return chartData.map(candle => ({
-      x: new Date(candle.time).getTime(),
-      y: [
-        parseFloat(candle.open),
-        parseFloat(candle.high),
-        parseFloat(candle.low),
-        parseFloat(candle.close)
-      ]
-    })).sort((a, b) => a.x - b.x);
+
+    // Handle Railway API format (chartData.candlestick) or direct array
+    const dataArray = Array.isArray(chartData) ? chartData : chartData.candlestick || [];
+
+    return dataArray.map(candle => {
+      // Handle both Unix timestamp (Railway API) and ISO string formats
+      const timestamp = typeof candle.time === 'number'
+        ? candle.time * 1000  // Convert Unix timestamp to milliseconds
+        : new Date(candle.time).getTime(); // Parse ISO string
+
+      return {
+        x: timestamp,
+        y: [
+          parseFloat(candle.open),
+          parseFloat(candle.high),
+          parseFloat(candle.low),
+          parseFloat(candle.close)
+        ]
+      };
+    }).sort((a, b) => a.x - b.x);
   }, [chartData]);
 
   // Format trade annotations
@@ -68,22 +78,41 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
     const points: any[] = [];
     
     trades.forEach((trade, index) => {
+      // Handle both Railway API format and existing format
+      const entryTime = trade.entry_timestamp || trade.entryTime;
+      const exitTime = trade.exit_timestamp || trade.exitTime;
+      const entryPrice = trade.entry_price || trade.entryPrice;
+      const exitPrice = trade.exit_price || trade.exitPrice;
+      const tradeSide = trade.type === 'long' ? 'LONG' : (trade.type === 'short' ? 'SHORT' : trade.side);
+      const pnl = trade.pnl || trade.netPnl;
+
+      // Debug logging for trade data
+      if (index === 0) {
+        console.log('🔍 Chart trade example:', { entryTime, exitTime, entryPrice, exitPrice, tradeSide, pnl });
+      }
+
+      // Skip if essential data is missing
+      if (!entryTime || !entryPrice || !tradeSide) {
+        console.warn('⚠️ Skipping trade due to missing data:', trade);
+        return;
+      }
+
       // Entry point
       points.push({
-        x: new Date(trade.entryTime).getTime(),
-        y: trade.entryPrice,
+        x: new Date(entryTime).getTime(),
+        y: entryPrice,
         marker: {
           size: 8,
-          fillColor: trade.side === 'LONG' ? '#22c55e' : '#ef4444',
+          fillColor: tradeSide === 'LONG' ? '#22c55e' : '#ef4444',
           strokeColor: '#ffffff',
           strokeWidth: 2,
-          shape: trade.side === 'LONG' ? 'circle' : 'square'
+          shape: tradeSide === 'LONG' ? 'circle' : 'square'
         },
         label: {
-          text: `${trade.side.charAt(0)}`,
+          text: `${tradeSide.charAt(0)}`,
           style: {
             color: '#ffffff',
-            background: trade.side === 'LONG' ? '#22c55e' : '#ef4444',
+            background: tradeSide === 'LONG' ? '#22c55e' : '#ef4444',
             fontSize: '10px',
             fontWeight: 'bold'
           }
@@ -91,11 +120,11 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
       });
 
       // Exit point (if trade is closed)
-      if (trade.exitTime && trade.exitPrice) {
-        const isProfitable = trade.netPnl >= 0;
+      if (exitTime && exitPrice && pnl !== undefined) {
+        const isProfitable = pnl >= 0;
         points.push({
-          x: new Date(trade.exitTime).getTime(),
-          y: trade.exitPrice,
+          x: new Date(exitTime).getTime(),
+          y: exitPrice,
           marker: {
             size: 6,
             fillColor: isProfitable ? '#22c55e' : '#ef4444',

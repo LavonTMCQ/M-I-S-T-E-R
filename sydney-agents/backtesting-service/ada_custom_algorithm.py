@@ -385,6 +385,82 @@ class ADACustomBacktestEngine:
             'strategy': 'ada_custom_algorithm'
         }
 
+    async def get_live_market_analysis(self, timeframe: str = '15m') -> Dict:
+        """Get real-time market analysis for live trading"""
+        try:
+            print("📊 Getting live ADA market analysis...")
+
+            # Fetch recent data for analysis
+            df = await self.data_provider.fetch_real_ada_data(
+                timeframe=timeframe,
+                days=3  # Get 3 days of recent data
+            )
+
+            if df.empty:
+                return {'success': False, 'error': 'No market data available'}
+
+            # Add indicators
+            df = self.strategy._add_indicators(df)
+
+            # Get current market conditions
+            current_bar = df.iloc[-1]
+            recent_bars = df.iloc[-21:]  # Last 20 bars for context
+
+            # Check for current signal
+            signal = self.strategy._check_ada_patterns(current_bar, recent_bars)
+
+            # Calculate current indicators
+            current_rsi = current_bar['rsi']
+            current_bb_position = (current_bar['close'] - current_bar['bb_lower']) / (current_bar['bb_upper'] - current_bar['bb_lower'])
+            current_volume_ratio = current_bar['volume'] / current_bar['volume_sma']
+
+            # Determine recommendation
+            if signal:
+                recommendation = f"STRONG {signal['type'].upper()}"
+                confidence = signal['confidence']
+                reasoning = signal['reasoning']
+            else:
+                recommendation = "HOLD"
+                confidence = 0
+                reasoning = "No high-confidence signals detected"
+
+            return {
+                'success': True,
+                'current_price': float(current_bar['close']),
+                'signal': signal['type'] if signal else None,
+                'confidence': confidence,
+                'recommendation': recommendation,
+                'reasoning': reasoning,
+                'indicators': {
+                    'rsi': float(current_rsi),
+                    'bollinger_bands': {
+                        'upper': float(current_bar['bb_upper']),
+                        'middle': float(current_bar['bb_middle']),
+                        'lower': float(current_bar['bb_lower']),
+                        'position': float(current_bb_position)
+                    },
+                    'volume': {
+                        'current': float(current_bar['volume']),
+                        'average': float(current_bar['volume_sma']),
+                        'ratio': float(current_volume_ratio)
+                    }
+                },
+                'market_conditions': {
+                    'trend': 'BULLISH' if current_bar['close'] > current_bar['bb_middle'] else 'BEARISH',
+                    'volatility': 'HIGH' if current_volume_ratio > 1.5 else 'NORMAL',
+                    'rsi_condition': 'OVERSOLD' if current_rsi < 35 else ('OVERBOUGHT' if current_rsi > 65 else 'NEUTRAL')
+                },
+                'timestamp': current_bar['timestamp'].isoformat(),
+                'timeframe': timeframe
+            }
+
+        except Exception as e:
+            print(f"❌ Live analysis error: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
 async def test_ada_custom_algorithm():
     """Test ADA custom algorithm on extended data"""
     engine = ADACustomBacktestEngine()

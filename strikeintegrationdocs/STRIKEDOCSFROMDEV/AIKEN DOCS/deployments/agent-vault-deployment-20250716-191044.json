@@ -1,0 +1,28 @@
+{
+  "deployment": {
+    "timestamp": "2025-07-16T23:10:44.3NZ",
+    "network": "mainnet",
+    "version": "1.0.0",
+    "status": "deployed"
+  },
+  "contract": {
+    "file": "agent_vault_strike.plutus",
+    "address": "addr1wyq32c96u0u04s54clgeqtjk6ffd56pcxnrmu4jzn57zj3sy9gwyk",
+    "scriptHash": "011560bae3f8fac295c7d1902e56d252da683834c7be56429d3c2946",
+    "plutusVersion": "V3"
+  },
+  "agent": {
+    "address": "addr1vy60rn622dl76ulgqc0lzmkrglyv7c47gk4u38kpfyat50gl68uck",
+    "verificationKeyHash": "34f1cf4a537fed73e8061ff16ec347c8cf62be45abc89ec1493aba3d",
+    "balance": "0 ADA"
+  },
+  "strikeFinance": {
+    "contractHash": "be7544ca7d42c903268caecae465f3f8b5a7e7607d09165e471ac8b5",
+    "discoveryMethod": "live-api-cbor-analysis",
+    "validationStatus": "confirmed"
+  },
+  "tools": {
+    "cardanoCli": "cardano-cli 10.1.1.0 - darwin-x86_64 - ghc-8.10",
+    "aiken": "aiken v1.1.7+e2fb28b"
+  }
+}

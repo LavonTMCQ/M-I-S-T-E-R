@@ -461,14 +461,72 @@ async def run_backtest():
     try:
         data = request.get_json()
         config = BacktestConfig(**data)
-        
+
         results = await backtesting_service.run_comprehensive_backtest(config)
-        
+
         return jsonify(asdict(results))
-        
+
     except Exception as e:
         logger.error(f"Backtest error: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/backtest', methods=['POST'])
+def api_backtest():
+    """API endpoint for frontend backtest requests"""
+    try:
+        data = request.get_json()
+        strategy = data.get('strategy', 'ada_custom_algorithm')
+        timeframe = data.get('timeframe', '15m')
+        period = data.get('period', '7d')
+
+        print(f"🚀 API Backtest: {strategy} ({timeframe}, {period})")
+
+        if strategy == 'ada_custom_algorithm':
+            # Run ADA Custom Algorithm backtest
+            config = {
+                'timeframe': timeframe,
+                'days': 7 if period == '7d' else 30,
+                'initial_balance': 200
+            }
+
+            backtest_engine = ADACustomBacktestEngine()
+            results = asyncio.run(backtest_engine.run_ada_custom_backtest(config))
+
+            if 'error' in results:
+                return jsonify({'success': False, 'error': results['error']}), 400
+
+            return jsonify(results)
+
+        else:
+            return jsonify({'success': False, 'error': f'Unknown strategy: {strategy}'}), 400
+
+    except Exception as e:
+        print(f"❌ API Backtest error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/analyze', methods=['POST'])
+def api_analyze():
+    """Real-time market analysis for live trading"""
+    try:
+        data = request.get_json()
+        strategy = data.get('strategy', 'ada_custom_algorithm')
+        timeframe = data.get('timeframe', '15m')
+
+        print(f"📊 Live Analysis: {strategy} ({timeframe})")
+
+        if strategy == 'ada_custom_algorithm':
+            # Get real-time ADA analysis
+            backtest_engine = ADACustomBacktestEngine()
+            analysis = asyncio.run(backtest_engine.get_live_market_analysis(timeframe))
+
+            return jsonify(analysis)
+
+        else:
+            return jsonify({'success': False, 'error': f'Unknown strategy: {strategy}'}), 400
+
+    except Exception as e:
+        print(f"❌ Live Analysis error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/fee-analysis', methods=['POST'])
 def analyze_fees():

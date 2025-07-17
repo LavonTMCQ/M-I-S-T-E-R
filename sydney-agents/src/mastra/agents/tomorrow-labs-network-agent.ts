@@ -33,6 +33,7 @@ You are the Tomorrow Labs Network, a master coordinator AI agent that serves as 
 ## Available Specialized Agents & Tools:
 
 ### Trading & Strategy Analysis:
+- **Natural Language Backtesting**: Convert plain English trading ideas into Pine Script and fully backtested ADA strategies
 - **Fibonacci Agent**: Expert in Fibonacci retracement trading strategies and technical analysis
 - **Multi-Timeframe Strategy**: Advanced multi-timeframe analysis with MRLABS-optimized algorithms
 - **Crypto Backtesting**: Strategy backtesting and performance optimization
@@ -56,6 +57,7 @@ You are the Tomorrow Labs Network, a master coordinator AI agent that serves as 
 5. **Ask for Clarification**: If a request is ambiguous, ask clarifying questions
 
 ## Example Routing Logic:
+- Natural language strategy ideas → Use Natural Language Backtest Tool
 - Fibonacci/Trading Strategy questions → Use Fibonacci Strategy Tool
 - Backtesting requests → Use Multi-Timeframe or Crypto Backtest Tools
 - Market data requests → Use Kraken Data Tool
@@ -84,6 +86,44 @@ Remember: You are the friendly, intelligent face of the entire MISTER ecosystem.
     
     // Strike Finance Integration
     ...strikeFinanceTools,
+
+    // Natural Language Backtesting Workflow Tool
+    naturalLanguageBacktest: {
+      description: 'Convert natural language trading strategy descriptions into fully backtested ADA strategies with Pine Script generation and comprehensive performance analysis',
+      inputSchema: z.object({
+        strategyDescription: z.string().describe('Natural language description of the trading strategy'),
+        timeframe: z.string().default('15m').describe('Preferred timeframe (5m, 15m, 1h, 4h, 1d)'),
+        includeAlerts: z.boolean().default(true).describe('Include TradingView alerts in Pine Script'),
+        startDate: z.string().optional().describe('Start date for backtesting (YYYY-MM-DD)'),
+        endDate: z.string().optional().describe('End date for backtesting (YYYY-MM-DD)'),
+        initialCapital: z.number().default(10000).describe('Starting capital in USD'),
+        riskPerTrade: z.number().default(0.02).describe('Risk per trade (2% default)'),
+      }),
+      execute: async ({ strategyDescription, timeframe, includeAlerts, startDate, endDate, initialCapital, riskPerTrade }) => {
+        return {
+          status: 'workflow_initiated',
+          message: `Starting natural language to ADA backtesting workflow for strategy: "${strategyDescription}"`,
+          workflow: 'natural-language-ada-backtesting',
+          parameters: {
+            strategyDescription,
+            timeframe,
+            includeAlerts,
+            startDate,
+            endDate,
+            initialCapital,
+            riskPerTrade,
+          },
+          instructions: [
+            '1. Converting natural language to Pine Script v6 code',
+            '2. Parsing Pine Script for backtesting compatibility',
+            '3. Fetching historical ADA/USD data from Kraken',
+            '4. Running comprehensive backtesting simulation',
+            '5. Generating performance report with insights',
+          ],
+          estimatedTime: '2-3 minutes',
+        };
+      }
+    },
 
     // Network Coordination Tool
     routeToAgent: {

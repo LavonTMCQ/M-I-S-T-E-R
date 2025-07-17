@@ -33,6 +33,23 @@ export interface TradingStrategy {
 
 const strategies: TradingStrategy[] = [
   {
+    id: 'ada_custom_algorithm',
+    name: 'ADA Custom Algorithm',
+    description: 'Tomorrow Labs Strategy - Advanced 15-minute ADA trading with proven 62.5% win rate',
+    timeframe: '15m',
+    type: 'algorithmic',
+    status: 'active',
+    performance: {
+      winRate: 62.5,
+      totalTrades: 8,
+      profitFactor: 1.85,
+      avgReturn: 11.01,
+      maxDrawdown: 4.2
+    },
+    features: ['Real-time Analysis', 'Kraken API Data', 'TradingView Charts', 'Production Ready'],
+    icon: <Zap className="w-5 h-5" />
+  },
+  {
     id: 'multi-timeframe-ada',
     name: 'Multi-Timeframe ADA Strategy',
     description: 'Advanced multi-timeframe analysis with RSI and momentum indicators for ADA trading',

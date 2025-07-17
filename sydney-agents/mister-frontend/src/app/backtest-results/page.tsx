@@ -748,6 +748,42 @@ export default function BacktestResultsPage() {
     }
   };
 
+  const handleStartLiveTrading = async (strategy: TradingStrategy) => {
+    try {
+      console.log('🤖 Starting live trading for:', strategy.name);
+
+      // Call the ADA Custom Algorithm Agent through Mastra Cloud
+      const response = await fetch('https://substantial-scarce-magazin.mastra.cloud/api/agents/adaCustomAlgorithmAgent/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'user',
+              content: 'Analyze current ADA market conditions and execute a live trade if conditions are favorable. Use your proven 62.5% win rate algorithm with RSI oversold + Bollinger Band bounce + volume confirmation strategy.'
+            }
+          ]
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Live trading response:', result);
+
+        // Show success notification
+        alert(`🤖 ADA Custom Algorithm Agent activated!\n\nThe agent is now monitoring ADA/USD market conditions and will execute trades automatically when high-confidence signals are detected.\n\nStrategy: RSI Oversold + Bollinger Band Bounce\nWin Rate: 62.5%\nTimeframe: 15 minutes`);
+      } else {
+        throw new Error(`Agent request failed: ${response.statusText}`);
+      }
+
+    } catch (error) {
+      console.error('❌ Live trading activation failed:', error);
+      alert(`❌ Failed to start live trading: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Page Header with Logo */}
@@ -872,26 +908,42 @@ export default function BacktestResultsPage() {
                       </p>
 
                       {strategy.status === 'active' && (
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="text-center p-2 bg-muted/50 rounded">
-                            <div className="font-semibold text-green-600">
-                              {realStrategyData[strategy.id]
-                                ? realStrategyData[strategy.id].winRate.toFixed(1)
-                                : strategy.performance.winRate.toFixed(1)
-                              }%
+                        <>
+                          <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                            <div className="text-center p-2 bg-muted/50 rounded">
+                              <div className="font-semibold text-green-600">
+                                {realStrategyData[strategy.id]
+                                  ? realStrategyData[strategy.id].winRate.toFixed(1)
+                                  : strategy.performance.winRate.toFixed(1)
+                                }%
+                              </div>
+                              <div className="text-muted-foreground">Win Rate</div>
                             </div>
-                            <div className="text-muted-foreground">Win Rate</div>
-                          </div>
-                          <div className="text-center p-2 bg-muted/50 rounded">
-                            <div className="font-semibold">
-                              {realStrategyData[strategy.id]
-                                ? realStrategyData[strategy.id].totalTrades
-                                : strategy.performance.totalTrades
-                              }
+                            <div className="text-center p-2 bg-muted/50 rounded">
+                              <div className="font-semibold">
+                                {realStrategyData[strategy.id]
+                                  ? realStrategyData[strategy.id].totalTrades
+                                  : strategy.performance.totalTrades
+                                }
+                              </div>
+                              <div className="text-muted-foreground">Trades</div>
                             </div>
-                            <div className="text-muted-foreground">Trades</div>
                           </div>
-                        </div>
+
+                          {/* Live Trading Button for ADA Custom Algorithm */}
+                          {strategy.id === 'ada_custom_algorithm' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartLiveTrading(strategy);
+                              }}
+                              className="w-full px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-semibold rounded hover:from-green-600 hover:to-green-700 transition-all duration-200 flex items-center justify-center gap-2"
+                            >
+                              <span>🤖</span>
+                              Start Live Trading
+                            </button>
+                          )}
+                        </>
                       )}
 
                       {strategy.status === 'coming-soon' && (

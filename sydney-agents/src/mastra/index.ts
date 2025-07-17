@@ -4,6 +4,7 @@ import { PinoLogger } from '@mastra/loggers';
 import { LibSQLStore } from '@mastra/libsql';
 import { weatherWorkflow } from './workflows/weather-workflow.js';
 import { soneResearchWorkflow, soneMainResearchWorkflow } from './workflows/sone-research-workflow.js';
+import { naturalLanguageAdaBacktestingWorkflow } from './workflows/natural-language-ada-backtesting';
 import { weatherAgent } from './agents/weather-agent.js';
 import { soneAgent } from './agents/sone-agent.js';
 import { cashAgent } from './agents/cash-agent.js';
@@ -14,15 +15,17 @@ import { quantAgent } from './agents/quant-agent';
 import { fibonacciAgent } from './agents/fibonacci-agent';
 import { multiTimeframeAgent } from './agents/multi-timeframe-agent';
 import { tomorrowLabsNetworkAgent } from './agents/tomorrow-labs-network-agent';
+import { adaCustomAlgorithmAgent } from './agents/ada-custom-algorithm-agent';
 import { soneMCPServer } from './mcp/sone-mcp-server';
 
 export const mastra = new Mastra({
   workflows: {
     weatherWorkflow,
     soneResearchWorkflow,
-    soneMainResearchWorkflow
+    soneMainResearchWorkflow,
+    naturalLanguageAdaBacktestingWorkflow
   },
-  agents: { weatherAgent, soneAgent, cashAgent, strikeAgent, cryptoBacktestingAgent, backtestingAgent, quantAgent, fibonacciAgent, multiTimeframeAgent, tomorrowLabsNetworkAgent },
+  agents: { weatherAgent, soneAgent, cashAgent, strikeAgent, cryptoBacktestingAgent, backtestingAgent, quantAgent, fibonacciAgent, multiTimeframeAgent, tomorrowLabsNetworkAgent, adaCustomAlgorithmAgent },
   mcpServers: {
     soneMCPServer
   },

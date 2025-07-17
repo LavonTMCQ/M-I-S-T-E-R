@@ -1,0 +1,86 @@
+{
+  "name": "strike-agent-vault",
+  "version": "1.0.0",
+  "description": "Secure Agent Vault smart contract for automated Strike Finance trading",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "aiken build",
+    "test": "aiken test",
+    "check": "aiken check",
+    "fmt": "aiken fmt",
+    "fmt:check": "aiken fmt --check",
+    "docs": "aiken docs",
+    "clean": "rm -rf plutus/ docs/ .aiken/",
+    
+    "discover:contracts": "tsx discover-strike-contracts.ts",
+    "discover:tx": "tsx discover-strike-contracts.ts --tx-hash=14f025be82f53f6b7a1725bf64a2fc415536ea8c9474bb9fe46a4b879020989d",
+    
+    "deploy:testnet": "tsx deploy.ts testnet",
+    "deploy:mainnet": "tsx deploy.ts mainnet",
+    
+    "validate:testnet": "npm run build && npm run test && npm run deploy:testnet",
+    "validate:mainnet": "npm run build && npm run test && npm run discover:contracts && npm run deploy:mainnet",
+    
+    "setup:dev": "npm install && npm run check && npm run build",
+    "setup:keys": "mkdir -p keys && cardano-cli address key-gen --verification-key-file keys/agent-wallet.vkey --signing-key-file keys/agent-wallet.skey",
+    
+    "lint": "npm run fmt:check",
+    "precommit": "npm run lint && npm run test",
+    
+    "analyze:security": "aiken check --strict",
+    "analyze:performance": "aiken build --optimization-level 3",
+    
+    "integration:test": "npm run build && npm run discover:contracts && npm run deploy:testnet",
+    "integration:full": "npm run setup:dev && npm run integration:test"
+  },
+  "keywords": [
+    "cardano",
+    "aiken",
+    "smart-contract",
+    "defi",
+    "trading",
+    "strike-finance",
+    "agent-vault",
+    "automated-trading"
+  ],
+  "author": "Strike Finance Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/strike-agent-vault.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/strike-agent-vault/issues"
+  },
+  "homepage": "https://github.com/your-org/strike-agent-vault#readme",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@emurgo/cardano-serialization-lib-browser": "^12.1.1",
+    "@emurgo/cardano-serialization-lib-nodejs": "^12.1.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "config": {
+    "cardano_cli_version": "8.20.3"
+  },
+  "directories": {
+    "test": "tests",
+    "docs": "docs",
+    "lib": "plutus"
+  },
+  "files": [
+    "plutus/",
+    "docs/",
+    "aiken.toml",
+    "*.ak",
+    "README.md",
+    "LICENSE"
+  ]
+}

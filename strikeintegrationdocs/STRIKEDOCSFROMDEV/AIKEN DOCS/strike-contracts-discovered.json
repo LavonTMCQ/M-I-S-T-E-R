@@ -1,0 +1,61 @@
+{
+  "timestamp": "2025-07-16T22:48:11.678Z",
+  "discoveryMethod": "live-api-cbor-analysis",
+  "source": "Strike Finance API /api/perpetuals/openPosition",
+  "network": "mainnet",
+  "totalContracts": 1,
+  "validationStatus": "high-confidence",
+  "contracts": [
+    {
+      "name": "strike-finance-main-contract",
+      "scriptHash": "be7544ca7d42c903268caecae465f3f8b5a7e7607d09165e471ac8b5",
+      "type": "plutus-v3-script",
+      "language": "Plutus V3",
+      "size": 3170,
+      "purpose": "perpetuals-trading-and-minting",
+      "confidence": "high",
+      "source": "live-cbor-analysis",
+      "validatedAt": "2025-07-16T22:48:11.678Z",
+      "notes": [
+        "This script hash appears as both the Plutus script and minting policy",
+        "Used for Strike Finance perpetual position management",
+        "Handles both position opening/closing and token minting/burning",
+        "Confirmed working on mainnet with successful CBOR generation"
+      ]
+    }
+  ],
+  "transactionAnalysis": {
+    "inputs": 3,
+    "outputs": 4,
+    "fee": 378264,
+    "hasMinting": true,
+    "hasPlutusScripts": true,
+    "hasNativeScripts": false,
+    "cborLength": 8484,
+    "testScenario": {
+      "position": "Short",
+      "collateralAmount": 50,
+      "leverage": 2,
+      "address": "addr1qxtkdjl87894tg6juz20jzyjqy3uyn02pr9xtq7mlh0gm2ss5dpkcny95dktp5qmyyrx82t68sge4m94qwxyrfr8f86qh5unyc"
+    }
+  },
+  "recommendations": [
+    "Use this script hash as the primary Strike Finance contract in Agent Vault",
+    "This single contract appears to handle all Strike Finance operations",
+    "Test with both Long and Short positions to confirm consistency",
+    "Monitor for any contract updates or new deployments"
+  ],
+  "nextSteps": [
+    "Update agent_vault_strike.ak with discovered script hash",
+    "Deploy Agent Vault to testnet for validation",
+    "Test end-to-end automated trading flow",
+    "Implement monitoring for contract changes"
+  ],
+  "aikenContractUpdate": {
+    "constantName": "STRIKE_CONTRACT_HASHES",
+    "value": [
+      "be7544ca7d42c903268caecae465f3f8b5a7e7607d09165e471ac8b5"
+    ],
+    "comment": "Strike Finance main contract - handles perpetuals trading and token minting"
+  }
+}

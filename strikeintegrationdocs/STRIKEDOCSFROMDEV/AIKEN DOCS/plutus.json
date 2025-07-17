@@ -1,0 +1,46 @@
+{
+  "preamble": {
+    "title": "strike/agent-vault",
+    "description": "Secure Agent Vault smart contract for automated Strike Finance trading without private key exposure",
+    "version": "1.0.0",
+    "plutusVersion": "v3",
+    "compiler": {
+      "name": "Aiken",
+      "version": "v1.1.7+e2fb28b"
+    },
+    "license": "MIT"
+  },
+  "validators": [
+    {
+      "title": "agent_vault_strike.agent_vault_strike.spend",
+      "datum": {
+        "title": "_datum",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "redeemer": {
+        "title": "_redeemer",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "compiledCode": "5857010100323232323225333002323232323253330073370e900118041baa00113233224a260160026016601800260126ea800458c024c02800cc020008c01c008c01c004c010dd50008a4c26cacae6955ceaab9e5742ae89",
+      "hash": "91f740da89f81ef5e99264e2c482f96be96ceab7f9e47907f414db9b"
+    },
+    {
+      "title": "agent_vault_strike.agent_vault_strike.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "5857010100323232323225333002323232323253330073370e900118041baa00113233224a260160026016601800260126ea800458c024c02800cc020008c01c008c01c004c010dd50008a4c26cacae6955ceaab9e5742ae89",
+      "hash": "91f740da89f81ef5e99264e2c482f96be96ceab7f9e47907f414db9b"
+    }
+  ],
+  "definitions": {
+    "Data": {
+      "title": "Data",
+      "description": "Any Plutus data."
+    }
+  }
+}

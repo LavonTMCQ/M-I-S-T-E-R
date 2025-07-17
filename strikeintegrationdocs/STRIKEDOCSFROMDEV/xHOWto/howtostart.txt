@@ -28,13 +28,25 @@ railway up
 
 cd sydney-agents
 git add -A
-git commit -m "🚀 Enhanced Strike Finance integration for Mastra Cloud
-
-- Added comprehensive market analysis tools (getPoolInfoV2, getLPProfit, getPerpetualHistory)
-- Enhanced Strike Agent with detailed market sentiment analysis
-- Added liquidity health assessment and trading recommendations
-- Improved wallet context parsing for HTTP API calls
-- Fixed P&L calculation stability in frontend
-- Added comprehensive Strike Finance data matching live website"
+git commit -m "cashcoldgame"
 
 git push origin main
+
+
+
+
+
+Address: addr1vy60rn622dl76ulgqc0lzmkrglyv7c47gk4u38kpfyat50gl68uck
+VKH: 34f1cf4a537fed73e8061ff16ec347c8cf62be45abc89ec1493aba3d
+Files: keys/agent-wallet.{vkey,skey,addr}
+
+
+Contract Address: addr1wyq32c96u0u04s54clgeqtjk6fld56pcxnrmu4jzn57zj3sy9gwyk
+Script Hash: 011560bae3f8fac295c7d1902e56d252da683834c7be56429d3c2946
+Plutus Version: V3
+Status: Successfully compiled and validated
+
+
+Discovered Contract: be7544ca7d42c903268caecae465f3f8b5a7e7607d09165e471ac8b5
+Method: Live API CBOR analysis
+Confidence: HIGH (validated with real transactions)

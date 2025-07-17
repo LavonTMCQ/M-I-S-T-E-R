@@ -70,14 +70,20 @@ export function ImprovedBacktestResults({ results, isLoading = false, className 
   const [selectedTab, setSelectedTab] = useState('overview');
   const [realTimeData, setRealTimeData] = useState<any>(null);
 
-  // Performance calculations
-  const winningTrades = results.trades.filter(trade => trade.netPnl > 0);
-  const losingTrades = results.trades.filter(trade => trade.netPnl < 0);
+  // Performance calculations - handle both Railway API and existing format
+  const winningTrades = results.trades.filter(trade => {
+    const pnl = trade.pnl || trade.netPnl;
+    return pnl !== undefined && pnl > 0;
+  });
+  const losingTrades = results.trades.filter(trade => {
+    const pnl = trade.pnl || trade.netPnl;
+    return pnl !== undefined && pnl < 0;
+  });
   const avgWin = winningTrades.length > 0
-    ? winningTrades.reduce((sum, trade) => sum + trade.netPnl, 0) / winningTrades.length
+    ? winningTrades.reduce((sum, trade) => sum + (trade.pnl || trade.netPnl), 0) / winningTrades.length
     : 0;
   const avgLoss = losingTrades.length > 0
-    ? Math.abs(losingTrades.reduce((sum, trade) => sum + trade.netPnl, 0) / losingTrades.length)
+    ? Math.abs(losingTrades.reduce((sum, trade) => sum + (trade.pnl || trade.netPnl), 0) / losingTrades.length)
     : 0;
   const profitFactor = avgLoss > 0 ? avgWin / avgLoss : 0;
 
@@ -151,7 +157,7 @@ export function ImprovedBacktestResults({ results, isLoading = false, className 
               <DollarSign className="w-5 h-5 text-green-600" />
             </div>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(results.totalNetPnl)}
+              {formatCurrency(results.totalNetPnl || 0)}
             </div>
             <div className="text-xs text-muted-foreground">Total P&L</div>
           </CardContent>
@@ -163,7 +169,7 @@ export function ImprovedBacktestResults({ results, isLoading = false, className 
               <Target className="w-5 h-5 text-blue-600" />
             </div>
             <div className="text-2xl font-bold text-blue-600">
-              {results.winRate.toFixed(1)}%
+              {(results.winRate || 0).toFixed(1)}%
             </div>
             <div className="text-xs text-muted-foreground">Win Rate</div>
           </CardContent>
@@ -187,7 +193,7 @@ export function ImprovedBacktestResults({ results, isLoading = false, className 
               <AlertTriangle className="w-5 h-5 text-red-600" />
             </div>
             <div className="text-2xl font-bold text-red-600">
-              {results.maxDrawdown.toFixed(1)}%
+              {(results.maxDrawdown || 0).toFixed(1)}%
             </div>
             <div className="text-xs text-muted-foreground">Max Drawdown</div>
           </CardContent>
@@ -199,7 +205,7 @@ export function ImprovedBacktestResults({ results, isLoading = false, className 
               <BarChart3 className="w-5 h-5 text-orange-600" />
             </div>
             <div className="text-2xl font-bold text-orange-600">
-              {results.totalTrades}
+              {results.totalTrades || 0}
             </div>
             <div className="text-xs text-muted-foreground">Total Trades</div>
           </CardContent>
@@ -211,7 +217,7 @@ export function ImprovedBacktestResults({ results, isLoading = false, className 
               <Clock className="w-5 h-5 text-indigo-600" />
             </div>
             <div className="text-2xl font-bold text-indigo-600">
-              {Math.round(results.avgTradeDuration / 60)}h
+              {Math.round((results.avgTradeDuration || 0) / 60)}h
             </div>
             <div className="text-xs text-muted-foreground">Avg Duration</div>
           </CardContent>
@@ -255,7 +261,7 @@ export function ImprovedBacktestResults({ results, isLoading = false, className 
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>Sharpe Ratio:</span>
-                      <span className="font-medium">{results.sharpeRatio.toFixed(2)}</span>
+                      <span className="font-medium">{(results.sharpeRatio || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Profit Factor:</span>
@@ -264,7 +270,7 @@ export function ImprovedBacktestResults({ results, isLoading = false, className 
                     <div className="flex justify-between">
                       <span>Total Return:</span>
                       <span className="font-medium text-green-600">
-                        {formatPercentage((results.totalNetPnl / 50000) * 100)}
+                        {formatPercentage(((results.totalNetPnl || 0) / 50000) * 100)}
                       </span>
                     </div>
                   </div>
@@ -278,31 +284,41 @@ export function ImprovedBacktestResults({ results, isLoading = false, className 
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {results.trades.slice(-5).reverse().map((trade) => (
-                    <div key={trade.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        {trade.side === 'LONG' ? (
-                          <ArrowUpRight className="w-4 h-4 text-green-600" />
-                        ) : (
-                          <ArrowDownRight className="w-4 h-4 text-red-600" />
-                        )}
-                        <div>
-                          <div className="font-medium text-sm">{trade.side}</div>
+                  {results.trades.slice(-5).reverse().map((trade, index) => {
+                    // Handle both Railway API format and existing format
+                    const entryTime = trade.entry_timestamp || trade.entryTime;
+                    const exitTime = trade.exit_timestamp || trade.exitTime;
+                    const entryPrice = trade.entry_price || trade.entryPrice;
+                    const exitPrice = trade.exit_price || trade.exitPrice;
+                    const tradeSide = trade.type === 'long' ? 'LONG' : (trade.type === 'short' ? 'SHORT' : trade.side);
+                    const pnl = trade.pnl || trade.netPnl;
+
+                    return (
+                      <div key={trade.id || `trade-${index}`} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          {tradeSide === 'LONG' ? (
+                            <ArrowUpRight className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <ArrowDownRight className="w-4 h-4 text-red-600" />
+                          )}
+                          <div>
+                            <div className="font-medium text-sm">{tradeSide}</div>
+                            <div className="text-xs text-muted-foreground">
+                              ${(entryPrice || 0).toFixed(4)} → ${(exitPrice || 0).toFixed(4)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`font-medium text-sm ${(pnl || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(pnl || 0)}
+                          </div>
                           <div className="text-xs text-muted-foreground">
-                            ${trade.entryPrice.toFixed(4)} → ${trade.exitPrice.toFixed(4)}
+                            {exitTime ? new Date(exitTime).toLocaleDateString() : 'N/A'}
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className={`font-medium text-sm ${trade.netPnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {formatCurrency(trade.netPnl)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(trade.exitTime).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

@@ -1,0 +1,133 @@
+{
+  "deploymentConfig": {
+    "timestamp": "2025-01-16T23:15:00.000Z",
+    "version": "1.0.0",
+    "network": "mainnet",
+    "phase": "3-contract-deployment",
+    "status": "ready-for-deployment"
+  },
+  "smartContract": {
+    "name": "Strike Finance Agent Vault",
+    "file": "agent_vault_strike.plutus",
+    "address": "addr1wyq32c96u0u04s54clgeqtjk6fld56pcxnrmu4jzn57zj3sy9gwyk",
+    "scriptHash": "011560bae3f8fac295c7d1902e56d252da683834c7be56429d3c2946",
+    "plutusVersion": "V3",
+    "compiledCode": "5857010100323232323225333002323232323253330073370e900118041baa00113233224a260160026016601800260126ea800458c024c02800cc020008c01c008c01c004c010dd50008a4c26cacae6955ceaab9e5742ae89",
+    "size": 87,
+    "validationStatus": "compiled-successfully"
+  },
+  "agentWallet": {
+    "address": "addr1vy60rn622dl76ulgqc0lzmkrglyv7c47gk4u38kpfyat50gl68uck",
+    "verificationKeyHash": "34f1cf4a537fed73e8061ff16ec347c8cf62be45abc89ec1493aba3d",
+    "keyFiles": {
+      "vkey": "keys/agent-wallet.vkey",
+      "skey": "keys/agent-wallet.skey",
+      "addr": "keys/agent-wallet.addr"
+    },
+    "fundingStatus": "needs-funding",
+    "requiredBalance": "10 ADA minimum, 50 ADA recommended"
+  },
+  "strikeFinanceIntegration": {
+    "mainContract": {
+      "hash": "be7544ca7d42c903268caecae465f3f8b5a7e7607d09165e471ac8b5",
+      "discoveryMethod": "live-api-cbor-analysis",
+      "validationStatus": "confirmed-working",
+      "testTransaction": "successful-short-position-cbor-8484-bytes"
+    },
+    "integrationApproach": "single-unified-contract",
+    "securityModel": "agent-restricted-to-strike-only"
+  },
+  "deploymentSteps": {
+    "step1": {
+      "name": "Fund Agent Wallet",
+      "description": "Transfer ADA to agent wallet for transaction fees",
+      "command": "Send ADA to addr1vy60rn622dl76ulgqc0lzmkrglyv7c47gk4u38kpfyat50gl68uck",
+      "status": "pending",
+      "required": true
+    },
+    "step2": {
+      "name": "Deploy Reference Script",
+      "description": "Deploy contract as reference script to reduce transaction sizes",
+      "command": "cardano-cli transaction build --reference-script-file agent_vault_strike.plutus",
+      "status": "ready",
+      "required": false
+    },
+    "step3": {
+      "name": "Validate Contract Address",
+      "description": "Verify contract address generation and script hash",
+      "command": "cardano-cli address build --payment-script-file agent_vault_strike.plutus",
+      "status": "completed",
+      "result": "addr1wyq32c96u0u04s54clgeqtjk6fld56pcxnrmu4jzn57zj3sy9gwyk"
+    },
+    "step4": {
+      "name": "Create Test Vault",
+      "description": "Deploy first test vault with minimal ADA",
+      "command": "Build transaction with vault datum and send to contract address",
+      "status": "ready",
+      "required": true
+    },
+    "step5": {
+      "name": "Test Agent Trading",
+      "description": "Execute test automated trade through agent wallet",
+      "command": "Agent signs transaction spending from vault to Strike Finance",
+      "status": "ready",
+      "required": true
+    }
+  },
+  "testingProtocol": {
+    "phase1": "Contract Address Validation",
+    "phase2": "Agent Wallet Funding",
+    "phase3": "Test Vault Creation",
+    "phase4": "Automated Trading Test",
+    "phase5": "Security Validation",
+    "successCriteria": [
+      "Contract deploys successfully",
+      "Agent can execute trades",
+      "Users can withdraw funds",
+      "Security restrictions enforced"
+    ]
+  },
+  "securityValidation": {
+    "agentRestrictions": {
+      "canOnlySpendFromVaults": true,
+      "canOnlySendToStrikeFinance": true,
+      "cannotAccessUserKeys": true,
+      "requiresUserPermission": false
+    },
+    "userControls": {
+      "canWithdrawAnytime": true,
+      "canDisableTrading": true,
+      "canSetTradeLimits": true,
+      "maintainsFullCustody": true
+    },
+    "contractSecurity": {
+      "plutusV3": true,
+      "onChainValidation": true,
+      "noPrivateKeyExposure": true,
+      "auditableTransactions": true
+    }
+  },
+  "monitoringSetup": {
+    "contractAddress": "addr1wyq32c96u0u04s54clgeqtjk6fld56pcxnrmu4jzn57zj3sy9gwyk",
+    "agentAddress": "addr1vy60rn622dl76ulgqc0lzmkrglyv7c47gk4u38kpfyat50gl68uck",
+    "strikeContract": "be7544ca7d42c903268caecae465f3f8b5a7e7607d09165e471ac8b5",
+    "monitoringEndpoints": [
+      "Blockfrost API for transaction monitoring",
+      "Strike Finance API for position tracking",
+      "Custom monitoring for vault status"
+    ]
+  },
+  "rollbackPlan": {
+    "emergencyStop": "Users can always withdraw funds directly",
+    "contractUpgrade": "Deploy new version with migration path",
+    "agentWalletRotation": "Generate new agent keys and update contract",
+    "strikeContractUpdate": "Update whitelist if Strike Finance changes contracts"
+  },
+  "nextSteps": [
+    "Fund agent wallet with test ADA",
+    "Create first test vault",
+    "Execute automated trading test",
+    "Validate security restrictions",
+    "Proceed to frontend integration"
+  ]
+}
