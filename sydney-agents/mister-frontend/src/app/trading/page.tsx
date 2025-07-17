@@ -43,7 +43,7 @@ export default function TradingPage() {
 
   // MISTER Trading mode state
   const [isMisterMode, setIsMisterMode] = useState(false);
-  const [selectedStrategy, setSelectedStrategy] = useState<string>('fibonacci');
+  const [selectedStrategy, setSelectedStrategy] = useState<string>('ada_custom_algorithm');
   const [showStrategySelection, setShowStrategySelection] = useState(false);
 
   const [marketData, setMarketData] = useState({
