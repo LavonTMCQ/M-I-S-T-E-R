@@ -1,7 +1,104 @@
-import { Agent } from '@mastra/core';
-import { createTool } from '@mastra/core/tools';
 import { google } from '@ai-sdk/google';
+import { Agent } from '@mastra/core/agent';
+import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
+// TODO: Re-enable these imports when memory is added back
+// import { Memory } from '@mastra/memory';
+// import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
+// import { fastembed } from '@mastra/fastembed';
+
+// TODO: Re-enable memory once type compatibility issues are resolved
+// Create comprehensive memory system for ADA Custom Algorithm agent
+/*
+const adaMemory = new Memory({
+  // Storage for conversation history
+  storage: new LibSQLStore({
+    url: 'file:../ada-algorithm-memory.db',
+  }),
+
+  // Vector database for semantic recall (RAG)
+  vector: new LibSQLVector({
+    connectionUrl: 'file:../ada-algorithm-memory.db',
+  }),
+
+  // Local embedding model for RAG
+  embedder: fastembed,
+
+  // Memory configuration options
+  options: {
+    // Conversation history - keep last 10 messages for algorithm context
+    lastMessages: 10,
+
+    // Semantic recall (RAG) configuration
+    semanticRecall: {
+      topK: 5, // Retrieve top 5 most relevant memories
+      messageRange: {
+        before: 2, // Include 2 messages before each match
+        after: 1,  // Include 1 message after each match
+      },
+      scope: 'resource', // Search across all threads for this user
+    },
+
+    // Working memory for persistent algorithm tracking
+    workingMemory: {
+      enabled: true,
+      template: `
+# ADA Custom Algorithm Agent Memory - Automated Trading System
+
+## User Profile
+- **Name**:
+- **Trading Experience**: [Beginner, Intermediate, Advanced]
+- **Risk Tolerance**: [Conservative, Moderate, Aggressive]
+- **Preferred Trade Size**: [40-60 ADA, 60-80 ADA, 80+ ADA]
+
+## Algorithm Performance Tracking
+- **Total Trades Executed**: 0
+- **Successful Trades**: 0
+- **Failed Trades**: 0
+- **Current Win Rate**: 0%
+- **Average Trade Size**: 0 ADA
+- **Total P&L**: 0 ADA
+
+## Recent Trading Signals
+- **Last Signal**: None
+- **Signal Confidence**: 0%
+- **Entry Price**: $0.00
+- **Current RSI**: 0
+- **Bollinger Band Position**: 0
+- **Volume Ratio**: 0x
+
+## Risk Management Status
+- **Available Balance**: 0 ADA
+- **Reserved for Fees**: 10 ADA
+- **Maximum Trade Size**: 0 ADA
+- **Stop Loss Active**: No
+- **Take Profit Active**: No
+
+## Algorithm Configuration
+- **Strategy**: RSI Oversold + Bollinger Band Bounce + Volume Confirmation
+- **Timeframe**: 15 minutes
+- **RSI Threshold**: < 35 (oversold)
+- **Volume Confirmation**: > 1.4x average
+- **Stop Loss**: 4% below entry
+- **Take Profit**: 8% above entry
+- **Max Hold Time**: 5 hours
+- **Leverage**: 10x (Strike Finance)
+
+## Notes
+- Algorithm has proven 62.5% win rate across 6 testing periods
+- Minimum 40 ADA required for Strike Finance trades
+- Only executes trades with >70% confidence
+- Monitors ADA/USD on 15-minute timeframe
+`,
+    },
+
+    // Thread management
+    threads: {
+      generateTitle: true,
+    },
+  },
+});
+*/
 
 /**
  * ADA Custom Algorithm Agent
@@ -62,6 +159,8 @@ You have access to real-time market data and can execute live trades through Str
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
     ],
   }),
+  // TODO: Re-enable memory once type compatibility issues are resolved
+  // memory: adaMemory,
   tools: {
     executeAdaCustomTrade: createTool({
       id: 'executeAdaCustomTrade',
@@ -105,7 +204,7 @@ You have access to real-time market data and can execute live trades through Str
           console.log('🔄 Simulating trade execution for cloud deployment...');
 
           // Simulate successful trade execution
-          const mockTxHash = `ada_trade_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const mockTxHash = `ada_trade_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
           // Simulate processing delay
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -253,7 +352,7 @@ You have access to real-time market data and can execute live trades through Str
       inputSchema: z.object({
         period: z.string().default('7d').describe('Performance period to analyze'),
       }),
-      execute: async ({ context }) => {
+      execute: async () => {
         return {
           success: true,
           performance: {
