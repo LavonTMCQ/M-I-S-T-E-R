@@ -513,7 +513,7 @@ export default function BacktestResultsPage() {
         // Run real ADA Custom Algorithm backtest using Railway API
         console.log('🚀 Running ADA Custom Algorithm backtest...');
 
-        const response = await fetch(`${ADA_ALGORITHM_API_URL}/backtest`, {
+        const response = await fetch(`${ADA_ALGORITHM_API_URL}/api/backtest`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
