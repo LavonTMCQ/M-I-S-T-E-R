@@ -14,6 +14,7 @@ Endpoints:
 import os
 import json
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
@@ -608,6 +609,145 @@ def analyze_fees():
         })
         
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/vault/execute-trade', methods=['POST'])
+def api_vault_execute_trade():
+    """API endpoint for vault-based trade execution"""
+    try:
+        data = request.get_json()
+
+        # Extract trade parameters
+        vault_address = data.get('vault_address')
+        trade_type = data.get('trade_type')  # 'long' or 'short'
+        trade_amount = data.get('trade_amount')  # in ADA
+        algorithm = data.get('algorithm', 'ada_custom_algorithm')
+        confidence = data.get('confidence', 75)
+
+        if not all([vault_address, trade_type, trade_amount]):
+            return jsonify({'error': 'Missing required parameters: vault_address, trade_type, trade_amount'}), 400
+
+        print(f"🏦 Vault Trade Execution: {algorithm} - {trade_type} {trade_amount} ADA (confidence: {confidence}%)")
+
+        # Simulate vault trade execution (in production, this would interact with smart contracts)
+        trade_id = f"VAULT_{int(time.time())}_{hash(vault_address) % 10000}"
+
+        # Calculate entry price and risk management
+        current_price = 1.05  # Mock current ADA price - in production, get from Kraken API
+        entry_price = current_price * (1.001 if trade_type == 'long' else 0.999)  # Small slippage
+        stop_loss = entry_price * (0.96 if trade_type == 'long' else 1.04)
+        take_profit = entry_price * (1.08 if trade_type == 'long' else 0.92)
+
+        # Vault execution result
+        execution_result = {
+            'success': True,
+            'trade_id': trade_id,
+            'vault_address': vault_address,
+            'algorithm': algorithm,
+            'trade_details': {
+                'type': trade_type,
+                'amount': trade_amount,
+                'entry_price': entry_price,
+                'stop_loss': stop_loss,
+                'take_profit': take_profit,
+                'confidence': confidence,
+                'leverage': 2,  # Default 2x leverage for vault trades
+                'timestamp': time.time(),
+                'status': 'executed'
+            },
+            'vault_balance': {
+                'before': trade_amount * 2,  # Mock vault balance
+                'after': trade_amount * 2 - trade_amount,  # After trade allocation
+                'reserved_for_trade': trade_amount
+            },
+            'estimated_fees': {
+                'strike_finance_fee': 3.0,  # $3 Strike Finance fee
+                'cardano_tx_fee': 0.2,  # ~0.2 ADA transaction fee
+                'total_ada': 0.2 + (3.0 / current_price)  # Convert USD fee to ADA
+            }
+        }
+
+        return jsonify(execution_result)
+
+    except Exception as e:
+        logger.error(f"❌ Vault trade execution error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/vault/balance', methods=['POST'])
+def api_vault_balance():
+    """API endpoint to check vault balance and trading capacity"""
+    try:
+        data = request.get_json()
+        vault_address = data.get('vault_address')
+
+        if not vault_address:
+            return jsonify({'error': 'Missing vault_address parameter'}), 400
+
+        print(f"🔍 Checking vault balance for: {vault_address}")
+
+        # Mock vault balance check (in production, query Cardano blockchain)
+        vault_balance = {
+            'vault_address': vault_address,
+            'total_balance': 500.0,  # Total ADA in vault
+            'available_for_trading': 450.0,  # Available after reserves
+            'reserved_for_fees': 50.0,  # Reserved for transaction fees
+            'active_trades': 2,  # Number of active positions
+            'max_trade_amount': 100.0,  # Maximum single trade amount
+            'last_updated': time.time(),
+            'vault_status': 'active'
+        }
+
+        return jsonify(vault_balance)
+
+    except Exception as e:
+        logger.error(f"❌ Vault balance check error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/vault/status', methods=['POST'])
+def api_vault_status():
+    """API endpoint to check vault trading status and permissions"""
+    try:
+        data = request.get_json()
+        vault_address = data.get('vault_address')
+
+        if not vault_address:
+            return jsonify({'error': 'Missing vault_address parameter'}), 400
+
+        print(f"📊 Checking vault status for: {vault_address}")
+
+        # Mock vault status (in production, query smart contract state)
+        vault_status = {
+            'vault_address': vault_address,
+            'trading_enabled': True,
+            'auto_trading_enabled': True,
+            'algorithms_enabled': ['ada_custom_algorithm', 'fibonacci_strategy', 'multi_timeframe_ada'],
+            'risk_limits': {
+                'max_trade_per_day': 5,
+                'max_trade_amount': 100.0,
+                'max_daily_loss': 50.0,
+                'stop_loss_required': True
+            },
+            'performance': {
+                'total_trades': 15,
+                'winning_trades': 9,
+                'win_rate': 60.0,
+                'total_pnl': 25.5,  # Total P&L in ADA
+                'best_trade': 8.2,
+                'worst_trade': -4.1
+            },
+            'last_trade': {
+                'timestamp': time.time() - 3600,  # 1 hour ago
+                'type': 'long',
+                'amount': 50.0,
+                'pnl': 2.3,
+                'algorithm': 'ada_custom_algorithm'
+            }
+        }
+
+        return jsonify(vault_status)
+
+    except Exception as e:
+        logger.error(f"❌ Vault status check error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
