@@ -16,7 +16,8 @@ import { fibonacciAgent } from './agents/fibonacci-agent';
 import { multiTimeframeAgent } from './agents/multi-timeframe-agent';
 import { tomorrowLabsNetworkAgent } from './agents/tomorrow-labs-network-agent';
 import { adaCustomAlgorithmAgent } from './agents/ada-custom-algorithm-agent';
-import { soneMCPServer } from './mcp/sone-mcp-server';
+// Temporarily disabled to fix Knative deployment issues
+// import { soneMCPServer } from './mcp/sone-mcp-server';
 
 export const mastra = new Mastra({
   workflows: {
@@ -26,9 +27,10 @@ export const mastra = new Mastra({
     naturalLanguageAdaBacktestingWorkflow
   },
   agents: { weatherAgent, soneAgent, cashAgent, strikeAgent, cryptoBacktestingAgent, backtestingAgent, quantAgent, fibonacciAgent, multiTimeframeAgent, tomorrowLabsNetworkAgent, adaCustomAlgorithmAgent },
-  mcpServers: {
-    soneMCPServer
-  },
+  // Temporarily disable MCP server to fix Knative deployment issues
+  // mcpServers: {
+  //   soneMCPServer
+  // },
   storage: new LibSQLStore({
     // stores telemetry, evals, ... into memory storage, if it needs to persist, change to file:../mastra.db
     url: ":memory:",
