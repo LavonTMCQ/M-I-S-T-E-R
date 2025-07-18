@@ -1,7 +1,8 @@
 
 import { Mastra } from '@mastra/core/mastra';
 import { PinoLogger } from '@mastra/loggers';
-import { LibSQLStore } from '@mastra/libsql';
+// LibSQLStore removed - not supported in Mastra Cloud serverless environment
+// import { LibSQLStore } from '@mastra/libsql';
 import { weatherWorkflow } from './workflows/weather-workflow.js';
 import { soneResearchWorkflow, soneMainResearchWorkflow } from './workflows/sone-research-workflow.js';
 import { naturalLanguageAdaBacktestingWorkflow } from './workflows/natural-language-ada-backtesting';
@@ -31,10 +32,10 @@ export const mastra = new Mastra({
   // mcpServers: {
   //   soneMCPServer
   // },
-  storage: new LibSQLStore({
-    // stores telemetry, evals, ... into memory storage, if it needs to persist, change to file:../mastra.db
-    url: ":memory:",
-  }),
+  // LibSQLStore removed - not supported in Mastra Cloud serverless environment
+  // storage: new LibSQLStore({
+  //   url: ":memory:",
+  // }),
   logger: new PinoLogger({
     name: 'Mastra',
     level: 'info',
