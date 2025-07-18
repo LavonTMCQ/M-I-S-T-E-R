@@ -2,251 +2,6 @@ import { google } from '@ai-sdk/google';
 import { Agent } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-
-// Helper function to calculate simple RSI
-function calculateSimpleRSI(ohlcData: any[], period: number = 14): number {
-  if (!ohlcData || ohlcData.length < period + 1) return 50;
-
-  const prices = ohlcData.slice(-period - 1).map(candle => parseFloat(candle[4])); // Close prices
-  const gains: number[] = [];
-  const losses: number[] = [];
-
-  for (let i = 1; i < prices.length; i++) {
-    const change = prices[i] - prices[i - 1];
-    gains.push(change > 0 ? change : 0);
-    losses.push(change < 0 ? Math.abs(change) : 0);
-  }
-
-  const avgGain = gains.reduce((sum, gain) => sum + gain, 0) / period;
-  const avgLoss = losses.reduce((sum, loss) => sum + loss, 0) / period;
-
-  if (avgLoss === 0) return 100;
-
-  const rs = avgGain / avgLoss;
-  const rsi = 100 - (100 / (1 + rs));
-
-  return Math.round(rsi * 10) / 10;
-}
-
-// Fetch real ADA historical data from Kraken API
-async function fetchRealADAData(symbol: string, startDate: string, _endDate: string, timeframe: string) {
-  try {
-    console.log(`📡 Fetching real ${symbol} data from Kraken API...`);
-
-    // Convert timeframe to Kraken format
-    const krakenInterval = timeframe === '15m' ? 15 : timeframe === '1h' ? 60 : 15;
-
-    // Convert dates to Unix timestamps
-    const since = Math.floor(new Date(startDate).getTime() / 1000);
-
-    const krakenUrl = `https://api.kraken.com/0/public/OHLC?pair=${symbol}&interval=${krakenInterval}&since=${since}`;
-
-    const response = await fetch(krakenUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'ADA-Custom-Algorithm/1.0'
-      },
-      signal: AbortSignal.timeout(30000)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Kraken API error: ${response.status}`);
-    }
-
-    const krakenData = await response.json();
-
-    if (krakenData.error && krakenData.error.length > 0) {
-      throw new Error(`Kraken API error: ${krakenData.error.join(', ')}`);
-    }
-
-    const ohlcData = krakenData.result?.ADAUSD || [];
-
-    if (!ohlcData || ohlcData.length === 0) {
-      throw new Error('No OHLC data returned from Kraken');
-    }
-
-    // Limit data to prevent memory issues (last 500 candles max)
-    const limitedData = ohlcData.slice(-500);
-
-    // Convert to standard format
-    const historicalData = limitedData.map((candle: any[]) => ({
-      timestamp: candle[0] * 1000,
-      time: new Date(candle[0] * 1000).toISOString(),
-      open: parseFloat(candle[1]),
-      high: parseFloat(candle[2]),
-      low: parseFloat(candle[3]),
-      close: parseFloat(candle[4]),
-      volume: parseFloat(candle[6])
-    }));
-
-    console.log(`✅ Loaded ${historicalData.length} real ${symbol} candles from Kraken`);
-    return historicalData;
-
-  } catch (error) {
-    console.error('❌ Error fetching real ADA data:', error);
-    throw error;
-  }
-}
-
-// Run the ADA Custom Algorithm on real historical data
-async function runADACustomAlgorithm(historicalData: any[], config: any) {
-  console.log('🧠 Running ADA Custom Algorithm on real market data...');
-
-  const trades: any[] = [];
-  let currentPosition: any = null;
-  let balance = config.initialCapital;
-  let tradeId = 1;
-
-  for (let i = Math.max(config.rsiPeriod, config.bbPeriod) + 1; i < historicalData.length - 1; i++) {
-    const currentCandle = historicalData[i];
-    const currentPrice = currentCandle.close;
-    const currentVolume = currentCandle.volume;
-
-    // Calculate indicators on-the-fly for memory efficiency
-    const recentPrices = historicalData.slice(Math.max(0, i - config.rsiPeriod), i + 1).map(d => d.close);
-    const currentRSI = calculateSimpleRSI(recentPrices.map((price) => [0, 0, 0, 0, price, 0, 0]), config.rsiPeriod);
-
-    const recentVolumes = historicalData.slice(Math.max(0, i - 20), i + 1).map(d => d.volume);
-    const avgVolume = recentVolumes.reduce((sum, vol) => sum + vol, 0) / recentVolumes.length;
-
-    // Simple Bollinger Band calculation
-    const sma = recentPrices.reduce((sum, price) => sum + price, 0) / recentPrices.length;
-    const variance = recentPrices.reduce((sum, price) => sum + Math.pow(price - sma, 2), 0) / recentPrices.length;
-    const std = Math.sqrt(variance);
-    const currentBB = {
-      upper: sma + (std * config.bbStdDev),
-      middle: sma,
-      lower: sma - (std * config.bbStdDev)
-    };
-
-    // Exit logic first
-    if (currentPosition) {
-      const pnl = currentPosition.side === 'LONG'
-        ? (currentPrice - currentPosition.entryPrice) * currentPosition.size
-        : (currentPosition.entryPrice - currentPrice) * currentPosition.size;
-
-      const pnlPercent = (pnl / (currentPosition.entryPrice * currentPosition.size)) * 100;
-
-      // Stop loss or take profit
-      if (pnlPercent <= -config.stopLossPercent * 100 || pnlPercent >= config.takeProfitPercent * 100) {
-        const trade = {
-          id: `ada_custom_${tradeId++}`,
-          entryTime: currentPosition.entryTime,
-          exitTime: currentCandle.time,
-          side: currentPosition.side,
-          entryPrice: currentPosition.entryPrice,
-          exitPrice: currentPrice,
-          size: currentPosition.size,
-          netPnl: pnl,
-          reason: pnlPercent <= -config.stopLossPercent * 100 ? 'Stop loss hit' : 'Take profit hit',
-          confidence: currentPosition.confidence
-        };
-
-        trades.push(trade);
-        balance += pnl;
-        currentPosition = null;
-        console.log(`${pnl > 0 ? '✅' : '❌'} Trade closed: ${trade.side} ${pnl.toFixed(2)} ADA`);
-      }
-    }
-
-    // Entry logic
-    if (!currentPosition && currentRSI && currentBB && avgVolume > 0) {
-      const volumeRatio = currentVolume / avgVolume;
-
-      // LONG signal: RSI oversold + price near lower BB + volume confirmation
-      if (currentRSI < config.rsiOversold &&
-          currentPrice <= currentBB.lower * 1.01 &&
-          volumeRatio >= config.volumeThreshold) {
-
-        const tradeSize = Math.min(
-          config.minTradeSize,
-          balance * config.riskPerTrade / config.stopLossPercent
-        );
-
-        if (tradeSize >= config.minTradeSize && balance >= tradeSize * currentPrice) {
-          currentPosition = {
-            side: 'LONG',
-            entryTime: currentCandle.time,
-            entryPrice: currentPrice,
-            size: tradeSize,
-            confidence: Math.min(95, 60 + (config.rsiOversold - currentRSI) * 2)
-          };
-          console.log(`🟢 LONG entry: ${currentPrice} ADA, Size: ${tradeSize}, RSI: ${currentRSI.toFixed(1)}`);
-        }
-      }
-
-      // SHORT signal: RSI overbought + price near upper BB + volume confirmation
-      else if (currentRSI > config.rsiOverbought &&
-               currentPrice >= currentBB.upper * 0.99 &&
-               volumeRatio >= config.volumeThreshold) {
-
-        const tradeSize = Math.min(
-          config.minTradeSize,
-          balance * config.riskPerTrade / config.stopLossPercent
-        );
-
-        if (tradeSize >= config.minTradeSize && balance >= tradeSize * currentPrice) {
-          currentPosition = {
-            side: 'SHORT',
-            entryTime: currentCandle.time,
-            entryPrice: currentPrice,
-            size: tradeSize,
-            confidence: Math.min(95, 60 + (currentRSI - config.rsiOverbought) * 2)
-          };
-          console.log(`🔴 SHORT entry: ${currentPrice} ADA, Size: ${tradeSize}, RSI: ${currentRSI.toFixed(1)}`);
-        }
-      }
-    }
-  }
-
-  // Close any remaining position
-  if (currentPosition) {
-    const lastCandle = historicalData[historicalData.length - 1];
-    const pnl = currentPosition.side === 'LONG'
-      ? (lastCandle.close - currentPosition.entryPrice) * currentPosition.size
-      : (currentPosition.entryPrice - lastCandle.close) * currentPosition.size;
-
-    trades.push({
-      id: `ada_custom_${tradeId++}`,
-      entryTime: currentPosition.entryTime,
-      exitTime: lastCandle.time,
-      side: currentPosition.side,
-      entryPrice: currentPosition.entryPrice,
-      exitPrice: lastCandle.close,
-      size: currentPosition.size,
-      netPnl: pnl,
-      reason: 'End of backtest period',
-      confidence: currentPosition.confidence
-    });
-
-    balance += pnl;
-  }
-
-  // Calculate performance metrics
-  const winningTrades = trades.filter(t => t.netPnl > 0);
-  const losingTrades = trades.filter(t => t.netPnl < 0);
-  const totalPnl = trades.reduce((sum, t) => sum + t.netPnl, 0);
-  const winRate = trades.length > 0 ? (winningTrades.length / trades.length) * 100 : 0;
-
-  const performance = {
-    totalTrades: trades.length,
-    winningTrades: winningTrades.length,
-    losingTrades: losingTrades.length,
-    winRate: Math.round(winRate * 10) / 10,
-    totalPnl: Math.round(totalPnl * 100) / 100,
-    avgWin: winningTrades.length > 0 ? Math.round((winningTrades.reduce((sum, t) => sum + t.netPnl, 0) / winningTrades.length) * 100) / 100 : 0,
-    avgLoss: losingTrades.length > 0 ? Math.round((losingTrades.reduce((sum, t) => sum + t.netPnl, 0) / losingTrades.length) * 100) / 100 : 0,
-    profitFactor: losingTrades.length > 0 ? Math.round((winningTrades.reduce((sum, t) => sum + t.netPnl, 0) / Math.abs(losingTrades.reduce((sum, t) => sum + t.netPnl, 0))) * 100) / 100 : 0,
-    maxDrawdown: 5.0, // Simplified for now
-    sharpeRatio: 1.2 // Simplified for now
-  };
-
-  console.log(`✅ ADA Custom Algorithm completed: ${trades.length} trades, ${winRate.toFixed(1)}% win rate`);
-
-  return { trades, performance };
-}
-
-// Removed unused helper functions to reduce bundle size
 // TODO: Re-enable these imports when memory is added back
 // import { Memory } from '@mastra/memory';
 // import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
@@ -545,7 +300,7 @@ You have access to real-time market data and can execute live trades through Str
               }
             }
           } catch (error) {
-            console.log(`⚠️ Railway service unavailable: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            console.log(`⚠️ Railway service unavailable: ${error.message}`);
           }
 
           // If Railway failed, try to get real market data from Kraken API
@@ -564,7 +319,7 @@ You have access to real-time market data and can execute live trades through Str
                   const currentPrice = parseFloat(latestCandle[4]); // Close price
 
                   // Calculate simple RSI approximation
-                  const rsi = ohlcData && ohlcData.length > 14 ? calculateSimpleRSI(ohlcData) : 50;
+                  const rsi = this.calculateSimpleRSI(ohlcData);
 
                   analysis = {
                     current_price: currentPrice,
@@ -586,7 +341,7 @@ You have access to real-time market data and can execute live trades through Str
                 }
               }
             } catch (error) {
-              console.log(`⚠️ Kraken API unavailable: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              console.log(`⚠️ Kraken API unavailable: ${error.message}`);
             }
           }
 
@@ -735,84 +490,6 @@ You have access to real-time market data and can execute live trades through Str
           },
           timestamp: new Date().toISOString()
         };
-      },
-    }),
-
-    adaCustomAlgorithmBacktest: createTool({
-      id: 'adaCustomAlgorithmBacktest',
-      description: 'Run comprehensive ADA Custom Algorithm backtest using real market data and proven RSI + Bollinger Band + Volume strategy',
-      inputSchema: z.object({
-        symbol: z.string().default('ADAUSD').describe('Trading symbol'),
-        startDate: z.string().describe('Backtest start date (ISO string)'),
-        endDate: z.string().describe('Backtest end date (ISO string)'),
-        timeframe: z.string().default('15m').describe('Chart timeframe'),
-      }),
-      execute: async ({ symbol, startDate, endDate, timeframe }) => {
-        try {
-          console.log(`🚀 Running ADA Custom Algorithm backtest: ${symbol} from ${startDate} to ${endDate}`);
-
-          // Fetch real historical data from Kraken API
-          const historicalData = await fetchRealADAData(symbol, startDate, endDate, timeframe);
-
-          if (!historicalData || historicalData.length === 0) {
-            throw new Error('Failed to fetch historical market data');
-          }
-
-          console.log(`📈 Loaded ${historicalData.length} ${timeframe} candles for backtesting`);
-
-          // Run the ADA Custom Algorithm on real data
-          const backtestResults = await runADACustomAlgorithm(historicalData, {
-            initialCapital: 1000, // 1000 ADA starting capital
-            riskPerTrade: 0.02, // 2% risk per trade
-            minTradeSize: 40, // Minimum 40 ADA per trade (Strike Finance requirement)
-            stopLossPercent: 0.04, // 4% stop loss
-            takeProfitPercent: 0.08, // 8% take profit
-            rsiPeriod: 14,
-            rsiOversold: 30,
-            rsiOverbought: 70,
-            bbPeriod: 20,
-            bbStdDev: 2,
-            volumeThreshold: 1.5 // Volume must be 1.5x average
-          });
-
-          const results = {
-            success: true,
-            results: {
-              strategy: 'ADA Custom Algorithm',
-              symbol,
-              timeframe,
-              startDate,
-              endDate,
-              trades: backtestResults.trades,
-              performance: backtestResults.performance,
-              analysis: {
-                summary: `ADA Custom Algorithm achieved ${backtestResults.performance.winRate.toFixed(1)}% win rate with ${backtestResults.trades.length} trades`,
-                algorithm: 'RSI Oversold/Overbought + Bollinger Band Bounce + Volume Confirmation',
-                dataSource: 'Real Kraken API data',
-                confidence: backtestResults.performance.winRate >= 60 ? 'HIGH' : backtestResults.performance.winRate >= 50 ? 'MEDIUM' : 'LOW'
-              }
-            }
-          };
-
-          console.log(`✅ ADA Custom Algorithm backtest completed: ${backtestResults.performance.winRate.toFixed(1)}% win rate, ${backtestResults.performance.totalPnl.toFixed(2)} ADA profit`);
-          return results;
-
-        } catch (error) {
-          console.error('❌ ADA Custom Algorithm backtest failed:', error);
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Unknown error occurred',
-            fallback: {
-              strategy: 'ADA Custom Algorithm',
-              performance: {
-                winRate: 62.5,
-                totalTrades: 0,
-                totalPnl: 0,
-                confidence: 'ERROR - Using fallback data'
-              }
-            }
-          };
-        }
       },
     }),
   },

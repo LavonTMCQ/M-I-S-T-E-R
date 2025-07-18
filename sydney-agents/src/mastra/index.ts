@@ -1,8 +1,7 @@
 
 import { Mastra } from '@mastra/core/mastra';
 import { PinoLogger } from '@mastra/loggers';
-// LibSQLStore removed - not supported in Mastra Cloud serverless environment
-// import { LibSQLStore } from '@mastra/libsql';
+import { LibSQLStore } from '@mastra/libsql';
 import { weatherWorkflow } from './workflows/weather-workflow.js';
 import { soneResearchWorkflow, soneMainResearchWorkflow } from './workflows/sone-research-workflow.js';
 import { naturalLanguageAdaBacktestingWorkflow } from './workflows/natural-language-ada-backtesting';
@@ -17,8 +16,7 @@ import { fibonacciAgent } from './agents/fibonacci-agent';
 import { multiTimeframeAgent } from './agents/multi-timeframe-agent';
 import { tomorrowLabsNetworkAgent } from './agents/tomorrow-labs-network-agent';
 import { adaCustomAlgorithmAgent } from './agents/ada-custom-algorithm-agent';
-// Temporarily disabled to fix Knative deployment issues
-// import { soneMCPServer } from './mcp/sone-mcp-server';
+import { soneMCPServer } from './mcp/sone-mcp-server';
 
 export const mastra = new Mastra({
   workflows: {
@@ -28,14 +26,13 @@ export const mastra = new Mastra({
     naturalLanguageAdaBacktestingWorkflow
   },
   agents: { weatherAgent, soneAgent, cashAgent, strikeAgent, cryptoBacktestingAgent, backtestingAgent, quantAgent, fibonacciAgent, multiTimeframeAgent, tomorrowLabsNetworkAgent, adaCustomAlgorithmAgent },
-  // Temporarily disable MCP server to fix Knative deployment issues
-  // mcpServers: {
-  //   soneMCPServer
-  // },
-  // LibSQLStore removed - not supported in Mastra Cloud serverless environment
-  // storage: new LibSQLStore({
-  //   url: ":memory:",
-  // }),
+  mcpServers: {
+    soneMCPServer
+  },
+  storage: new LibSQLStore({
+    // stores telemetry, evals, ... into memory storage, if it needs to persist, change to file:../mastra.db
+    url: ":memory:",
+  }),
   logger: new PinoLogger({
     name: 'Mastra',
     level: 'info',
