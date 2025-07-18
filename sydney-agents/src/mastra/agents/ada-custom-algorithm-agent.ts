@@ -65,8 +65,11 @@ async function fetchRealADAData(symbol: string, startDate: string, _endDate: str
       throw new Error('No OHLC data returned from Kraken');
     }
 
+    // Limit data to prevent memory issues (last 500 candles max)
+    const limitedData = ohlcData.slice(-500);
+
     // Convert to standard format
-    const historicalData = ohlcData.map((candle: any[]) => ({
+    const historicalData = limitedData.map((candle: any[]) => ({
       timestamp: candle[0] * 1000,
       time: new Date(candle[0] * 1000).toISOString(),
       open: parseFloat(candle[1]),
@@ -94,18 +97,27 @@ async function runADACustomAlgorithm(historicalData: any[], config: any) {
   let balance = config.initialCapital;
   let tradeId = 1;
 
-  // Calculate technical indicators
-  const rsiValues = calculateRSIArray(historicalData.map(d => d.close), config.rsiPeriod);
-  const bbValues = calculateBollingerBands(historicalData.map(d => d.close), config.bbPeriod, config.bbStdDev);
-  const volumeMA = calculateSMA(historicalData.map(d => d.volume), 20);
-
   for (let i = Math.max(config.rsiPeriod, config.bbPeriod) + 1; i < historicalData.length - 1; i++) {
     const currentCandle = historicalData[i];
     const currentPrice = currentCandle.close;
-    const currentRSI = rsiValues[i];
-    const currentBB = bbValues[i];
     const currentVolume = currentCandle.volume;
-    const avgVolume = volumeMA[i];
+
+    // Calculate indicators on-the-fly for memory efficiency
+    const recentPrices = historicalData.slice(Math.max(0, i - config.rsiPeriod), i + 1).map(d => d.close);
+    const currentRSI = calculateSimpleRSI(recentPrices.map((price) => [0, 0, 0, 0, price, 0, 0]), config.rsiPeriod);
+
+    const recentVolumes = historicalData.slice(Math.max(0, i - 20), i + 1).map(d => d.volume);
+    const avgVolume = recentVolumes.reduce((sum, vol) => sum + vol, 0) / recentVolumes.length;
+
+    // Simple Bollinger Band calculation
+    const sma = recentPrices.reduce((sum, price) => sum + price, 0) / recentPrices.length;
+    const variance = recentPrices.reduce((sum, price) => sum + Math.pow(price - sma, 2), 0) / recentPrices.length;
+    const std = Math.sqrt(variance);
+    const currentBB = {
+      upper: sma + (std * config.bbStdDev),
+      middle: sma,
+      lower: sma - (std * config.bbStdDev)
+    };
 
     // Exit logic first
     if (currentPosition) {
@@ -234,77 +246,7 @@ async function runADACustomAlgorithm(historicalData: any[], config: any) {
   return { trades, performance };
 }
 
-// Helper function to calculate RSI array
-function calculateRSIArray(prices: number[], period: number): number[] {
-  const rsi: number[] = [];
-
-  for (let i = 0; i < prices.length; i++) {
-    if (i < period) {
-      rsi.push(50); // Default RSI for insufficient data
-    } else {
-      const gains: number[] = [];
-      const losses: number[] = [];
-
-      for (let j = i - period + 1; j <= i; j++) {
-        const change = prices[j] - prices[j - 1];
-        gains.push(change > 0 ? change : 0);
-        losses.push(change < 0 ? Math.abs(change) : 0);
-      }
-
-      const avgGain = gains.reduce((sum, gain) => sum + gain, 0) / period;
-      const avgLoss = losses.reduce((sum, loss) => sum + loss, 0) / period;
-
-      if (avgLoss === 0) {
-        rsi.push(100);
-      } else {
-        const rs = avgGain / avgLoss;
-        rsi.push(100 - (100 / (1 + rs)));
-      }
-    }
-  }
-
-  return rsi;
-}
-
-// Helper function to calculate Bollinger Bands
-function calculateBollingerBands(prices: number[], period: number, stdDev: number) {
-  const bands: any[] = [];
-
-  for (let i = 0; i < prices.length; i++) {
-    if (i < period - 1) {
-      bands.push({ upper: prices[i], middle: prices[i], lower: prices[i] });
-    } else {
-      const slice = prices.slice(i - period + 1, i + 1);
-      const sma = slice.reduce((sum, price) => sum + price, 0) / period;
-      const variance = slice.reduce((sum, price) => sum + Math.pow(price - sma, 2), 0) / period;
-      const std = Math.sqrt(variance);
-
-      bands.push({
-        upper: sma + (std * stdDev),
-        middle: sma,
-        lower: sma - (std * stdDev)
-      });
-    }
-  }
-
-  return bands;
-}
-
-// Helper function to calculate Simple Moving Average
-function calculateSMA(values: number[], period: number): number[] {
-  const sma: number[] = [];
-
-  for (let i = 0; i < values.length; i++) {
-    if (i < period - 1) {
-      sma.push(values[i]);
-    } else {
-      const slice = values.slice(i - period + 1, i + 1);
-      sma.push(slice.reduce((sum, val) => sum + val, 0) / period);
-    }
-  }
-
-  return sma;
-}
+// Removed unused helper functions to reduce bundle size
 // TODO: Re-enable these imports when memory is added back
 // import { Memory } from '@mastra/memory';
 // import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
