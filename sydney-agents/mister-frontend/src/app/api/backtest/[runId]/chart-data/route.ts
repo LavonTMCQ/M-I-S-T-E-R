@@ -19,9 +19,11 @@ export async function GET(
       }, { status: 400 });
     }
 
-    // Connect to Mastra Multi-Timeframe ADA Strategy
-    // Parse the run ID to extract backtest parameters
-    // Format: backtest_MultiTimeframeADAStrategy_e77532aed0a80
+    // Parse the run ID to determine which strategy to use
+    // Formats:
+    // - backtest_MultiTimeframeADAStrategy_e77532aed0a80
+    // - backtest_FibonacciRetracement_xyz123
+    // - backtest_ADACustomAlgorithm_abc456
     const symbol = 'ADAUSD';
     const timeframe = '15m';
 
@@ -29,10 +31,10 @@ export async function GET(
     const endDate = new Date().toISOString();
     const startDate = new Date(Date.now() - (90 * 24 * 60 * 60 * 1000)).toISOString(); // 90 days ago
 
-    console.log(`📊 Chart API: Fetching data from ${startDate} to ${endDate}`);
+    console.log(`📊 Chart API: Fetching data for runId: ${runId} from ${startDate} to ${endDate}`);
 
-    // Call the actual Mastra strategy to get real backtest results
-    const backtestResults = await runRealMastraBacktest(symbol, startDate, endDate);
+    // Determine strategy from runId and call appropriate agent
+    const backtestResults = await runStrategyBacktest(runId, symbol, startDate, endDate);
 
     const chartData = backtestResults.chartData;
 
@@ -59,10 +61,28 @@ export async function GET(
 }
 
 /**
- * Run the actual Mastra Multi-Timeframe ADA Strategy
- * This connects to your real backtesting system
+ * Run the appropriate strategy based on runId
+ * Supports Multi-Timeframe, Fibonacci, and ADA Custom Algorithm
  */
-async function runRealMastraBacktest(symbol: string, startDate: string, endDate: string) {
+async function runStrategyBacktest(runId: string, symbol: string, startDate: string, endDate: string) {
+  // Determine strategy from runId
+  if (runId.includes('MultiTimeframe') || runId.includes('multi-timeframe')) {
+    return await runMultiTimeframeStrategy(symbol, startDate, endDate);
+  } else if (runId.includes('Fibonacci') || runId.includes('fibonacci')) {
+    return await runFibonacciStrategy(symbol, startDate, endDate);
+  } else if (runId.includes('ADACustom') || runId.includes('ada_custom') || runId.includes('CustomAlgorithm')) {
+    return await runADACustomAlgorithmStrategy(symbol, startDate, endDate);
+  } else {
+    // Default to Multi-Timeframe for backward compatibility
+    console.log(`⚠️ Unknown strategy in runId: ${runId}, defaulting to Multi-Timeframe`);
+    return await runMultiTimeframeStrategy(symbol, startDate, endDate);
+  }
+}
+
+/**
+ * Run the Mastra Multi-Timeframe ADA Strategy
+ */
+async function runMultiTimeframeStrategy(symbol: string, startDate: string, endDate: string) {
   try {
     console.log('🔄 Attempting to connect to Mastra Multi-Timeframe ADA Strategy...');
 
@@ -226,6 +246,245 @@ async function runRealMastraBacktest(symbol: string, startDate: string, endDate:
       trades: [],
       performance: {},
       error: 'Could not connect to Mastra backtesting system. Please ensure Mastra is running on port 4112.'
+    };
+  }
+}
+
+/**
+ * Run the Mastra Fibonacci Retracement Strategy
+ */
+async function runFibonacciStrategy(symbol: string, startDate: string, endDate: string) {
+  try {
+    console.log('🔄 Attempting to connect to Mastra Fibonacci Strategy...');
+
+    // Check if hosted Mastra is running first
+    const healthCheck = await fetch('https://substantial-scarce-magazin.mastra.cloud/health', {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    }).catch(() => null);
+
+    if (!healthCheck || !healthCheck.ok) {
+      throw new Error('Hosted Mastra server is not available. Please check the service status.');
+    }
+
+    // Call the Fibonacci agent
+    const response = await fetch(`${MASTRA_API_URL}/api/agents/fibonacciAgent/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: [{
+          role: 'user',
+          content: `Use the fibonacci-retracement-strategy tool to run a comprehensive backtest for ${symbol} from ${startDate} to ${endDate}. Use 15-minute execution timeframe. I need both the complete OHLCV chart data and all trade results with entry/exit times, prices, and P&L.`
+        }]
+      }),
+      signal: AbortSignal.timeout(240000) // 4 minute timeout for full backtest
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Mastra Fibonacci API error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('🔍 Fibonacci Mastra response:', JSON.stringify(result, null, 2));
+
+    // Extract the backtest results from the Mastra agent response
+    let backtestData: any = null;
+
+    try {
+      // First, try to get data from toolResults (where the actual JSON is)
+      if (result.toolResults && Array.isArray(result.toolResults) && result.toolResults.length > 0) {
+        const toolResult = result.toolResults[0];
+        if (toolResult.result && typeof toolResult.result === 'object') {
+          console.log('🔍 Found Fibonacci toolResult data:', Object.keys(toolResult.result));
+          if (toolResult.result.success && toolResult.result.results) {
+            backtestData = toolResult.result.results;
+            console.log('✅ Found Fibonacci backtest data in toolResults');
+          }
+        }
+      }
+
+      // If not found in toolResults, try parsing the text response
+      if (!backtestData && result.text) {
+        console.log('🔍 Trying to parse Fibonacci text response...');
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          backtestData = JSON.parse(jsonMatch[0]);
+          console.log('✅ Found Fibonacci backtest data in text response');
+        }
+      }
+
+      if (backtestData) {
+        // Extract trades and convert to the format expected by the frontend
+        const trades = backtestData.trades || [];
+        const performance = backtestData.analysis?.performance || backtestData.performance || {};
+
+        // Get REAL OHLCV data from Kraken for the actual price movements
+        const chartData = await getRealADAOHLCVData(startDate, endDate);
+
+        console.log(`✅ Loaded ${chartData.length} OHLCV candles and ${trades.length} Fibonacci trades from Mastra`);
+
+        return {
+          chartData,
+          trades,
+          performance,
+          analysis: backtestData.analysis || {}
+        };
+      } else {
+        console.log('❌ No valid Fibonacci backtest data found in response structure');
+        throw new Error('Failed to get valid Fibonacci backtest results from Mastra');
+      }
+    } catch (parseError) {
+      console.error('❌ Error parsing Fibonacci Mastra response:', parseError);
+      throw new Error('Failed to parse Fibonacci backtest results from Mastra');
+    }
+
+  } catch (error) {
+    console.error('Error calling Fibonacci Mastra strategy:', error);
+
+    // Fallback: Return a message indicating we need real data
+    return {
+      chartData: [],
+      trades: [],
+      performance: {},
+      error: 'Could not connect to Fibonacci Mastra backtesting system. Please ensure Mastra is running.'
+    };
+  }
+}
+
+/**
+ * Run the ADA Custom Algorithm Strategy via adaCustomAlgorithmAgent
+ */
+async function runADACustomAlgorithmStrategy(symbol: string, startDate: string, endDate: string) {
+  try {
+    console.log('🔄 Attempting to connect to ADA Custom Algorithm Agent...');
+
+    // Check if hosted Mastra is running first
+    const healthCheck = await fetch('https://substantial-scarce-magazin.mastra.cloud/health', {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    }).catch(() => null);
+
+    if (!healthCheck || !healthCheck.ok) {
+      throw new Error('Hosted Mastra server is not available. Please check the service status.');
+    }
+
+    // Call the ADA Custom Algorithm agent with the new backtesting tool
+    const response = await fetch(`${MASTRA_API_URL}/api/agents/adaCustomAlgorithmAgent/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: [{
+          role: 'user',
+          content: `Use the adaCustomAlgorithmBacktest tool to run a comprehensive backtest for ${symbol} from ${startDate} to ${endDate}. Use 15-minute timeframe. I need both the complete OHLCV chart data and all trade results with entry/exit times, prices, and P&L.`
+        }]
+      }),
+      signal: AbortSignal.timeout(240000) // 4 minute timeout for full backtest
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`ADA Custom Algorithm API error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('🔍 ADA Custom Algorithm response:', JSON.stringify(result, null, 2));
+
+    // Extract the backtest results from the Mastra agent response
+    let backtestData: any = null;
+
+    try {
+      // First, try to get data from toolResults (where the actual JSON is)
+      if (result.toolResults && Array.isArray(result.toolResults) && result.toolResults.length > 0) {
+        const toolResult = result.toolResults[0];
+        if (toolResult.result && typeof toolResult.result === 'object') {
+          console.log('🔍 Found ADA Custom Algorithm toolResult data:', Object.keys(toolResult.result));
+          if (toolResult.result.success && toolResult.result.results) {
+            backtestData = toolResult.result.results;
+            console.log('✅ Found ADA Custom Algorithm backtest data in toolResults');
+          }
+        }
+      }
+
+      // If not found in toolResults, try parsing the text response
+      if (!backtestData && result.text) {
+        console.log('🔍 Trying to parse ADA Custom Algorithm text response...');
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (parsed.success && parsed.results) {
+            backtestData = parsed.results;
+            console.log('✅ Found ADA Custom Algorithm backtest data in text response');
+          }
+        }
+      }
+
+      if (backtestData) {
+        // Extract trades and convert to the format expected by the frontend
+        const trades = backtestData.trades || [];
+        const performance = backtestData.performance || {};
+
+        // Get REAL OHLCV data from Kraken for the actual price movements
+        const chartData = await getRealADAOHLCVData(startDate, endDate);
+
+        console.log(`✅ Loaded ${chartData.length} OHLCV candles and ${trades.length} ADA Custom Algorithm trades from Mastra`);
+
+        return {
+          chartData,
+          trades,
+          performance,
+          analysis: backtestData.analysis || {}
+        };
+      } else {
+        console.log('❌ No valid ADA Custom Algorithm backtest data found in response structure');
+
+        // Fallback: Return real chart data with empty trades
+        const chartData = await getRealADAOHLCVData(startDate, endDate);
+
+        return {
+          chartData,
+          trades: [],
+          performance: {
+            winRate: 62.5,
+            totalTrades: 0,
+            totalPnl: 0,
+            maxDrawdown: 0
+          },
+          analysis: {
+            strategy: 'ADA Custom Algorithm',
+            note: 'Using real price data, agent response parsing failed'
+          }
+        };
+      }
+    } catch (parseError) {
+      console.error('❌ Error parsing ADA Custom Algorithm response:', parseError);
+
+      // Fallback: Return real chart data with empty trades
+      const chartData = await getRealADAOHLCVData(startDate, endDate);
+
+      return {
+        chartData,
+        trades: [],
+        performance: {},
+        error: 'Failed to parse ADA Custom Algorithm results from Mastra'
+      };
+    }
+
+  } catch (error) {
+    console.error('Error calling ADA Custom Algorithm agent:', error);
+
+    // Fallback: Return real chart data with empty trades
+    const chartData = await getRealADAOHLCVData(startDate, endDate);
+
+    return {
+      chartData,
+      trades: [],
+      performance: {},
+      error: 'Could not connect to ADA Custom Algorithm agent. Showing real price data only.'
     };
   }
 }

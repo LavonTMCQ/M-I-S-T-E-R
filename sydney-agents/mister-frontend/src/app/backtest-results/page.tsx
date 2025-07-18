@@ -534,6 +534,7 @@ export default function BacktestResultsPage() {
           console.log('🔍 First trade example:', realResults.trades?.[0]);
           console.log('🔍 Entry markers:', realResults.chart_data?.entry_markers?.[0]);
           console.log('🔍 Exit markers:', realResults.chart_data?.exit_markers?.[0]);
+          console.log('🔍 FULL API RESPONSE:', JSON.stringify(realResults, null, 2));
 
           // Deep inspection of performance data
           console.log('🔍 Performance keys:', Object.keys(realResults.performance || {}));
@@ -591,6 +592,15 @@ export default function BacktestResultsPage() {
           };
 
           console.log('🔄 Transformed results:', transformedResults);
+
+          console.log('🎯 FINAL CHART DATA BEING PASSED:');
+          console.log('   📊 Chart Data Length:', transformedResults.chartData?.length || 0);
+          console.log('   🎯 Trades Length:', transformedResults.trades?.length || 0);
+          console.log('   📈 First Chart Candle:', transformedResults.chartData?.[0]);
+          console.log('   🎯 First Trade:', transformedResults.trades?.[0]);
+          console.log('   📊 Entry Markers:', transformedResults.entryMarkers?.length || 0);
+          console.log('   📊 Exit Markers:', transformedResults.exitMarkers?.length || 0);
+
           setBacktestResults(transformedResults);
 
           // Update strategy card with REAL data from Railway API

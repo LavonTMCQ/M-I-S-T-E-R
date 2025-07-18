@@ -13,7 +13,7 @@ interface ApexTradingChartProps {
 }
 
 export function ApexTradingChart({ chartData, trades, className = '' }: ApexTradingChartProps) {
-  
+
   // Calculate trade statistics
   const tradeStats = useMemo(() => {
     if (!trades || trades.length === 0) return null;
@@ -48,7 +48,9 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
 
   // Format data for ApexCharts candlestick
   const candlestickData = useMemo(() => {
-    if (!chartData || chartData.length === 0) return [];
+    if (!chartData || chartData.length === 0) {
+      return [];
+    }
 
     // Handle Railway API format (chartData.candlestick) or direct array
     const dataArray = Array.isArray(chartData) ? chartData : chartData.candlestick || [];
@@ -73,10 +75,12 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
 
   // Format trade annotations
   const annotations = useMemo(() => {
-    if (!trades || trades.length === 0) return { points: [] };
-    
+    if (!trades || trades.length === 0) {
+      return { points: [] };
+    }
+
     const points: any[] = [];
-    
+
     trades.forEach((trade, index) => {
       // Handle both Railway API format and existing format
       const entryTime = trade.entry_timestamp || trade.entryTime;
@@ -85,11 +89,6 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
       const exitPrice = trade.exit_price || trade.exitPrice;
       const tradeSide = trade.type === 'long' ? 'LONG' : (trade.type === 'short' ? 'SHORT' : trade.side);
       const pnl = trade.pnl || trade.netPnl;
-
-      // Debug logging for trade data
-      if (index === 0) {
-        console.log('🔍 Chart trade example:', { entryTime, exitTime, entryPrice, exitPrice, tradeSide, pnl });
-      }
 
       // Skip if essential data is missing
       if (!entryTime || !entryPrice || !tradeSide) {
@@ -141,9 +140,12 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
             }
           }
         });
+      } else {
+        console.log(`⚠️ CHART DEBUG: Missing exit data for trade ${index + 1}:`, { exitTime, exitPrice, pnl });
       }
     });
 
+    console.log(`🎯 CHART DEBUG: Final annotations created:`, { totalPoints: points.length, points });
     return { points };
   }, [trades]);
 

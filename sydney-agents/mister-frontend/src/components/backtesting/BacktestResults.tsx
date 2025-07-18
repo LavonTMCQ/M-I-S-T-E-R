@@ -126,7 +126,18 @@ export function BacktestResults({ results, className = '' }: BacktestResultsProp
           console.log('📊 Sample data:', chartData.slice(0, 3));
         } else {
           console.warn('No OHLCV data returned from Kraken, using fallback');
-          setRealChartData(results.chartData || []);
+          // Handle Railway API nested chart data structure
+          const fallbackChartData = results.chartData;
+          if (fallbackChartData && typeof fallbackChartData === 'object' && fallbackChartData.candlestick) {
+            console.log('📊 Using Railway API candlestick data:', fallbackChartData.candlestick.length, 'candles');
+            setRealChartData(fallbackChartData.candlestick);
+          } else if (Array.isArray(fallbackChartData)) {
+            console.log('📊 Using direct array chart data:', fallbackChartData.length, 'candles');
+            setRealChartData(fallbackChartData);
+          } else {
+            console.warn('⚠️ No valid chart data available');
+            setRealChartData([]);
+          }
         }
 
         // Use the trades from the backtest results
@@ -135,7 +146,18 @@ export function BacktestResults({ results, className = '' }: BacktestResultsProp
 
       } catch (error) {
         console.error('❌ Error fetching real market data:', error);
-        setRealChartData(results.chartData || []);
+        // Handle Railway API nested chart data structure in error case too
+        const fallbackChartData = results.chartData;
+        if (fallbackChartData && typeof fallbackChartData === 'object' && fallbackChartData.candlestick) {
+          console.log('📊 Error fallback: Using Railway API candlestick data:', fallbackChartData.candlestick.length, 'candles');
+          setRealChartData(fallbackChartData.candlestick);
+        } else if (Array.isArray(fallbackChartData)) {
+          console.log('📊 Error fallback: Using direct array chart data:', fallbackChartData.length, 'candles');
+          setRealChartData(fallbackChartData);
+        } else {
+          console.warn('⚠️ Error fallback: No valid chart data available');
+          setRealChartData([]);
+        }
         setRealTrades(results.trades || []);
       } finally {
         setIsLoadingChartData(false);

@@ -276,6 +276,38 @@ class ADACustomBacktestEngine:
         else:
             print("\n❌ NEEDS REFINEMENT: Algorithm requires optimization")
         
+        # Add chart data for frontend visualization
+        chart_data = {
+            'candlestick': df.to_dict('records'),
+            'entry_markers': [],
+            'exit_markers': []
+        }
+
+        # Add trade markers for chart visualization
+        for trade in trades:
+            # Entry marker
+            chart_data['entry_markers'].append({
+                'timestamp': trade['timestamp'],
+                'price': trade['entry_price'],
+                'type': trade['type'],
+                'confidence': trade.get('confidence', 75)
+            })
+
+            # Exit marker (if trade has exit data)
+            if 'exit_timestamp' in trade and trade['exit_timestamp']:
+                chart_data['exit_markers'].append({
+                    'timestamp': trade['exit_timestamp'],
+                    'price': trade['exit_price'],
+                    'type': trade['type'],
+                    'pnl': trade['pnl'],
+                    'exit_reason': trade.get('exit_reason', 'unknown')
+                })
+
+        # Add chart_data to results
+        results['chart_data'] = chart_data
+        results['trades'] = trades  # Ensure trades are included
+        results['price_data'] = df.to_dict('records')  # Alternative format
+
         return results
     
     def _execute_ada_trade(self, signal: Dict, amount: float, df: pd.DataFrame) -> Dict:
@@ -326,8 +358,26 @@ class ADACustomBacktestEngine:
         
         pnl = amount * leveraged_return - 3  # 3 ADA transaction fee
         
+        # Get exit timestamp
+        exit_timestamp = None
+        if exit_price is not None:
+            # Find the exit bar timestamp
+            for i in range(signal_idx + 1, min(signal_idx + 17, len(df))):
+                bar = df.iloc[i]
+                if ((signal['type'] == 'long' and (bar['low'] <= stop_loss or bar['high'] >= take_profit)) or
+                    (signal['type'] == 'short' and (bar['high'] >= stop_loss or bar['low'] <= take_profit))):
+                    exit_timestamp = bar['timestamp']
+                    break
+
+            # If no specific exit found, use time-based exit
+            if exit_timestamp is None:
+                exit_idx = min(signal_idx + 16, len(df) - 1)
+                exit_timestamp = df.iloc[exit_idx]['timestamp']
+
         return {
             'timestamp': signal['timestamp'],
+            'entry_timestamp': signal['timestamp'],  # For chart compatibility
+            'exit_timestamp': exit_timestamp,
             'type': signal['type'],
             'entry_price': entry_price,
             'exit_price': exit_price,
