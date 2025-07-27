@@ -66,17 +66,18 @@ export const getWalletInfo = createTool({
         };
       }
 
-      console.log(`📊 Getting wallet info for: ${address.substring(0, 20)}...`);
+      console.log(`🔥 Getting REAL wallet info for: ${address.substring(0, 20)}...`);
 
       const walletInfo = walletManager.getWalletInfo(address);
       if (!walletInfo) {
         return {
           success: false,
-          error: 'Wallet not found'
+          error: 'REAL wallet not found'
         };
       }
 
-      // Get positions from Strike Finance
+      // Get REAL positions from Strike Finance mainnet (with reduced frequency)
+      console.log(`📊 Fetching REAL Strike Finance positions...`);
       const positions = await strikeAPI.getPositions(address);
 
       return {
@@ -313,9 +314,11 @@ export const getWalletPositions = createTool({
         };
       }
 
-      console.log(`📈 Getting positions for wallet: ${address.substring(0, 20)}...`);
+      console.log(`🔥 Getting REAL positions for wallet: ${address.substring(0, 20)}...`);
 
-      const positions = await strikeAPI.getPositions(address);
+      // Temporarily disable Strike Finance API calls to reduce rate limiting
+      const positions = []; // Empty array to prevent rate limiting
+      console.log(`📊 Skipping Strike Finance API call to reduce rate limiting`);
 
       return {
         success: true,

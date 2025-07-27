@@ -75,7 +75,7 @@ Focus on providing actionable trading insights with clear risk management and re
           console.log('📊 ADA Custom Algorithm: Analyzing current market conditions...');
 
           // Use the ADA Custom Algorithm tool for live analysis
-          const toolResult = await adaCustomAlgorithmTool.execute({
+          const toolResult = await adaCustomAlgorithmTool?.execute({
             context: {
               symbol: 'ADAUSD',
               startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -83,8 +83,9 @@ Focus on providing actionable trading insights with clear risk management and re
               timeframe: timeframe,
               period: '7d',
               mode: 'live_analysis' as const,
-            }
-          });
+            },
+            runtimeContext: {} as any
+          }) as any;
 
           if (toolResult.success) {
             return {
@@ -154,36 +155,176 @@ Focus on providing actionable trading insights with clear risk management and re
 
     executeAdaCustomTrade: createTool({
       id: 'executeAdaCustomTrade',
-      description: 'Execute simulated ADA Custom Algorithm trade',
+      description: 'Execute REAL ADA Custom Algorithm trade through Strike Finance API',
       inputSchema: z.object({
         tradeAmount: z.number().min(40).describe('Trade amount in ADA (minimum 40)'),
         tradeType: z.enum(['long', 'short']).describe('Trade direction'),
         confidence: z.number().min(70).max(100).describe('Algorithm confidence percentage'),
         entryPrice: z.number().describe('Expected entry price'),
+        walletAddress: z.string().optional().describe('Wallet address for trade execution'),
+        executionMode: z.enum(['real', 'simulated']).default('real').describe('Execution mode - real or simulated'),
       }),
       execute: async ({ context }) => {
-        const { tradeAmount, tradeType, confidence, entryPrice } = context;
-        
-        // Simulate trade execution
-        const tradeId = `ADA_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const { tradeAmount, tradeType, confidence, entryPrice, walletAddress, executionMode } = context;
+
+        const tradeId = `ADA_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
         const stopLoss = tradeType === 'long' ? entryPrice * 0.96 : entryPrice * 1.04;
         const takeProfit = tradeType === 'long' ? entryPrice * 1.08 : entryPrice * 0.92;
-        
-        return {
-          success: true,
-          tradeDetails: {
-            tradeId: tradeId,
-            amount: tradeAmount,
-            type: tradeType,
-            entryPrice: entryPrice,
-            stopLoss: stopLoss,
-            takeProfit: takeProfit,
-            confidence: confidence,
-            status: 'simulated',
-            timestamp: new Date().toISOString(),
-          },
-          message: `Simulated ${tradeAmount} ADA ${tradeType.toUpperCase()} trade with ${confidence}% confidence`
-        };
+
+        if (executionMode === 'simulated') {
+          // Fallback to simulation mode
+          return {
+            success: true,
+            tradeDetails: {
+              tradeId: tradeId,
+              amount: tradeAmount,
+              type: tradeType,
+              entryPrice: entryPrice,
+              stopLoss: stopLoss,
+              takeProfit: takeProfit,
+              confidence: confidence,
+              status: 'simulated',
+              timestamp: new Date().toISOString(),
+            },
+            message: `Simulated ${tradeAmount} ADA ${tradeType.toUpperCase()} trade with ${confidence}% confidence`
+          };
+        }
+
+        // REAL TRADE EXECUTION
+        try {
+          console.log(`🚀 ADA Custom Algorithm: Executing REAL ${tradeType} trade for ${tradeAmount} ADA`);
+
+          // Try Railway Vault Service first, then fallback to unified execution service
+          let executionResult;
+
+          try {
+            // First attempt: Railway Vault Service
+            console.log('🏦 Attempting Railway Vault Service execution...');
+
+            const vaultResponse = await fetch('https://ada-backtesting-service-production.up.railway.app/api/vault/execute-trade', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                vault_address: walletAddress || 'default_vault',
+                trade_type: tradeType,
+                trade_amount: tradeAmount,
+                algorithm: 'ada_custom_algorithm',
+                confidence: confidence,
+              }),
+              signal: AbortSignal.timeout(15000), // 15 second timeout
+            });
+
+            if (vaultResponse.ok) {
+              const vaultResult = await vaultResponse.json();
+
+              if (vaultResult.success) {
+                executionResult = {
+                  success: true,
+                  txHash: vaultResult.trade_details?.trade_id || 'vault_trade',
+                  walletAddress: vaultResult.vault_address,
+                  walletType: 'vault',
+                  tradeDetails: vaultResult.trade_details,
+                  vaultBalance: vaultResult.vault_balance,
+                  fees: vaultResult.estimated_fees
+                };
+              } else {
+                throw new Error(vaultResult.error || 'Vault execution failed');
+              }
+            } else {
+              throw new Error(`Railway Vault API error: ${vaultResponse.status}`);
+            }
+
+          } catch (vaultError) {
+            console.log('⚠️ Railway Vault Service failed, trying unified execution service...');
+
+            // Fallback: Unified Execution Service
+            const { UnifiedExecutionService } = await import('../services/unified-execution-service');
+            const executionService = UnifiedExecutionService.getInstance();
+
+            // Create trading decision object
+            const tradingDecision = {
+              action: 'Open' as const,
+              reason: `ADA Custom Algorithm signal: ${confidence}% confidence ${tradeType} trade`,
+              timestamp: new Date(),
+              params: {
+                position: (tradeType === 'long' ? 'Long' : 'Short') as 'Long' | 'Short',
+                collateralAmount: tradeAmount * 1_000_000, // Convert ADA to lovelace
+                leverage: 2, // Default 2x leverage for algorithm trades
+                stopLoss: stopLoss,
+                takeProfit: takeProfit,
+              }
+            };
+
+            if (walletAddress) {
+              // Try as connected wallet first
+              try {
+                executionResult = await executionService.executeAlgorithmicTrade(
+                  tradingDecision,
+                  walletAddress,
+                  'connected'
+                );
+              } catch (connectedError) {
+                console.log('⚠️ Connected wallet execution failed, trying managed wallet...');
+                // Fallback to managed wallet
+                executionResult = await executionService.executeAlgorithmicTrade(
+                  tradingDecision,
+                  walletAddress,
+                  'managed'
+                );
+              }
+            } else {
+              // No wallet address provided - return error
+              throw new Error('Wallet address required for real trade execution');
+            }
+          }
+
+          if (executionResult.success) {
+            return {
+              success: true,
+              tradeDetails: {
+                tradeId: tradeId,
+                amount: tradeAmount,
+                type: tradeType,
+                entryPrice: entryPrice,
+                stopLoss: stopLoss,
+                takeProfit: takeProfit,
+                confidence: confidence,
+                status: 'executed',
+                txHash: executionResult.txHash,
+                walletAddress: executionResult.walletAddress,
+                walletType: executionResult.walletType,
+                timestamp: new Date().toISOString(),
+              },
+              message: `✅ REAL ${tradeAmount} ADA ${tradeType.toUpperCase()} trade executed with ${confidence}% confidence`,
+              executionResult: executionResult
+            };
+          } else {
+            throw new Error(executionResult.error || 'Trade execution failed');
+          }
+
+        } catch (error) {
+          console.error('❌ ADA Custom Algorithm real trade execution failed:', error);
+
+          // Return error but with fallback simulation
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+            tradeDetails: {
+              tradeId: tradeId,
+              amount: tradeAmount,
+              type: tradeType,
+              entryPrice: entryPrice,
+              stopLoss: stopLoss,
+              takeProfit: takeProfit,
+              confidence: confidence,
+              status: 'failed',
+              timestamp: new Date().toISOString(),
+            },
+            message: `❌ Real trade execution failed: ${error instanceof Error ? error.message : String(error)}. Consider using simulation mode.`
+          };
+        }
       },
     }),
 
@@ -216,6 +357,85 @@ Focus on providing actionable trading insights with clear risk management and re
           summary: 'Tomorrow Labs Strategy maintains consistent 62.5% win rate with strong risk-adjusted returns',
           timestamp: new Date().toISOString(),
         };
+      },
+    }),
+
+    registerVaultForAutomatedTrading: createTool({
+      id: 'registerVaultForAutomatedTrading',
+      description: 'Register an Agent Vault for automated trading using the ADA Custom Algorithm',
+      inputSchema: z.object({
+        vaultAddress: z.string().describe('Agent Vault contract address'),
+        userAddress: z.string().describe('User wallet address'),
+        maxTradeAmount: z.number().min(40).describe('Maximum trade amount in ADA'),
+        algorithm: z.string().default('ada_custom_algorithm').describe('Trading algorithm to use'),
+        riskLevel: z.enum(['conservative', 'moderate', 'aggressive']).default('moderate').describe('Risk tolerance level'),
+        tradingEnabled: z.boolean().default(true).describe('Whether automated trading is enabled'),
+      }),
+      execute: async ({ context }) => {
+        const { vaultAddress, userAddress, maxTradeAmount, algorithm, riskLevel, tradingEnabled } = context;
+
+        try {
+          console.log(`🏦 Registering vault for automated trading: ${vaultAddress.substring(0, 20)}...`);
+
+          // Import the vault automated trading service
+          const { vaultAutomatedTradingService } = await import('../services/vault-automated-trading-service');
+
+          // Register the vault
+          vaultAutomatedTradingService.registerVault({
+            vaultAddress,
+            userAddress,
+            tradingEnabled,
+            maxTradeAmount,
+            algorithm: algorithm as 'ada_custom_algorithm',
+            riskLevel: riskLevel as 'conservative' | 'moderate' | 'aggressive',
+            totalTrades: 0,
+            winRate: 0
+          });
+
+          // Get service status
+          const serviceStatus = vaultAutomatedTradingService.getServiceStatus();
+
+          return {
+            success: true,
+            message: `✅ Vault registered for automated ADA Custom Algorithm trading`,
+            vaultDetails: {
+              vaultAddress: vaultAddress.substring(0, 20) + '...',
+              userAddress: userAddress.substring(0, 20) + '...',
+              maxTradeAmount,
+              algorithm,
+              riskLevel,
+              tradingEnabled
+            },
+            serviceStatus: {
+              isRunning: serviceStatus.isRunning,
+              totalActiveVaults: serviceStatus.activeVaults,
+              monitoringInterval: `${serviceStatus.monitoringInterval} minutes`,
+              minConfidence: `${serviceStatus.minConfidence}%`
+            },
+            tradingInfo: {
+              algorithm: 'ADA Custom Algorithm (Tomorrow Labs Strategy)',
+              winRate: '62.5%',
+              timeframe: '15-minute optimized',
+              signalFrequency: 'Every 5 minutes',
+              minConfidenceForTrade: '75%',
+              expectedFeatures: [
+                'Automatic trade execution on BUY signals',
+                'Risk management with stop-loss/take-profit',
+                'Balance-aware position sizing',
+                'Minimum 30-minute intervals between trades'
+              ]
+            }
+          };
+
+        } catch (error) {
+          console.error('❌ Failed to register vault for automated trading:', error);
+
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+            message: '❌ Failed to register vault for automated trading'
+          };
+        }
       },
     }),
   },

@@ -120,3 +120,40 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* TradingView Widget Alignment Fixes */
+.tradingview-widget-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.tradingview-widget-container iframe {
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: inherit;
+}
+
+.tradingview-widget-container__widget {
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: inherit;
+}
+
+/* Fix TradingView popup modal centering */
+.tv-dialog {
+  border-radius: 8px !important;
+}
+
+.tv-dialog__section {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Ensure chart fills container properly */
+.tradingview-widget-container > div {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: inherit;
+}

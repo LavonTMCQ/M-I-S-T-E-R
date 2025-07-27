@@ -19,12 +19,18 @@ https://substantial-scarce-magazin.mastra.cloud/api/agents/strikeAgent/generate
 
 
 
+claude mcp add browser-mcp -s user npx @browsermcp/mcp@latest    
+claude mcp add sequential-thinking -s user npx @modelcontextprotocol/server-sequential-thinking
+claude mcp add context7 -s user npx @upstash/context7-mcp@latest
+claude mcp add mastra-docs -s user npx @mastra/mcp-docs-server
+claude mcp add magicuidesign -s user npx @magicuidesign/mcp@latest
+claude mcp add --transport http bright-data "https://server.smithery.ai/@luminati-io/brightdata-mcp/mcp?api_key=5d46ee62-9232-4bdd-9ba4-34f166cfd819&profile=gradual-herring-KdrLAg
+
 
 HOW TO PUSH
 
 cd MMISTERMMCP
 railway up
-
 
 cd sydney-agents
 git add -A
@@ -32,7 +38,33 @@ git commit -m "cashcoldgame"
 
 git push origin main
 
+Here's your current production setup:
 
+1. 🌐 Mastra Cloud (AI Agents)
+URL: https://substantial-scarce-magazin.mastra.cloud
+Purpose: Hosts your AI agents (Strike Agent, Fibonacci Agent, etc.)
+Deployment: Auto-deploys from git commits
+Status: ✅ PRODUCTION
+2. 🌉 Bridge Server (API Gateway)
+URL: https://bridge-server-cjs-production.up.railway.app
+Purpose: Bridges frontend ↔ Mastra Cloud ↔ Strike Finance
+Deployment: Railway auto-deploys from git
+Status: ✅ PRODUCTION
+3. 📊 ADA Backtesting Service
+URL: https://ada-backtesting-service-production.up.railway.app
+Purpose: Provides ADA algorithm signals
+Deployment: Railway (separate service)
+Status: ✅ PRODUCTION
+4. 🤖 CNT Trading Bot
+URL: https://cnt-trading-api-production.up.railway.app
+Purpose: CNT trading functionality
+Deployment: Railway (separate service)
+Status: ✅ PRODUCTION
+5. 💻 Frontend (MISTER UI)
+URL: http://localhost:3000 (LOCAL ONLY)
+Purpose: User interface for trading
+Deployment: NOT YET DEPLOYED - running locally
+Status: ⚠️ LOCAL DEVELOPMENT
 
 
 
@@ -41,12 +73,13 @@ VKH: 34f1cf4a537fed73e8061ff16ec347c8cf62be45abc89ec1493aba3d
 Files: keys/agent-wallet.{vkey,skey,addr}
 
 
-Contract Address: addr1wyq32c96u0u04s54clgeqtjk6fld56pcxnrmu4jzn57zj3sy9gwyk
-Script Hash: 011560bae3f8fac295c7d1902e56d252da683834c7be56429d3c2946
-Plutus Version: V3
-Status: Successfully compiled and validated
+Contract Address: addr1qycwlgqelwpd49hgqznn32ckppfjjhy9rfa9ufq9qvn2q58r9h8zuh
+Script Hash: efa019fb82da96e800a738ab160853295c851a7a5e24050326a050e3
+Network: Cardano Mainnet
+Status: ✅ READY FOR TESTING
 
-
-Discovered Contract: be7544ca7d42c903268caecae465f3f8b5a7e7607d09165e471ac8b5
-Method: Live API CBOR analysis
-Confidence: HIGH (validated with real transactions)
+FULL Contract address to parse: "addr1wxwx5rmqrwm4mpeg5ky6rt6lq76errkjjs490pewl9rqvrcqzrec7"
+🔍 Contract address length: 58 characters
+🔍 Final CBOR length: 608
+🔍 CBOR preview: 84a400d9010282825820b1c3e3879437fb723dfefef732a106cbda7a365f7acce170819857e7543b4a4302825820706c4f42...
+✅ Transaction submitted successfully! Hash: "db9b567a7f3639e242d65df7ba3f31705c2f23bc2cf92c8e5a9c38f03ac9c730"

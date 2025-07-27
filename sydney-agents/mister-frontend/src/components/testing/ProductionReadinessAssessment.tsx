@@ -205,7 +205,7 @@ export function ProductionReadinessAssessment() {
   const assessAPIAuthentication = async (): Promise<AssessmentCriteria['status']> => {
     try {
       // Test unauthenticated access to protected endpoint
-      const response = await fetch('http://localhost:4113/api/wallet/info');
+      const response = await fetch('https://bridge-server-cjs-production.up.railway.app/api/wallet/info');
       return response.status === 401 || response.status === 403 ? 'pass' : 'fail';
     } catch {
       return 'warning';

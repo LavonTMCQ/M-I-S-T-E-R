@@ -1,40 +1,48 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable WebAssembly support for Cardano WASM libraries
+  // Skip ESLint during build for now
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
+  // Configuration for Cardano CSL and Agent Vault functionality
   webpack: (config, { isServer }) => {
-    // Enable WebAssembly experiments
+    // Handle CSL WebAssembly files in all environments
     config.experiments = {
       ...config.experiments,
       asyncWebAssembly: true,
-      syncWebAssembly: true,
+      layers: true,
     };
 
-    // Handle .wasm files
+    // Add WebAssembly support
     config.module.rules.push({
       test: /\.wasm$/,
       type: 'webassembly/async',
     });
 
-    // Fallback for Node.js modules in browser
+    // Configure CSL for server-side
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        '@emurgo/cardano-serialization-lib-nodejs': 'commonjs @emurgo/cardano-serialization-lib-nodejs',
+        '@emurgo/cardano-serialization-lib-browser': 'commonjs @emurgo/cardano-serialization-lib-browser',
+      });
+    }
+
+    // Browser fallbacks (always needed)
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
         path: false,
         crypto: false,
+        stream: require.resolve('stream-browserify'),
+        buffer: require.resolve('buffer'),
       };
     }
 
     return config;
-  },
-
-  // Additional optimizations for WASM
-  transpilePackages: ['@emurgo/cardano-serialization-lib-browser'],
-
-  // Skip ESLint during build for now
-  eslint: {
-    ignoreDuringBuilds: true,
   },
 };
 

@@ -29,16 +29,16 @@ const strategies: TradingStrategy[] = [
   {
     id: 'ada_custom_algorithm',
     name: 'ADA Custom Algorithm',
-    description: 'Tomorrow Labs Strategy - Advanced 15-minute ADA trading with proven 62.5% win rate',
+    description: 'Tomorrow Labs Strategy - Advanced 15-minute ADA trading with real-time performance data',
     timeframe: '15m',
     type: 'algorithmic',
     status: 'active',
     performance: {
-      winRate: 62.5,
-      totalTrades: 8,
-      profitFactor: 1.85,
-      avgReturn: 11.01,
-      maxDrawdown: 4.2
+      winRate: 0, // Will be updated with real data from API
+      totalTrades: 0, // Will be updated with real data from API
+      profitFactor: 0, // Will be calculated from real trades
+      avgReturn: 0, // Will be calculated from real trades
+      maxDrawdown: 0 // Will be calculated from real trades
     },
     features: ['Real-time Analysis', 'Kraken API Data', 'TradingView Charts', 'Production Ready'],
     icon: <Zap className="w-5 h-5" />
@@ -436,6 +436,8 @@ export default function BacktestResultsPage() {
     // Force refresh real data on page load
     setRealStrategyData({}); // Clear cached data to force fresh API calls
 
+
+
     return () => clearInterval(interval);
   }, []);
 
@@ -544,7 +546,7 @@ export default function BacktestResultsPage() {
             // Chart data is already in the correct format from the agent
             chartData: realResults.chartData || [],
             // Transform trades to ensure consistent format
-            trades: (realResults.trades || []).map((trade, index) => {
+            trades: (realResults.trades || []).map((trade: any, index: number) => {
               const transformedTrade = {
                 id: trade.id || `trade-${index}`,
                 entryTime: trade.entryTime || trade.entry_time || null,
@@ -565,12 +567,45 @@ export default function BacktestResultsPage() {
 
               return transformedTrade;
             }),
-            // Map performance fields from Mastra agent response
-            totalNetPnl: parseFloat(realResults.totalPnl || 0),
-            winRate: parseFloat(realResults.winRate || 62.5),
-            maxDrawdown: parseFloat(realResults.maxDrawdown || 0),
+            // Calculate accurate performance metrics from actual trades
+            totalNetPnl: (() => {
+              const trades = realResults.trades || [];
+              const calculatedPnl = trades.reduce((sum: number, trade: any) => {
+                const pnl = parseFloat(trade.pnl || trade.netPnl || 0);
+                return sum + pnl;
+              }, 0);
+              console.log('💰 Calculated Total P&L:', calculatedPnl);
+              return calculatedPnl;
+            })(),
+            winRate: (() => {
+              const trades = realResults.trades || [];
+              if (trades.length === 0) return 0;
+              const winningTrades = trades.filter((trade: any) => {
+                const pnl = parseFloat(trade.pnl || trade.netPnl || 0);
+                return pnl > 0;
+              });
+              const calculatedWinRate = (winningTrades.length / trades.length) * 100;
+              console.log('🎯 Calculated Win Rate:', calculatedWinRate.toFixed(1) + '%');
+              return calculatedWinRate;
+            })(),
+            maxDrawdown: (() => {
+              const trades = realResults.trades || [];
+              let runningPnl = 0;
+              let peak = 0;
+              let maxDrawdown = 0;
+              trades.forEach((trade: any) => {
+                const pnl = parseFloat(trade.pnl || trade.netPnl || 0);
+                runningPnl += pnl;
+                if (runningPnl > peak) peak = runningPnl;
+                const drawdown = peak - runningPnl;
+                if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+              });
+              const calculatedMaxDrawdownPercent = peak > 0 ? (maxDrawdown / peak) * 100 : 0;
+              console.log('📉 Calculated Max Drawdown:', calculatedMaxDrawdownPercent.toFixed(1) + '%');
+              return calculatedMaxDrawdownPercent;
+            })(),
             sharpeRatio: parseFloat(realResults.sharpeRatio || 0),
-            totalTrades: parseInt(realResults.totalTrades || 0),
+            totalTrades: (realResults.trades || []).length,
             avgTradeDuration: realResults.avgTradeDuration || '4.0h',
             // Add missing fields for proper display
             symbol: 'ADAUSD',
@@ -590,12 +625,12 @@ export default function BacktestResultsPage() {
 
           setBacktestResults(transformedResults);
 
-          // Update strategy card with REAL data from Mastra agent
+          // Update strategy card with REAL data from API response
           const cardData = {
-            winRate: parseFloat(realResults.winRate || 62.5),
-            totalTrades: parseInt(realResults.totalTrades || 0),
-            totalPnl: parseFloat(realResults.totalPnl || 0),
-            maxDrawdown: parseFloat(realResults.maxDrawdown || 0),
+            winRate: parseFloat(transformedResults.winRate || 62.5),
+            totalTrades: parseInt(transformedResults.totalTrades || 0),
+            totalPnl: parseFloat(transformedResults.totalNetPnl || 0),
+            maxDrawdown: parseFloat(transformedResults.maxDrawdown || 0),
             lastUpdated: new Date().toISOString(),
             isRealData: true
           };
@@ -831,18 +866,7 @@ export default function BacktestResultsPage() {
           )}
         </div>
 
-        {/* Debug Button - Temporary */}
-        <div className="mb-4">
-          <button
-            onClick={() => {
-              console.log('🔍 Current realStrategyData:', realStrategyData);
-              console.log('🔍 Current backtestResults:', backtestResults);
-            }}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Debug Data
-          </button>
-        </div>
+
 
         {/* Enhanced Layout: Strategy Selector + Results */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

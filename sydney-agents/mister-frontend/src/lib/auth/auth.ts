@@ -32,7 +32,7 @@ export class AuthService {
   }
 
   /**
-   * Authenticate user with wallet connection
+   * Authenticate user with wallet connection (simplified - no signature required)
    * Sends complete wallet info including stake address for TapTools API
    */
   async authenticateWithWallet(walletAddress: string, walletInfo?: {
@@ -41,7 +41,7 @@ export class AuthService {
     balance?: number;
     handle?: string;
   }): Promise<ApiResponse<AuthToken>> {
-    console.log('🔐 Authenticating with wallet...');
+    console.log('🔗 Authenticating with wallet (simplified identification)...');
 
     const response = await apiClient.post<AuthToken>('/api/auth/wallet', {
       walletAddress,

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Send, Mic, MicOff, Bot, User, TrendingUp, TrendingDown, Maximize2, Settings, Copy, RefreshCw } from 'lucide-react';
 import { useWallet } from '@/contexts/WalletContext';
+import MarkdownRenderer from '@/components/ui/markdown-renderer';
 // Removed WASM dependency - using server-side CSL signing API instead
 
 // TODO: Future integration with AGUI from Copilot for enhanced AI interface
@@ -30,16 +31,7 @@ interface ChatMessage {
   };
 }
 
-// Function to format text with bold support
-const formatMessageText = (text: string) => {
-  const parts = text.split(/(\*\*.*?\*\*)/g);
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index}>{part.slice(2, -2)}</strong>;
-    }
-    return part;
-  });
-};
+// Using MarkdownRenderer component for professional formatting
 
 export function AITradingChat() {
   const { mainWallet } = useWallet();
@@ -343,9 +335,10 @@ export function AITradingChat() {
                       : 'bg-card border'
                   }`}
                 >
-                  <p className="text-xs leading-relaxed whitespace-pre-wrap">
-                    {formatMessageText(message.content)}
-                  </p>
+                  <MarkdownRenderer
+                    content={message.content}
+                    className="text-xs leading-relaxed"
+                  />
 
                   {/* Enhanced Trade Action Display */}
                   {message.tradeAction && (

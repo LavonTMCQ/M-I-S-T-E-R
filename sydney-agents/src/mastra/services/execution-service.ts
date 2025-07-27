@@ -248,15 +248,21 @@ export class ExecutionService extends EventEmitter {
       throw new Error('Missing required parameters for open position');
     }
 
-    // Calculate collateral amount in ADA (not lovelace)
+    // Calculate REAL collateral amount in ADA (not lovelace)
     const collateralAmountADA = collateralAmount / 1_000_000; // Convert from lovelace to ADA
 
-    // Get transaction CBOR from Strike Finance API with corrected format
+    console.log(`🔥 EXECUTING REAL STRIKE FINANCE TRADE:`);
+    console.log(`💰 REAL Collateral: ${collateralAmountADA} ADA`);
+    console.log(`📊 REAL Leverage: ${leverage}x`);
+    console.log(`📈 REAL Position: ${position}`);
+    console.log(`🏦 REAL Wallet: ${walletAddress.substring(0, 20)}...`);
+
+    // Get REAL transaction CBOR from Strike Finance API with corrected format
     const response = await this.strikeAPI.openPosition(
       walletAddress,
-      collateralAmountADA,
-      leverage,
-      position
+      collateralAmountADA, // REAL ADA amount
+      leverage, // REAL leverage
+      position // REAL position type
     );
 
     // Sign and submit transaction
@@ -266,10 +272,12 @@ export class ExecutionService extends EventEmitter {
       throw new Error('Failed to sign transaction');
     }
 
-    // Submit to Cardano network (mock for now)
+    // Submit to REAL Cardano mainnet - NOT A TEST!
     const txHash = await this.submitTransaction(signedTxCbor);
 
-    console.log(`📈 Opened ${position} position for ${walletAddress.substring(0, 20)}... (${txHash})`);
+    console.log(`🔥 REAL POSITION OPENED: ${position} for ${walletAddress.substring(0, 20)}... (${txHash})`);
+    console.log(`💰 REAL ADA COMMITTED: ${collateralAmountADA} ADA`);
+    console.log(`📊 REAL LEVERAGE: ${leverage}x`);
     return txHash;
   }
 

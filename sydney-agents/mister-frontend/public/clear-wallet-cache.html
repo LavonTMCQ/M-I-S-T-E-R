@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Wallet Cache - MISTER</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 600px; margin: 0 auto; }
+        button { padding: 15px 30px; font-size: 16px; margin: 10px; cursor: pointer; }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .info { color: #2196F3; }
+        .warning { color: #ff9800; }
+        pre { background: #333; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 MISTER Wallet Cache Cleaner</h1>
+        <p>This tool will clear all cached wallet data and force a fresh connection to your preprod testnet wallet.</p>
+        
+        <div id="status"></div>
+        
+        <h3>Step 1: Clear All Cached Data</h3>
+        <button onclick="clearAllCache()">🗑️ Clear All Wallet Cache</button>
+        
+        <h3>Step 2: Test Testnet API</h3>
+        <button onclick="testTestnetAPI()">🧪 Test Your 10,000 tADA Balance</button>
+        
+        <h3>Step 3: Reconnect Wallet</h3>
+        <button onclick="connectTestnetWallet()">🔗 Connect Preprod Wallet</button>
+        
+        <h3>Step 4: Go Back to MISTER</h3>
+        <button onclick="goToMister()">🚀 Return to MISTER Frontend</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const className = type;
+            results.innerHTML += `<div class="${className}">${message}</div>`;
+            console.log(message);
+        }
+
+        function clearAllCache() {
+            log('🗑️ Clearing all wallet cache...', 'info');
+            
+            // Clear localStorage
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key) {
+                    keysToRemove.push(key);
+                }
+            }
+            
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                log(`Removed: ${key}`, 'success');
+            });
+            
+            // Clear sessionStorage
+            sessionStorage.clear();
+            
+            log('✅ All cache cleared successfully!', 'success');
+            log('📋 Now make sure Vespr is on PREPROD network', 'warning');
+        }
+
+        async function testTestnetAPI() {
+            log('🧪 Testing testnet API with your address...', 'info');
+            
+            const testnetAddress = 'addr_test1qz9xwnn8vzkgf30n3kn889t4d44z8vru5vn03rxqs3jw3g22kfaqlmfmjpy3f08ehldsr225zvs34xngrvm5wraeydrskg5m3u';
+            
+            try {
+                const response = await fetch(`http://localhost:3000/api/address/${testnetAddress}/balance`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    log(`✅ API Test SUCCESS!`, 'success');
+                    log(`💰 Balance: ${data.balance.toLocaleString()} tADA`, 'success');
+                    log(`🌐 Network: ${data.network}`, 'success');
+                    log(`📍 Address: ${data.address.substring(0, 20)}...`, 'info');
+                } else {
+                    log(`❌ API Test FAILED: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ API Test ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        async function connectTestnetWallet() {
+            log('🔗 Attempting to connect preprod wallet...', 'info');
+            
+            if (!window.cardano || !window.cardano.vespr) {
+                log('❌ Vespr wallet not found. Make sure it\'s installed and enabled.', 'error');
+                return;
+            }
+            
+            try {
+                log('🔍 Checking Vespr wallet...', 'info');
+                const api = await window.cardano.vespr.enable();
+                
+                const addresses = await api.getUsedAddresses();
+                const rewardAddresses = await api.getRewardAddresses();
+                const balance = await api.getBalance();
+                
+                const paymentAddr = addresses[0];
+                const stakeAddr = rewardAddresses[0];
+                const balanceAda = parseInt(balance) / 1_000_000;
+                
+                log(`📍 Payment Address: ${paymentAddr}`, 'info');
+                log(`🎯 Stake Address: ${stakeAddr}`, 'info');
+                log(`💰 Wallet Balance: ${balanceAda.toLocaleString()} ADA`, 'info');
+                
+                // Check if this is testnet
+                if (paymentAddr && paymentAddr.startsWith('addr_test')) {
+                    log('✅ TESTNET DETECTED! Vespr is on preprod network', 'success');
+                    
+                    // Test if this matches your expected address
+                    const expectedAddr = 'addr_test1qz9xwnn8vzkgf30n3kn889t4d44z8vru5vn03rxqs3jw3g22kfaqlmfmjpy3f08ehldsr225zvs34xngrvm5wraeydrskg5m3u';
+                    if (paymentAddr === expectedAddr) {
+                        log('🎉 PERFECT MATCH! This is your 10,000 tADA wallet!', 'success');
+                    } else {
+                        log('⚠️ Different testnet address. Make sure you imported the correct seed phrase.', 'warning');
+                        log(`Expected: ${expectedAddr.substring(0, 30)}...`, 'warning');
+                        log(`Got: ${paymentAddr.substring(0, 30)}...`, 'warning');
+                    }
+                } else {
+                    log('❌ MAINNET DETECTED! Switch Vespr to PREPROD network', 'error');
+                    log('📋 Steps: Open Vespr → Network dropdown → Select "Preprod"', 'warning');
+                }
+                
+            } catch (error) {
+                log(`❌ Wallet connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        function goToMister() {
+            log('🚀 Redirecting to MISTER frontend...', 'info');
+            window.location.href = 'http://localhost:3000';
+        }
+
+        // Auto-run on page load
+        window.onload = function() {
+            log('🔧 MISTER Wallet Cache Cleaner Ready', 'info');
+            log('📋 Make sure Vespr wallet is on PREPROD network before proceeding', 'warning');
+        };
+    </script>
+</body>
+</html>

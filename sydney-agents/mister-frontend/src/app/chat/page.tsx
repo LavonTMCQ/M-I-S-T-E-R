@@ -9,7 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MisterLogo } from '@/components/ui/mister-logo';
+import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import {
   Send,
   Bot,
@@ -49,19 +51,33 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [selectedAgent] = useState('tomorrow-labs'); // Fixed to network agent only
+  const [selectedAgent, setSelectedAgent] = useState('tomorrow-labs');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Network agent only - connects to Strike Finance and crypto backtesting
-  const networkAgent = {
-    id: 'tomorrow-labs',
-    name: 'Tomorrow Labs Network',
-    description: 'AI Network specialized in Strike Finance trading and crypto backtesting',
-    avatar: '🚀',
-    color: 'from-blue-500 to-purple-600',
-    capabilities: ['Strike Finance Trading', 'Crypto Backtesting', 'Natural Language Strategy Analysis']
+  // Available agents
+  const agents = {
+    'tomorrow-labs': {
+      id: 'tomorrow-labs',
+      name: 'Tomorrow Labs Network',
+      description: 'AI Network specialized in Strike Finance trading and crypto backtesting',
+      avatar: '🚀',
+      color: 'from-blue-500 to-purple-600',
+      capabilities: ['Strike Finance Trading', 'Crypto Backtesting', 'Natural Language Strategy Analysis'],
+      apiEndpoint: '/api/chat/tomorrow-labs'
+    },
+    'mister-v2': {
+      id: 'mister-v2',
+      name: 'MISTER v2 Agent',
+      description: 'Advanced AI agent with enhanced trading analysis and strategy optimization',
+      avatar: '🤖',
+      color: 'from-purple-500 to-pink-600',
+      capabilities: ['Advanced Strategy Analysis', 'Market Prediction', 'Risk Assessment', 'Portfolio Optimization'],
+      apiEndpoint: 'https://misterexc6.ngrok.io/api/agents/mister-v2/generate'
+    }
   };
+
+  const currentAgent = agents[selectedAgent as keyof typeof agents];
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -73,11 +89,23 @@ export default function ChatPage() {
     const savedSessions = localStorage.getItem('mister-chat-sessions');
     if (savedSessions) {
       const sessions = JSON.parse(savedSessions);
-      setChatSessions(sessions);
-      
+
+      // Convert date strings back to Date objects
+      const sessionsWithDates = sessions.map((session: any) => ({
+        ...session,
+        createdAt: new Date(session.createdAt),
+        updatedAt: new Date(session.updatedAt),
+        messages: session.messages.map((message: any) => ({
+          ...message,
+          timestamp: new Date(message.timestamp)
+        }))
+      }));
+
+      setChatSessions(sessionsWithDates);
+
       // Load the most recent session
-      if (sessions.length > 0) {
-        const mostRecent = sessions[0];
+      if (sessionsWithDates.length > 0) {
+        const mostRecent = sessionsWithDates[0];
         setCurrentSessionId(mostRecent.id);
         setMessages(mostRecent.messages);
         // Always use network agent
@@ -151,25 +179,51 @@ export default function ChatPage() {
       content: '',
       role: 'assistant',
       timestamp: new Date(),
-      agentName: networkAgent.name,
+      agentName: currentAgent.name,
       isTyping: true
     };
 
     setMessages([...newMessages, typingMessage]);
 
     try {
-      // Call Tomorrow Labs Network API
-      const response = await fetch('/api/chat/tomorrow-labs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: inputValue,
-          agentType: selectedAgent,
-          chatHistory: messages.slice(-10) // Last 10 messages for context
-        }),
-      });
+      let response;
+
+      if (selectedAgent === 'mister-v2') {
+        // Call MISTER v2 Agent API (external) - uses messages format
+        const chatMessages = [
+          ...messages.slice(-10).map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          {
+            role: 'user',
+            content: inputValue
+          }
+        ];
+
+        response = await fetch(currentAgent.apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: chatMessages
+          }),
+        });
+      } else {
+        // Call Tomorrow Labs Network API (internal)
+        response = await fetch(currentAgent.apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: inputValue,
+            agentType: selectedAgent,
+            chatHistory: messages.slice(-10) // Last 10 messages for context
+          }),
+        });
+      }
 
       if (!response.ok) {
         throw new Error('Failed to get response');
@@ -180,10 +234,10 @@ export default function ChatPage() {
       // Remove typing indicator and add real response
       const assistantMessage: Message = {
         id: `msg_${Date.now()}`,
-        content: data.response || 'Sorry, I encountered an error.',
+        content: data.text || data.response || data.message || 'Sorry, I encountered an error.',
         role: 'assistant',
         timestamp: new Date(),
-        agentName: networkAgent.name
+        agentName: currentAgent.name
       };
 
       const finalMessages = [...newMessages, assistantMessage];
@@ -254,26 +308,49 @@ export default function ChatPage() {
         {/* Left Sidebar - Network Info & Chat History */}
         <div className="w-80 mr-6 space-y-4">
 
-          {/* Network Agent Info */}
+          {/* Agent Selector & Info */}
           <Card className="backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-0 shadow-xl">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Sparkles className="w-5 h-5 text-purple-500" />
-                AI Network
+                AI Agents
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className={`w-full p-4 rounded-lg bg-gradient-to-r ${networkAgent.color} text-white shadow-lg`}>
+            <CardContent className="space-y-4">
+              {/* Agent Selector */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                  Select Agent:
+                </label>
+                <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose an agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.values(agents).map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{agent.avatar}</span>
+                          <span>{agent.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Current Agent Info */}
+              <div className={`w-full p-4 rounded-lg bg-gradient-to-r ${currentAgent.color} text-white shadow-lg`}>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="text-2xl">{networkAgent.avatar}</div>
+                  <div className="text-2xl">{currentAgent.avatar}</div>
                   <div>
-                    <div className="font-bold">{networkAgent.name}</div>
-                    <div className="text-sm opacity-90">{networkAgent.description}</div>
+                    <div className="font-bold">{currentAgent.name}</div>
+                    <div className="text-sm opacity-90">{currentAgent.description}</div>
                   </div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-xs font-medium opacity-90">Specialized in:</div>
-                  {networkAgent.capabilities.map((capability, index) => (
+                  {currentAgent.capabilities.map((capability, index) => (
                     <div key={index} className="text-xs opacity-80 flex items-center gap-1">
                       <div className="w-1 h-1 bg-white rounded-full"></div>
                       {capability}
@@ -325,7 +402,10 @@ export default function ChatPage() {
                           <div className="flex-1 min-w-0">
                             <div className="font-medium truncate">{session.title}</div>
                             <div className="text-xs text-muted-foreground">
-                              {session.updatedAt.toLocaleDateString()}
+                              {session.updatedAt instanceof Date
+                                ? session.updatedAt.toLocaleDateString()
+                                : new Date(session.updatedAt).toLocaleDateString()
+                              }
                             </div>
                           </div>
                         </div>
@@ -346,15 +426,15 @@ export default function ChatPage() {
             <CardHeader className="border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${networkAgent.color} flex items-center justify-center text-white text-lg font-bold shadow-lg`}>
-                    {networkAgent.avatar}
+                  <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${currentAgent.color} flex items-center justify-center text-white text-lg font-bold shadow-lg`}>
+                    {currentAgent.avatar}
                   </div>
                   <div>
                     <h2 className="text-xl font-bold">
-                      {networkAgent.name}
+                      {currentAgent.name}
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      {networkAgent.description}
+                      {currentAgent.description}
                     </p>
                   </div>
                 </div>
@@ -375,14 +455,13 @@ export default function ChatPage() {
                       className="text-center py-12"
                     >
                       <div className="text-6xl mb-4">
-                        {networkAgent.avatar}
+                        {currentAgent.avatar}
                       </div>
                       <h3 className="text-xl font-semibold mb-2">
-                        Welcome to {networkAgent.name}
+                        Welcome to {currentAgent.name}
                       </h3>
                       <p className="text-muted-foreground max-w-md mx-auto">
-                        Ask me about Strike Finance trading, crypto backtesting,
-                        or natural language strategy analysis. I'm here to help!
+                        {currentAgent.description}. I'm here to help with your trading and analysis needs!
                       </p>
                     </motion.div>
                   ) : (
@@ -399,8 +478,8 @@ export default function ChatPage() {
                         >
                           {message.role === 'assistant' && (
                             <Avatar className="w-8 h-8 mt-1">
-                              <AvatarFallback className={`bg-gradient-to-r ${networkAgent.color} text-white text-sm`}>
-                                {networkAgent.avatar}
+                              <AvatarFallback className={`bg-gradient-to-r ${currentAgent.color} text-white text-sm`}>
+                                {currentAgent.avatar}
                               </AvatarFallback>
                             </Avatar>
                           )}
@@ -425,14 +504,20 @@ export default function ChatPage() {
                                   </span>
                                 </div>
                               ) : (
-                                <div className="whitespace-pre-wrap">{message.content}</div>
+                                <MarkdownRenderer
+                                  content={message.content}
+                                  className="text-sm"
+                                />
                               )}
                             </div>
                             <div className={`text-xs text-muted-foreground mt-1 ${
                               message.role === 'user' ? 'text-right' : 'text-left'
                             }`}>
                               {message.agentName && `${message.agentName} • `}
-                              {message.timestamp.toLocaleTimeString()}
+                              {message.timestamp instanceof Date
+                                ? message.timestamp.toLocaleTimeString()
+                                : new Date(message.timestamp).toLocaleTimeString()
+                              }
                             </div>
                           </div>
 
@@ -462,7 +547,7 @@ export default function ChatPage() {
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder={`Message ${networkAgent.name}...`}
+                      placeholder={`Message ${currentAgent.name}...`}
                       className="pr-12 h-12 text-base border-2 focus:border-blue-500 transition-colors bg-white dark:bg-slate-900"
                       disabled={isLoading}
                     />

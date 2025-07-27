@@ -134,19 +134,9 @@ export function WalletProvider({ children }: WalletProviderProps) {
       const rewardAddresses = await api.getRewardAddresses();
       const balance = await api.getBalance();
 
-      // Require signature authentication to prove wallet ownership
-      console.log('🔐 Requesting wallet signature for authentication...');
-      const authMessage = `MISTER Authentication\nTimestamp: ${Date.now()}\nWallet: ${walletType}`;
-      const authMessageHex = Buffer.from(authMessage, 'utf8').toString('hex');
-
-      try {
-        const signAddress = addresses[0] || await api.getChangeAddress();
-        const signature = await api.signData(signAddress, authMessageHex);
-        console.log('✅ Wallet signature verified');
-      } catch (signError) {
-        console.error('❌ Wallet signature failed:', signError);
-        throw new Error('Wallet signature required for authentication');
-      }
+      // Simplified wallet connection - no signature required for identification
+      console.log('🔗 Connecting wallet for identification (no signature required)...');
+      console.log('✅ Wallet connected successfully for identification');
 
       const balanceInAda = parseInt(balance) / 1_000_000;
       const rawStakeAddr = rewardAddresses[0];
@@ -226,9 +216,21 @@ export function WalletProvider({ children }: WalletProviderProps) {
       let bech32PaymentAddr = normalizedStakeAddr; // Fallback to stake address
       try {
         console.log('🔧 Fetching correct payment address from Blockfrost for stake address:', normalizedStakeAddr.substring(0, 20) + '...');
-        const addressResponse = await fetch(`https://cardano-mainnet.blockfrost.io/api/v0/accounts/${normalizedStakeAddr}/addresses`, {
+
+        // Detect network from stake address
+        const isTestnet = normalizedStakeAddr.startsWith('stake_test');
+        const blockfrostUrl = isTestnet
+          ? 'https://cardano-preprod.blockfrost.io/api/v0'
+          : 'https://cardano-mainnet.blockfrost.io/api/v0';
+        const apiKey = isTestnet
+          ? process.env.NEXT_PUBLIC_BLOCKFROST_TESTNET_PROJECT_ID || 'preprodfHBBQsTsk1g3Lna67Vqb8HqZ0NbcPo1f'
+          : process.env.NEXT_PUBLIC_BLOCKFROST_PROJECT_ID || 'mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu';
+
+        console.log(`🌐 Using ${isTestnet ? 'preprod' : 'mainnet'} Blockfrost API`);
+
+        const addressResponse = await fetch(`${blockfrostUrl}/accounts/${normalizedStakeAddr}/addresses`, {
           headers: {
-            'project_id': 'mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu'
+            'project_id': apiKey
           }
         });
 
@@ -305,9 +307,21 @@ export function WalletProvider({ children }: WalletProviderProps) {
       let correctPaymentAddr = storedWallet.address; // Fallback to current address
       try {
         console.log('🔧 Fetching correct payment address from Blockfrost for stake address:', storedWallet.stakeAddress.substring(0, 20) + '...');
-        const addressResponse = await fetch(`https://cardano-mainnet.blockfrost.io/api/v0/accounts/${storedWallet.stakeAddress}/addresses`, {
+
+        // Detect network from stake address
+        const isTestnet = storedWallet.stakeAddress.startsWith('stake_test');
+        const blockfrostUrl = isTestnet
+          ? 'https://cardano-preprod.blockfrost.io/api/v0'
+          : 'https://cardano-mainnet.blockfrost.io/api/v0';
+        const apiKey = isTestnet
+          ? process.env.NEXT_PUBLIC_BLOCKFROST_TESTNET_PROJECT_ID || 'preprodfHBBQsTsk1g3Lna67Vqb8HqZ0NbcPo1f'
+          : process.env.NEXT_PUBLIC_BLOCKFROST_PROJECT_ID || 'mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu';
+
+        console.log(`🌐 Using ${isTestnet ? 'preprod' : 'mainnet'} Blockfrost API for refresh`);
+
+        const addressResponse = await fetch(`${blockfrostUrl}/accounts/${storedWallet.stakeAddress}/addresses`, {
           headers: {
-            'project_id': 'mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu'
+            'project_id': apiKey
           }
         });
 

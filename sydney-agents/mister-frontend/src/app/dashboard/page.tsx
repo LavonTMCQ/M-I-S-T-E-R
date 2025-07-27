@@ -37,7 +37,7 @@ import { realTimeDataService } from "@/lib/realtime/dataService";
 import { PerformanceChart } from "@/components/charts/PerformanceChart";
 import { PnLChart } from "@/components/charts/PnLChart";
 import { WinLossChart } from "@/components/charts/WinLossChart";
-import { CompactADAChart } from "@/components/charts/SingleADAChart";
+import { EnhancedADAChart } from "@/components/charts/SingleADAChart";
 import { DrawdownChart } from "@/components/charts/DrawdownChart";
 
 // Real Data Components - Additional icons
@@ -785,11 +785,7 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            <Card>
-              <CardContent className="p-6">
-                <CompactADAChart />
-              </CardContent>
-            </Card>
+            <EnhancedADAChart />
           </motion.div>
 
           {/* Real Analytics - Only show actual trading data */}

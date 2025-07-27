@@ -113,7 +113,7 @@ export default function LandingPage() {
             >
               <Badge variant="secondary" className="px-4 py-2 text-sm font-medium">
                 <Sparkles className="w-4 h-4 mr-2 text-primary" />
-                Introducing MISTER AI Trading
+                MISTER AI Trading - Now Live with Agent Vaults
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Badge>
             </motion.div>
@@ -189,8 +189,8 @@ export default function LandingPage() {
                   </Button>
                 </div>
 
-                {/* Agent Vault Smart Contracts - Coming Soon */}
-                <div className="relative bg-card border rounded-lg p-6 hover:shadow-lg transition-shadow opacity-60">
+                {/* Agent Vault Smart Contracts - NOW LIVE */}
+                <div className="relative bg-card border rounded-lg p-6 hover:shadow-lg transition-shadow">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                       <Bot className="w-6 h-6 text-green-600" />
@@ -201,20 +201,20 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <p className="text-muted-foreground mb-4">
-                    Deploy your personal Agent Vault smart contract for fully automated trading while keeping your keys secure.
+                    Deploy your personal Agent Vault smart contract for fully automated trading with our proven 62.5% win rate ADA Custom Algorithm.
                   </p>
                   <Button
                     size="lg"
-                    disabled
+                    onClick={() => window.location.href = '/agent-vault-setup'}
                     className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
                   >
                     <Bot className="mr-2 h-5 w-5" />
-                    Coming Soon
+                    Create Agent Vault
                   </Button>
 
-                  {/* Coming Soon Badge */}
-                  <div className="absolute top-4 right-4 bg-yellow-500 text-yellow-900 px-3 py-1 rounded-full text-sm font-medium">
-                    Coming Soon
+                  {/* Live Badge */}
+                  <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+                    LIVE
                   </div>
                 </div>
               </div>
@@ -407,8 +407,8 @@ export default function LandingPage() {
             </h2>
 
             <p className="text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
-              Join thousands of traders who trust MISTER with their automated trading.
-              Connect your wallet and let AI manage your Strike Finance trades.
+              Experience fully automated trading with our proven 62.5% win rate ADA Custom Algorithm.
+              Connect your wallet or create an Agent Vault for hands-free trading.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-10">

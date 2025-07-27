@@ -11,80 +11,62 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { 
-      userId, 
+    const {
+      userId,
+      walletAddress,
+      walletType,
       action, // 'open' or 'close'
       side, // 'Long' or 'Short'
       pair,
       size,
       leverage,
-      positionId // for closing positions
+      positionId, // for closing positions
+      stopLoss,
+      takeProfit
     } = body;
 
-    if (!userId || !action || !pair) {
+    if (!userId || !action || !pair || !walletAddress) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: userId, action, pair' },
+        { success: false, error: 'Missing required fields: userId, action, pair, walletAddress' },
         { status: 400 }
       );
     }
 
-    console.log(`⚡ Executing ${action} trade for user ${userId}...`);
+    console.log(`🎯 Executing ${action} trade for ${pair}...`);
+    console.log(`📋 Trade details:`, { userId, action, side, pair, size, leverage, walletType });
 
-    // In production, this would integrate with Strike Finance and WalletManager:
-    // const strikeAPI = new StrikeFinanceAPI();
-    // const walletManager = WalletManager.getInstance();
-    // 
-    // // Get user's managed wallets
-    // const userWallets = walletManager.getUserWallets(userId);
-    // 
-    // if (action === 'open') {
-    //   // Open new position
-    //   const openRequest = {
-    //     request: {
-    //       bech32Address: userWallets[0].address,
-    //       leverage,
-    //       position: side,
-    //       asset: { policyId: "ada", assetName: "ADA" },
-    //       collateralAmount: (size * currentPrice) / leverage,
-    //       positionSize: size,
-    //       enteredPrice: currentPrice,
-    //       positionType: "perpetual"
-    //     }
-    //   };
-    //   
-    //   const { cbor } = await strikeAPI.openPosition(openRequest);
-    //   const privateKey = walletManager.getPrivateKeyForAddress(userWallets[0].address);
-    //   const txHash = await CardanoWallet.signAndSubmitTx(cbor, privateKey);
-    // 
-    // } else if (action === 'close') {
-    //   // Close existing position
-    //   const closeRequest = {
-    //     request: {
-    //       address: userWallets[0].address,
-    //       asset: { policyId: "ada", assetName: "ADA" },
-    //       outRef: position.outRef,
-    //       positionSize: position.size,
-    //       positionType: "perpetual",
-    //       collateralAmount: position.collateralAmount,
-    //       position: position.side
-    //     }
-    //   };
-    //   
-    //   const { cbor } = await strikeAPI.closePosition(closeRequest);
-    //   const privateKey = walletManager.getPrivateKeyForAddress(userWallets[0].address);
-    //   const txHash = await CardanoWallet.signAndSubmitTx(cbor, privateKey);
-    // }
+    // Execute trade using Strike Finance API
+    const result = await strikeAPI.executeTrade({
+      userId,
+      walletAddress,
+      walletType: walletType || 'connected',
+      action,
+      side,
+      pair,
+      size,
+      leverage,
+      positionId,
+      stopLoss,
+      takeProfit
+    });
 
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.error || 'Trade execution failed'
+        },
+        { status: 500 }
+      );
+    }
 
-    // Mock trade execution for demo
+    // For successful trades, we need to prepare the transaction for signing
+    // The Strike Finance API returns CBOR data that needs to be signed by the wallet
     const currentPrice = 0.4500 + (Math.random() - 0.5) * 0.05;
-    const mockTxHash = `0x${Math.random().toString(16).substring(2, 18)}abcdef1234567890`;
-    
+
     const tradeResult = {
       success: true,
-      txHash: mockTxHash,
+      cbor: result.cbor, // CBOR transaction data for wallet signing
       action,
       pair,
       side: side || null,
@@ -92,11 +74,12 @@ export async function POST(request: NextRequest) {
       leverage: leverage || null,
       price: currentPrice,
       timestamp: new Date().toISOString(),
-      
+
       // Strike Finance specific data
       strikeData: {
         positionId: positionId || `pos_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-        collateralAmount: action === 'open' ? (size * currentPrice) / (leverage || 1) : null,
+        collateralAmount: action === 'open' ? size : null,
+        enteredPositionTime: Date.now(),
         liquidationPrice: action === 'open' ? calculateLiquidationPrice(currentPrice, side, leverage) : null,
         fundingRate: (Math.random() - 0.5) * 0.001,
         fees: {
@@ -111,11 +94,15 @@ export async function POST(request: NextRequest) {
         slippage: Math.random() * 0.002, // 0-0.2%
         executionTime: 2000,
         blockHeight: Math.floor(Math.random() * 1000) + 10000000,
-        confirmations: 1
-      }
+        confirmations: 0 // Will be updated after signing and submission
+      },
+
+      message: result.cbor
+        ? "🔐 Your wallet will prompt for transaction signing."
+        : "✅ Trade prepared successfully."
     };
 
-    console.log(`✅ Trade executed successfully: ${mockTxHash}`);
+    console.log(`✅ Trade prepared successfully with CBOR data`);
 
     return NextResponse.json({
       success: true,
@@ -124,11 +111,11 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Error executing trade:', error);
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to execute trade. Please try again.' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to execute trade. Please try again.'
       },
       { status: 500 }
     );

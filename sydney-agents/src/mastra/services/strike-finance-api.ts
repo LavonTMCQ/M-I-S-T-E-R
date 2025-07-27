@@ -18,10 +18,11 @@ export interface OpenPositionRequest {
   request: {
     address: string; // Changed from bech32Address
     asset: Asset;
+    assetTicker: string; // NEW REQUIRED FIELD - "ADA" or "SNEK"
     collateralAmount: number; // In ADA, not lovelace!
     leverage: number;
     position: Side;
-    enteredPositionTime: number; // REQUIRED - POSIX timestamp
+    // Removed enteredPositionTime - not in latest API spec
     stopLossPrice?: number; // Optional
     takeProfitPrice?: number; // Optional
   };
@@ -31,8 +32,9 @@ export interface ClosePositionRequest {
   request: {
     address: string;
     asset: Asset;
+    assetTicker: string; // NEW REQUIRED FIELD - "ADA" or "SNEK"
     outRef: OutRef;
-    enteredPositionTime: number; // REQUIRED - POSIX timestamp when position was entered
+    // Removed enteredPositionTime - not in latest API spec
   };
 }
 
@@ -40,6 +42,7 @@ export interface UpdatePositionRequest {
   request: {
     address: string;
     asset: Asset;
+    assetTicker: string; // NEW REQUIRED FIELD - "ADA" or "SNEK"
     outRef: OutRef;
     stopLossPrice: number;
     takeProfitPrice: number;
@@ -200,12 +203,13 @@ export class StrikeFinanceAPI {
     try {
       const requestData: OpenPositionRequest = {
         request: {
-          address: address, // Corrected from bech32Address
+          address: address,
           asset: { policyId: "", assetName: "" }, // Empty for ADA
+          assetTicker: "ADA", // NEW REQUIRED FIELD
           collateralAmount: collateralAmountADA, // In ADA, not lovelace!
           leverage: leverage,
           position: position,
-          enteredPositionTime: Date.now(), // Required POSIX timestamp
+          // Removed enteredPositionTime - not in latest API spec
           ...(stopLossPrice && { stopLossPrice }),
           ...(takeProfitPrice && { takeProfitPrice })
         }
@@ -228,16 +232,16 @@ export class StrikeFinanceAPI {
   async closePosition(
     address: string,
     txHash: string,
-    outputIndex: number,
-    enteredPositionTime: number
+    outputIndex: number
   ): Promise<{ cbor: string }> {
     try {
       const requestData: ClosePositionRequest = {
         request: {
           address: address,
           asset: { policyId: "", assetName: "" }, // Empty for ADA
-          outRef: { txHash, outputIndex },
-          enteredPositionTime: enteredPositionTime // Required POSIX timestamp
+          assetTicker: "ADA", // NEW REQUIRED FIELD
+          outRef: { txHash, outputIndex }
+          // Removed enteredPositionTime - not in latest API spec
         }
       };
 

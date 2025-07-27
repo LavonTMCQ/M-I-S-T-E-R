@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Get the Blockfrost API key from environment variables
-const getBlockfrostApiKey = (): string => {
-  const key = process.env.BLOCKFROST_PROJECT_ID ||
-              process.env.NEXT_PUBLIC_BLOCKFROST_PROJECT_ID ||
-              'mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu'; // Fallback to hardcoded key as last resort
-  return key;
+const getBlockfrostApiKey = (isTestnet: boolean = false): string => {
+  if (isTestnet) {
+    const key = process.env.BLOCKFROST_TESTNET_PROJECT_ID ||
+                process.env.NEXT_PUBLIC_BLOCKFROST_TESTNET_PROJECT_ID ||
+                'preprodfHBBQsTsk1g3Lna67Vqb8HqZ0NbcPo1f'; // Testnet fallback
+    return key;
+  } else {
+    const key = process.env.BLOCKFROST_PROJECT_ID ||
+                process.env.NEXT_PUBLIC_BLOCKFROST_PROJECT_ID ||
+                'mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu'; // Mainnet fallback
+    return key;
+  }
 };
 
 /**
@@ -196,7 +203,19 @@ export async function GET(
       }, { status: 400 });
     }
 
-    const apiKey = getBlockfrostApiKey();
+    // For testnet addresses, return empty handles since handles are mainnet only
+    if (address.startsWith('addr_test') || address.startsWith('stake_test')) {
+      return NextResponse.json({
+        success: true,
+        address,
+        handles: [],
+        network: 'testnet'
+      });
+    }
+
+    // Detect if testnet address
+    const isTestnet = address.startsWith('addr_test') || address.startsWith('stake_test');
+    const apiKey = getBlockfrostApiKey(isTestnet);
     console.log(`Using Blockfrost API key: ${apiKey ? apiKey.substring(0, 5) + '...' : 'None'}`);
 
     if (!apiKey) {

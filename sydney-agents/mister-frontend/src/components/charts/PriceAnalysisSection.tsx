@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { CleanADAPriceAnalysis } from './SingleADAChart';
+import { EnhancedADAChart } from './SingleADAChart';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +46,7 @@ const marketSentiment = {
 
 export function PriceAnalysisSection({ className = '' }: PriceAnalysisSectionProps) {
   return (
-    <CleanADAPriceAnalysis className={className} />
+    <EnhancedADAChart className={className} />
   );
 }
 

@@ -35,6 +35,81 @@
       },
       "compiledCode": "5857010100323232323225333002323232323253330073370e900118041baa00113233224a260160026016601800260126ea800458c024c02800cc020008c01c008c01c004c010dd50008a4c26cacae6955ceaab9e5742ae89",
       "hash": "91f740da89f81ef5e99264e2c482f96be96ceab7f9e47907f414db9b"
+    },
+    {
+      "title": "emergency_agent_vault.emergency_agent_vault.spend",
+      "datum": {
+        "title": "_datum",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "redeemer": {
+        "title": "redeemer",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "compiledCode": "5857010100323232323225333002323232323253330073370e900118041baa00113233224a260160026016601800260126ea800458c024c02800cc020008c01c008c01c004c010dd50008a4c26cacae6955ceaab9e5742ae89",
+      "hash": "91f740da89f81ef5e99264e2c482f96be96ceab7f9e47907f414db9b"
+    },
+    {
+      "title": "emergency_agent_vault.emergency_agent_vault.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "5857010100323232323225333002323232323253330073370e900118041baa00113233224a260160026016601800260126ea800458c024c02800cc020008c01c008c01c004c010dd50008a4c26cacae6955ceaab9e5742ae89",
+      "hash": "91f740da89f81ef5e99264e2c482f96be96ceab7f9e47907f414db9b"
+    },
+    {
+      "title": "production_agent_vault.production_agent_vault.spend",
+      "datum": {
+        "title": "datum",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "redeemer": {
+        "title": "redeemer",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "compiledCode": "5870010100323232323225333002323232323253330073370e900118041baa0011323322533300a3370e900018059baa0011324a2601a60186ea800452818058009805980600098049baa001163009300a0033008002300700230070013004375400229309b2b2b9a5573aaae795d0aba201",
+      "hash": "efa019fb82da96e800a738ab160853295c851a7a5e24050326a050e3"
+    },
+    {
+      "title": "production_agent_vault.production_agent_vault.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "5870010100323232323225333002323232323253330073370e900118041baa0011323322533300a3370e900018059baa0011324a2601a60186ea800452818058009805980600098049baa001163009300a0033008002300700230070013004375400229309b2b2b9a5573aaae795d0aba201",
+      "hash": "efa019fb82da96e800a738ab160853295c851a7a5e24050326a050e3"
+    },
+    {
+      "title": "secure_agent_vault.secure_agent_vault.spend",
+      "datum": {
+        "title": "datum",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "redeemer": {
+        "title": "redeemer",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "compiledCode": "587e010100323232323225333002323232323253330073370e900118041baa0011323322533300a3370e900018059baa001132533300b4a22a6660169445288a5014a0601a60186ea800452818058009805980600098049baa001163009300a0033008002300700230070013004375400229309b2b2b9a5573aaae795d0aba21",
+      "hash": "9c6a0f601bb75d8728a589a1af5f07b5918ed2942a57872ef946060f"
+    },
+    {
+      "title": "secure_agent_vault.secure_agent_vault.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "587e010100323232323225333002323232323253330073370e900118041baa0011323322533300a3370e900018059baa001132533300b4a22a6660169445288a5014a0601a60186ea800452818058009805980600098049baa001163009300a0033008002300700230070013004375400229309b2b2b9a5573aaae795d0aba21",
+      "hash": "9c6a0f601bb75d8728a589a1af5f07b5918ed2942a57872ef946060f"
     }
   ],
   "definitions": {

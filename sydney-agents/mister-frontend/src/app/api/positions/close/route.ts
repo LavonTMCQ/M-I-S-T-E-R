@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
 
     // Call the bridge server to get the close position CBOR
-    const closeResponse = await fetch('http://localhost:4113/api/strike/close-position', {
+    const closeResponse = await fetch('https://bridge-server-cjs-production.up.railway.app/api/strike/close-position', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

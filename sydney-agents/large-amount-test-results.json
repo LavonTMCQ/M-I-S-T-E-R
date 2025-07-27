@@ -1,0 +1,63 @@
+{
+  "wallet": {
+    "address": "addr_test1vzpwq95z3xyum8vqndgdd9mdnmafh3djcxnc6jemlgdmswcve6tkw",
+    "mnemonic": null,
+    "purpose": "Large amount testing with working faucet address"
+  },
+  "balance": 118466133.366449,
+  "tests": [
+    {
+      "success": false,
+      "error": "{\"success\":false,\"error\":\"Cannot parse contract address: invalid checksum\"}",
+      "amount": 10,
+      "type": "deposit"
+    },
+    {
+      "success": false,
+      "error": "{\"success\":false,\"error\":\"Failed to fetch vault UTxOs: Bad Request\"}",
+      "amount": 10,
+      "type": "withdrawal"
+    },
+    {
+      "success": false,
+      "error": "{\"success\":false,\"error\":\"Cannot parse contract address: invalid checksum\"}",
+      "amount": 100,
+      "type": "deposit"
+    },
+    {
+      "success": false,
+      "error": "{\"success\":false,\"error\":\"Failed to fetch vault UTxOs: Bad Request\"}",
+      "amount": 100,
+      "type": "withdrawal"
+    },
+    {
+      "success": false,
+      "error": "{\"success\":false,\"error\":\"Cannot parse contract address: invalid checksum\"}",
+      "amount": 500,
+      "type": "deposit"
+    },
+    {
+      "success": false,
+      "error": "{\"success\":false,\"error\":\"Failed to fetch vault UTxOs: Bad Request\"}",
+      "amount": 500,
+      "type": "withdrawal"
+    },
+    {
+      "success": false,
+      "error": "{\"success\":false,\"error\":\"Cannot parse contract address: invalid checksum\"}",
+      "amount": 1000,
+      "type": "deposit"
+    },
+    {
+      "success": false,
+      "error": "{\"success\":false,\"error\":\"Failed to fetch vault UTxOs: Bad Request\"}",
+      "amount": 1000,
+      "type": "withdrawal"
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "successful": 0,
+    "failed": 8
+  }
+}

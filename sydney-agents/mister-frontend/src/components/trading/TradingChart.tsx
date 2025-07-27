@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { CompactADAChart } from '@/components/charts/SingleADAChart';
+import { EnhancedADAChart } from '@/components/charts/SingleADAChart';
 
 export function TradingChart() {
   return (
     <div className="w-full h-full">
-      <CompactADAChart />
+      <EnhancedADAChart />
     </div>
   );
 }

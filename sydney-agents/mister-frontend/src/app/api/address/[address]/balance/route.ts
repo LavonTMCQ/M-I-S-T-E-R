@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bech32 } from 'bech32';
 
 // Get the Blockfrost API key from environment variables
-const getBlockfrostApiKey = (): string => {
-  const key = process.env.BLOCKFROST_PROJECT_ID ||
-              process.env.NEXT_PUBLIC_BLOCKFROST_PROJECT_ID ||
-              'mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu'; // Fallback to hardcoded key as last resort
-  return key;
+const getBlockfrostApiKey = (isTestnet: boolean = false): string => {
+  if (isTestnet) {
+    const key = process.env.BLOCKFROST_TESTNET_PROJECT_ID ||
+                process.env.NEXT_PUBLIC_BLOCKFROST_TESTNET_PROJECT_ID ||
+                'preprodfHBBQsTsk1g3Lna67Vqb8HqZ0NbcPo1f'; // Testnet fallback
+    return key;
+  } else {
+    const key = process.env.BLOCKFROST_PROJECT_ID ||
+                process.env.NEXT_PUBLIC_BLOCKFROST_PROJECT_ID ||
+                'mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu'; // Mainnet fallback
+    return key;
+  }
 };
 
 /**
@@ -73,13 +80,17 @@ const normalizeAddress = async (address: string): Promise<string> => {
 /**
  * Get ADA balance for a payment address
  */
-const getBalanceForPaymentAddress = async (address: string, apiKey: string): Promise<number> => {
+const getBalanceForPaymentAddress = async (address: string, apiKey: string, isTestnet: boolean = false): Promise<number> => {
   try {
     // Normalize the address first
     const normalizedAddress = await normalizeAddress(address);
 
+    const baseUrl = isTestnet
+      ? 'https://cardano-preprod.blockfrost.io/api/v0'
+      : 'https://cardano-mainnet.blockfrost.io/api/v0';
+
     const response = await fetch(
-      `https://cardano-mainnet.blockfrost.io/api/v0/addresses/${normalizedAddress}`,
+      `${baseUrl}/addresses/${normalizedAddress}`,
       {
         headers: {
           'project_id': apiKey,
@@ -113,14 +124,18 @@ const getBalanceForPaymentAddress = async (address: string, apiKey: string): Pro
 /**
  * Get ADA balance for a stake address (sum of all associated payment addresses)
  */
-const getBalanceForStakeAddress = async (address: string, apiKey: string): Promise<number> => {
+const getBalanceForStakeAddress = async (address: string, apiKey: string, isTestnet: boolean = false): Promise<number> => {
   try {
     // Normalize the address first
     const normalizedAddress = await normalizeAddress(address);
 
+    const baseUrl = isTestnet
+      ? 'https://cardano-preprod.blockfrost.io/api/v0'
+      : 'https://cardano-mainnet.blockfrost.io/api/v0';
+
     // Get all payment addresses associated with this stake address
     const response = await fetch(
-      `https://cardano-mainnet.blockfrost.io/api/v0/accounts/${normalizedAddress}/addresses`,
+      `${baseUrl}/accounts/${normalizedAddress}/addresses`,
       {
         headers: {
           'project_id': apiKey,
@@ -139,7 +154,7 @@ const getBalanceForStakeAddress = async (address: string, apiKey: string): Promi
     // Sum balances from all payment addresses
     let totalBalance = 0;
     for (const addressInfo of addresses) {
-      const balance = await getBalanceForPaymentAddress(addressInfo.address, apiKey);
+      const balance = await getBalanceForPaymentAddress(addressInfo.address, apiKey, isTestnet);
       totalBalance += balance;
     }
     
@@ -164,8 +179,10 @@ export async function GET(
       }, { status: 400 });
     }
 
-    const apiKey = getBlockfrostApiKey();
-    console.log(`Getting balance for address: ${address}`);
+    // Determine if this is a testnet address
+    const isTestnet = address.startsWith('addr_test') || address.startsWith('stake_test');
+    const apiKey = getBlockfrostApiKey(isTestnet);
+    console.log(`Getting balance for address: ${address} (${isTestnet ? 'testnet' : 'mainnet'})`);
 
     if (!apiKey) {
       console.error('No Blockfrost API key available');
@@ -175,24 +192,25 @@ export async function GET(
       }, { status: 500 });
     }
 
-    // Check if this is a stake address (starts with 'stake1')
-    const isStakeAddress = address.startsWith('stake1');
+    // Check if this is a stake address (starts with 'stake1' or 'stake_test1')
+    const isStakeAddress = address.startsWith('stake1') || address.startsWith('stake_test1');
 
     let balance: number = 0;
 
     if (isStakeAddress) {
       console.log(`Getting balance for stake address: ${address}`);
-      balance = await getBalanceForStakeAddress(address, apiKey);
+      balance = await getBalanceForStakeAddress(address, apiKey, isTestnet);
     } else {
       console.log(`Getting balance for payment address: ${address}`);
-      balance = await getBalanceForPaymentAddress(address, apiKey);
+      balance = await getBalanceForPaymentAddress(address, apiKey, isTestnet);
     }
 
     return NextResponse.json({
       success: true,
       address,
       balance,
-      isStakeAddress
+      isStakeAddress,
+      network: isTestnet ? 'testnet' : 'mainnet'
     });
 
   } catch (error) {

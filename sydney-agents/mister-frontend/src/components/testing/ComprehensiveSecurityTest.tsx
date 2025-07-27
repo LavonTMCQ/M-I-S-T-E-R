@@ -60,7 +60,7 @@ export function ComprehensiveSecurityTest() {
       const testUsers = SecurityTestHelpers.createTestUsers();
       const context: SecurityTestContext = {
         users: testUsers,
-        apiBase: 'http://localhost:4113',
+        apiBase: 'https://bridge-server-cjs-production.up.railway.app',
         currentUser: testUsers[0],
         localStorage: window.localStorage,
         fetch: window.fetch

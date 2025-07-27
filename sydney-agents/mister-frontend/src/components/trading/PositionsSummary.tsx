@@ -48,8 +48,8 @@ export function PositionsSummary() {
     if (mainWallet?.address) {
       fetchPositions();
       fetchMarketData(); // Fetch market data immediately
-      const positionsInterval = setInterval(fetchPositions, 10000); // Update positions every 10 seconds
-      const priceInterval = setInterval(fetchMarketData, 5000); // Update price every 5 seconds
+      const positionsInterval = setInterval(fetchPositions, 300000); // Update positions every 5 minutes
+      const priceInterval = setInterval(fetchMarketData, 60000); // Update price every 1 minute
       return () => {
         clearInterval(positionsInterval);
         clearInterval(priceInterval);
@@ -57,12 +57,8 @@ export function PositionsSummary() {
     }
   }, [mainWallet?.address]);
 
-  // Recalculate positions when current price changes
-  useEffect(() => {
-    if (mainWallet?.address && currentPrice > 0) {
-      fetchPositions(); // Recalculate P&L with new price
-    }
-  }, [currentPrice]);
+  // Note: Removed price-triggered position fetching to reduce API calls
+  // P&L will be recalculated with the updated price on the next scheduled fetch
 
   const fetchPositions = async () => {
     try {
@@ -73,7 +69,7 @@ export function PositionsSummary() {
       }
 
       // Fetch real positions from Strike Finance via bridge server with wallet address
-      const response = await fetch(`http://localhost:4113/api/strike/positions?walletAddress=${encodeURIComponent(mainWallet.address)}`);
+      const response = await fetch(`https://bridge-server-cjs-production.up.railway.app/api/strike/positions?walletAddress=${encodeURIComponent(mainWallet.address)}`);
       const data = await response.json();
 
       if (data.success && data.data && data.data.length > 0) {

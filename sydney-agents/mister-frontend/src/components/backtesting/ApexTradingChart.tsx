@@ -73,13 +73,20 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
     }).sort((a, b) => a.x - b.x);
   }, [chartData]);
 
-  // Format trade annotations
+  // Format trade annotations with enhanced trade pair visualization
   const annotations = useMemo(() => {
     if (!trades || trades.length === 0) {
-      return { points: [] };
+      return { points: [], shapes: [] };
     }
 
     const points: any[] = [];
+    const shapes: any[] = [];
+
+    // Define colors for better trade pair visualization
+    const tradeColors = [
+      '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+      '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#6366f1'
+    ];
 
     trades.forEach((trade, index) => {
       // Handle both Railway API format and existing format
@@ -96,23 +103,27 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
         return;
       }
 
-      // Entry point
+      // Use consistent color for each trade pair
+      const tradeColor = tradeColors[index % tradeColors.length];
+      const tradeNumber = index + 1;
+
+      // Entry point with trade number
       points.push({
         x: new Date(entryTime).getTime(),
         y: entryPrice,
         marker: {
-          size: 8,
-          fillColor: tradeSide === 'LONG' ? '#22c55e' : '#ef4444',
+          size: 10,
+          fillColor: tradeColor,
           strokeColor: '#ffffff',
           strokeWidth: 2,
           shape: tradeSide === 'LONG' ? 'circle' : 'square'
         },
         label: {
-          text: `${tradeSide.charAt(0)}`,
+          text: `${tradeNumber}${tradeSide.charAt(0)}`,
           style: {
             color: '#ffffff',
-            background: tradeSide === 'LONG' ? '#22c55e' : '#ef4444',
-            fontSize: '10px',
+            background: tradeColor,
+            fontSize: '9px',
             fontWeight: 'bold'
           }
         }
@@ -121,14 +132,16 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
       // Exit point (if trade is closed)
       if (exitTime && exitPrice && pnl !== undefined) {
         const isProfitable = pnl >= 0;
+
+        // Exit point with same color as entry
         points.push({
           x: new Date(exitTime).getTime(),
           y: exitPrice,
           marker: {
-            size: 6,
+            size: 8,
             fillColor: isProfitable ? '#22c55e' : '#ef4444',
-            strokeColor: '#ffffff',
-            strokeWidth: 1,
+            strokeColor: tradeColor,
+            strokeWidth: 2,
             shape: 'circle'
           },
           label: {
@@ -136,17 +149,38 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
             style: {
               color: '#ffffff',
               background: isProfitable ? '#22c55e' : '#ef4444',
-              fontSize: '8px'
+              fontSize: '10px',
+              fontWeight: 'bold'
             }
           }
         });
+
+        // Add connecting line between entry and exit
+        shapes.push({
+          type: 'line',
+          x1: new Date(entryTime).getTime(),
+          y1: entryPrice,
+          x2: new Date(exitTime).getTime(),
+          y2: exitPrice,
+          strokeDashArray: 3,
+          borderColor: tradeColor,
+          borderWidth: 1,
+          opacity: 0.6
+        });
+
       } else {
         console.log(`⚠️ CHART DEBUG: Missing exit data for trade ${index + 1}:`, { exitTime, exitPrice, pnl });
       }
     });
 
-    console.log(`🎯 CHART DEBUG: Final annotations created:`, { totalPoints: points.length, points });
-    return { points };
+    console.log(`🎯 CHART DEBUG: Enhanced annotations created:`, {
+      totalPoints: points.length,
+      totalShapes: shapes.length,
+      points,
+      shapes
+    });
+
+    return { points, shapes };
   }, [trades]);
 
   // ApexCharts configuration
@@ -155,8 +189,12 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
       type: 'candlestick' as const,
       height: 600,
       background: '#ffffff',
+      redrawOnParentResize: true,
+      redrawOnWindowResize: true,
       toolbar: {
         show: true,
+        offsetX: 0,
+        offsetY: 0,
         tools: {
           download: true,
           selection: true,
@@ -165,12 +203,61 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
           zoomout: true,
           pan: true,
           reset: true
+        },
+        export: {
+          csv: {
+            filename: 'trading-data'
+          },
+          svg: {
+            filename: 'trading-chart'
+          },
+          png: {
+            filename: 'trading-chart'
+          }
         }
       },
       zoom: {
         enabled: true,
         type: 'x' as const,
-        autoScaleYaxis: true
+        autoScaleYaxis: true,
+        zoomedArea: {
+          fill: {
+            color: '#90CAF9',
+            opacity: 0.4
+          },
+          stroke: {
+            color: '#0D47A1',
+            opacity: 0.4,
+            width: 1
+          }
+        }
+      },
+      selection: {
+        enabled: true,
+        type: 'x' as const,
+        fill: {
+          color: '#24292e',
+          opacity: 0.1
+        },
+        stroke: {
+          width: 1,
+          dashArray: 3,
+          color: '#24292e',
+          opacity: 0.4
+        }
+      },
+      animations: {
+        enabled: true,
+        easing: 'easeinout',
+        speed: 800,
+        animateGradually: {
+          enabled: true,
+          delay: 150
+        },
+        dynamicAnimation: {
+          enabled: true,
+          speed: 350
+        }
       }
     },
     // Title removed - handled by parent Card component
@@ -183,6 +270,17 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
           day: 'dd MMM',
           hour: 'HH:mm'
         }
+      },
+      crosshairs: {
+        show: true,
+        width: 1,
+        position: 'back',
+        opacity: 0.9,
+        stroke: {
+          color: '#b6b6b6',
+          width: 1,
+          dashArray: 3
+        }
       }
     },
     yaxis: {
@@ -191,6 +289,15 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
       },
       labels: {
         formatter: (value: number) => `$${value.toFixed(4)}`
+      },
+      crosshairs: {
+        show: true,
+        position: 'back',
+        stroke: {
+          color: '#b6b6b6',
+          width: 1,
+          dashArray: 3
+        }
       }
     },
     annotations: annotations,
@@ -265,6 +372,7 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
     <div className={`w-full relative ${className}`}>
       <div className="w-full">
         <Chart
+          key={`chart-${trades?.length || 0}-${chartData?.length || 0}`}
           options={chartOptions}
           series={series}
           type="candlestick"
@@ -272,28 +380,31 @@ export function ApexTradingChart({ chartData, trades, className = '' }: ApexTrad
         />
       </div>
       
-      {/* Trade Statistics Overlay - Positioned away from price scale */}
+      {/* Trade Statistics Overlay - Positioned to avoid chart controls */}
       {tradeStats && (
-        <div className="absolute top-16 left-20 bg-black/90 text-white p-2 rounded-lg text-xs space-y-0.5 backdrop-blur-sm z-10 max-w-xs shadow-lg border border-gray-700">
-          <div className="font-semibold mb-1 flex items-center gap-1">
+        <div className="absolute top-16 right-4 bg-black/80 text-white p-2 rounded text-xs backdrop-blur-sm z-10 shadow-md border border-gray-600 max-w-48">
+          <div className="font-semibold mb-1 flex items-center gap-1 text-xs">
             <span className="text-yellow-400">📊</span>
-            <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-blue-600 bg-clip-text text-transparent font-bold drop-shadow-sm" style={{textShadow: '0 0 8px rgba(147, 51, 234, 0.4)'}}>
-              MISTER
-            </span>
-            <span className="text-white">Analysis</span>
+            <span className="text-white">MISTER</span>
           </div>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-            <div>Trades: <span className="text-blue-400">{tradeStats.total}</span></div>
-            <div>Completed: <span className="text-green-400">{tradeStats.completed}</span></div>
-            <div>Win Rate: <span className="text-green-400">{tradeStats.winRate.toFixed(1)}%</span></div>
-            <div>P&L: <span className={tradeStats.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-              ${tradeStats.totalPnl.toFixed(0)}
-            </span></div>
-            <div>Duration: <span className="text-purple-400">{tradeStats.avgDuration}</span></div>
-            <div>Same-Day: <span className="text-orange-400">{tradeStats.sameDayTrades}</span></div>
+          <div className="space-y-0.5 text-xs">
+            <div className="flex justify-between">
+              <span>Trades:</span>
+              <span className="text-blue-400">{tradeStats.total}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Win Rate:</span>
+              <span className="text-green-400">{tradeStats.winRate.toFixed(1)}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span>P&L:</span>
+              <span className={tradeStats.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}>
+                ${tradeStats.totalPnl.toFixed(0)}
+              </span>
+            </div>
           </div>
           <div className="text-gray-400 text-xs mt-1 pt-1 border-t border-gray-600">
-            L/S = Entry • ✓/✗ = Exit
+            <div className="text-center">1L/S=Entry • ✓/✗=Exit</div>
           </div>
         </div>
       )}

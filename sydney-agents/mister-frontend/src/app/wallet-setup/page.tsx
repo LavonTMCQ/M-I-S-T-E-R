@@ -95,7 +95,7 @@ export default function WalletSetupPage() {
 
   const checkExistingManagedWallets = async () => {
     try {
-      const response = await fetch(`http://localhost:4113/api/wallets/managed/${mainWallet?.address}`);
+      const response = await fetch(`https://bridge-server-cjs-production.up.railway.app/api/wallets/managed/${mainWallet?.address}`);
       const data = await response.json();
 
       if (data.success && data.data.managedWallets.length > 0) {
