@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real CSL Recovery</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 8px 0;
+            width: 100%;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        
+        .mono {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-size: 12px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .hidden { display: none; }
+        .step { padding: 16px; margin: 12px 0; border-radius: 6px; }
+        h1, h2, h3 { margin-top: 0; }
+        .flex { display: flex; justify-content: space-between; align-items: center; }
+        .status { font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🚨 Real CSL Recovery (Fix Greyed Out Vespr)</h1>
+        <p>This uses REAL CSL library transaction building to fix the greyed out Vespr issue</p>
+        <div class="error step">
+            <strong>🔧 Problem: Manual CBOR causes greyed out Vespr wallets</strong><br>
+            <strong>✅ Solution: Use actual CSL TransactionBuilder methods</strong>
+        </div>
+    </div>
+
+    <!-- Fund Status -->
+    <div class="card info">
+        <h3>💰 Found Stuck Funds</h3>
+        <div class="flex">
+            <span>Contract:</span>
+            <span class="mono">addr1w8gnkw8z0jlyk4zsrc6rp5nv5wa9nxqmceq50jdarf0c9gs2vc87j</span>
+        </div>
+        <div class="flex">
+            <span>Your Wallet:</span>
+            <span class="mono">addr1qxtkdjl87894tg6juz20jzyjqy3uyn02pr9xtq7mlh0gm2ss5dpkcny95dktp5qmyyrx82t68sge4m94qwxyrfr8f86qh5unyc</span>
+        </div>
+    </div>
+
+    <!-- Build Transaction -->
+    <div class="card" id="buildSection">
+        <h3>🔧 Build Real CSL Transaction</h3>
+        <div id="buildStatus" class="warning step">
+            <p>Ready to build transaction using REAL CSL TransactionBuilder...</p>
+        </div>
+        <button id="buildBtn" onclick="buildRealCSLTransaction()">Build REAL CSL Transaction</button>
+    </div>
+
+    <!-- Connect Wallet -->
+    <div class="card hidden" id="walletSection">
+        <h3>🔌 Connect Wallet</h3>
+        <div class="success step">
+            <p>Real CSL transaction built! This should NOT be greyed out in Vespr.</p>
+        </div>
+        <button onclick="connectWallet()">Connect Vespr Wallet</button>
+    </div>
+
+    <!-- Execute Recovery -->
+    <div class="card hidden" id="recoverySection">
+        <h3>🔐 Execute Recovery</h3>
+        <div class="success step">
+            <p><strong>Wallet:</strong> <span id="walletName"></span></p>
+            <p><strong>Recovery Amount:</strong> <span id="amount"></span> ADA</p>
+            <p><strong>Transaction Type:</strong> REAL CSL (Not Manual CBOR)</p>
+        </div>
+        <button id="executeBtn" onclick="executeRecovery()">Sign & Execute REAL CSL Transaction</button>
+    </div>
+
+    <!-- Results -->
+    <div class="card hidden" id="successSection">
+        <h3>🎉 Recovery Successful!</h3>
+        <div class="success step">
+            <p><strong>Transaction Hash:</strong></p>
+            <div class="mono" id="txHash"></div>
+        </div>
+        <button onclick="window.location.reload()">Recover More</button>
+    </div>
+
+    <div class="card hidden" id="errorSection">
+        <h3>❌ Error</h3>
+        <div class="error step">
+            <p id="errorMsg"></p>
+        </div>
+        <button onclick="window.location.reload()">Try Again</button>
+    </div>
+
+    <!-- Transaction Details -->
+    <div class="card hidden" id="txDetails">
+        <h3>📋 Real CSL Transaction</h3>
+        <div class="mono" id="cborHex"></div>
+        <div class="success step">
+            <p><strong>✅ This transaction was built using:</strong></p>
+            <ul>
+                <li>🔧 Real CSL.TransactionBuilder.new()</li>
+                <li>⚙️ Real CSL.TransactionBuilderConfigBuilder</li>
+                <li>🔄 Real txBuilder.add_input() methods</li>
+                <li>✅ Real txBuilder.build() and Transaction.new()</li>
+                <li>🚫 NO manual CBOR construction</li>
+            </ul>
+        </div>
+    </div>
+
+    <script type="module">
+        let walletApi = null;
+        let realCBOR = '';
+        let recoveryAmount = 0;
+
+        const CONTRACT_ADDRESS = "addr1w8gnkw8z0jlyk4zsrc6rp5nv5wa9nxqmceq50jdarf0c9gs2vc87j";
+        const WALLET_ADDRESS = "addr1qxtkdjl87894tg6juz20jzyjqy3uyn02pr9xtq7mlh0gm2ss5dpkcny95dktp5qmyyrx82t68sge4m94qwxyrfr8f86qh5unyc";
+        const BLOCKFROST_PROJECT_ID = "mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu";
+
+        window.buildRealCSLTransaction = async function() {
+            try {
+                const btn = document.getElementById('buildBtn');
+                btn.disabled = true;
+                btn.textContent = 'Building REAL CSL transaction...';
+                
+                const status = document.getElementById('buildStatus');
+                status.innerHTML = '<p>🔧 Fetching UTxOs and protocol parameters...</p>';
+                
+                console.log('🚀 Building REAL CSL transaction...');
+
+                // Fetch UTxOs
+                const utxosResponse = await fetch(
+                    `https://cardano-mainnet.blockfrost.io/api/v0/addresses/${CONTRACT_ADDRESS}/utxos`,
+                    { headers: { 'project_id': BLOCKFROST_PROJECT_ID } }
+                );
+                const utxos = await utxosResponse.json();
+                
+                if (utxos.length === 0) {
+                    throw new Error('No UTxOs found');
+                }
+
+                // Fetch protocol parameters
+                const protocolResponse = await fetch(
+                    'https://cardano-mainnet.blockfrost.io/api/v0/epochs/latest/parameters',
+                    { headers: { 'project_id': BLOCKFROST_PROJECT_ID } }
+                );
+                const protocolParams = await protocolResponse.json();
+
+                console.log('✅ Data fetched, building transaction with REAL CSL...');
+                status.innerHTML = '<p>🔧 Building transaction with REAL CSL TransactionBuilder...</p>';
+
+                // Import CSL dynamically
+                const CSL = await import('/node_modules/@emurgo/cardano-serialization-lib-browser/cardano_serialization_lib.js');
+                console.log('✅ Real CSL loaded');
+
+                // Build REAL CSL transaction
+                const utxo = utxos[0];
+                const adaAmount = parseInt(utxo.amount.find(a => a.unit === 'lovelace')?.quantity || '0');
+                recoveryAmount = adaAmount / 1_000_000;
+
+                console.log(`💰 Processing UTxO: ${utxo.tx_hash}#${utxo.output_index} with ${recoveryAmount} ADA`);
+
+                // Create REAL transaction builder config
+                const txBuilderCfg = CSL.TransactionBuilderConfigBuilder.new()
+                    .fee_algo(CSL.LinearFee.new(
+                        CSL.BigNum.from_str(protocolParams.min_fee_a.toString()),
+                        CSL.BigNum.from_str(protocolParams.min_fee_b.toString())
+                    ))
+                    .pool_deposit(CSL.BigNum.from_str(protocolParams.pool_deposit))
+                    .key_deposit(CSL.BigNum.from_str(protocolParams.key_deposit))
+                    .max_value_size(parseInt(protocolParams.max_val_size))
+                    .max_tx_size(parseInt(protocolParams.max_tx_size))
+                    .coins_per_utxo_byte(CSL.BigNum.from_str(protocolParams.coins_per_utxo_size))
+                    .build();
+
+                const txBuilder = CSL.TransactionBuilder.new(txBuilderCfg);
+                console.log('✅ REAL TransactionBuilder created');
+
+                // Add input using REAL CSL methods
+                const txHash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.tx_hash, 'hex'));
+                const txInput = CSL.TransactionInput.new(txHash, utxo.output_index);
+                const inputValue = CSL.Value.new(CSL.BigNum.from_str(adaAmount.toString()));
+                const contractAddr = CSL.Address.from_bech32(CONTRACT_ADDRESS);
+
+                txBuilder.add_input(contractAddr, txInput, inputValue);
+                console.log('✅ REAL input added with add_input()');
+
+                // Add output using REAL CSL methods
+                const outputAddr = CSL.Address.from_bech32(WALLET_ADDRESS);
+                const outputAmount = adaAmount - 500_000; // Subtract ~0.5 ADA for fees
+                const outputValue = CSL.Value.new(CSL.BigNum.from_str(outputAmount.toString()));
+                const output = CSL.TransactionOutput.new(outputAddr, outputValue);
+                txBuilder.add_output(output);
+                console.log('✅ REAL output added');
+
+                // Build REAL transaction
+                const txBody = txBuilder.build();
+                const witnessSet = CSL.TransactionWitnessSet.new();
+                const transaction = CSL.Transaction.new(txBody, witnessSet);
+
+                // Generate REAL CSL CBOR
+                realCBOR = Buffer.from(transaction.to_bytes()).toString('hex');
+                console.log('✅ REAL CSL transaction built successfully!');
+                console.log(`📋 REAL CBOR length: ${realCBOR.length} characters`);
+                console.log('🔥 This CBOR should NOT be greyed out in Vespr!');
+
+                // Show results
+                document.getElementById('cborHex').textContent = realCBOR;
+                document.getElementById('txDetails').classList.remove('hidden');
+                
+                status.innerHTML = '<p class="success">✅ REAL CSL transaction built! Should fix greyed out Vespr.</p>';
+                document.getElementById('buildSection').classList.add('hidden');
+                document.getElementById('walletSection').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('❌ Failed to build REAL CSL transaction:', error);
+                showError(`Failed to build transaction: ${error.message}`);
+            }
+        };
+
+        window.connectWallet = async function() {
+            try {
+                if (!window.cardano?.vespr) {
+                    throw new Error('Vespr wallet not found');
+                }
+
+                walletApi = await window.cardano.vespr.enable();
+                console.log('✅ Vespr wallet connected');
+                
+                document.getElementById('walletName').textContent = 'Vespr';
+                document.getElementById('amount').textContent = recoveryAmount.toFixed(2);
+                document.getElementById('walletSection').classList.add('hidden');
+                document.getElementById('recoverySection').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('❌ Wallet connection failed:', error);
+                showError(`Wallet connection failed: ${error.message}`);
+            }
+        };
+
+        window.executeRecovery = async function() {
+            if (!walletApi || !realCBOR) {
+                showError('Wallet not connected or transaction not built');
+                return;
+            }
+
+            try {
+                const btn = document.getElementById('executeBtn');
+                btn.disabled = true;
+                btn.textContent = 'Signing REAL CSL transaction...';
+                
+                console.log('🔐 Signing REAL CSL transaction...');
+                console.log('📋 REAL CSL CBOR:', realCBOR);
+                
+                // This should NOT be greyed out because it's REAL CSL!
+                const witnessSet = await walletApi.signTx(realCBOR, true);
+                console.log('✅ REAL CSL transaction signed (not greyed out!)');
+                
+                btn.textContent = 'Submitting to network...';
+                const txHash = await walletApi.submitTx(realCBOR);
+                
+                console.log('🎉 REAL CSL transaction submitted!');
+                document.getElementById('txHash').textContent = txHash;
+                document.getElementById('recoverySection').classList.add('hidden');
+                document.getElementById('successSection').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('❌ REAL CSL recovery failed:', error);
+                showError(`Recovery failed: ${error.message}`);
+                
+                const btn = document.getElementById('executeBtn');
+                btn.disabled = false;
+                btn.textContent = 'Sign & Execute REAL CSL Transaction';
+            }
+        };
+
+        function showError(message) {
+            document.getElementById('buildSection').classList.add('hidden');
+            document.getElementById('walletSection').classList.add('hidden');
+            document.getElementById('recoverySection').classList.add('hidden');
+            document.getElementById('errorSection').classList.remove('hidden');
+            document.getElementById('errorMsg').textContent = message;
+        }
+    </script>
+</body>
+</html>

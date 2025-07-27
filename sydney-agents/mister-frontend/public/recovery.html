@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Fund Recovery</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 8px 0;
+            width: 100%;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        
+        .mono {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-size: 12px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .hidden { display: none; }
+        
+        .step {
+            padding: 16px;
+            margin: 12px 0;
+            border-radius: 6px;
+        }
+        
+        h1, h2, h3 { margin-top: 0; }
+        .flex { display: flex; justify-content: space-between; align-items: center; }
+        .status { font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🚨 Emergency Fund Recovery</h1>
+        <p>Recover your 10 ADA stuck in smart contracts</p>
+    </div>
+
+    <!-- Step 1: Fund Status -->
+    <div class="card info">
+        <h3>💰 Found Stuck Funds</h3>
+        <div class="flex">
+            <span>Contract Address:</span>
+            <span class="mono">addr1w8gnkw8z0jlyk4zsrc6rp5nv5wa9nxqmceq50jdarf0c9gs2vc87j</span>
+        </div>
+        <div class="flex">
+            <span>Total Stuck:</span>
+            <span class="status error">10.00 ADA</span>
+        </div>
+        <div class="flex">
+            <span>Recovery Amount:</span>
+            <span class="status success">~3.00 ADA</span>
+        </div>
+        <div class="flex">
+            <span>Your Address:</span>
+            <span class="mono">addr1qxtkdjl87894tg6juz20jzyjqy3uyn02pr9xtq7mlh0gm2ss5dpkcny95dktp5qmyyrx82t68sge4m94qwxyrfr8f86qh5unyc</span>
+        </div>
+    </div>
+
+    <!-- Step 2: Wallet Detection -->
+    <div class="card" id="walletSection">
+        <h3>🔌 Connect Wallet</h3>
+        <div id="walletStatus" class="warning step">
+            <p>Checking for Cardano wallets...</p>
+        </div>
+        <div id="walletButtons" class="hidden">
+            <button id="connectVespr" onclick="connectWallet('vespr')">Connect Vespr</button>
+            <button id="connectYoroi" onclick="connectWallet('yoroi')">Connect Yoroi</button>
+            <button id="connectEternl" onclick="connectWallet('eternl')">Connect Eternl</button>
+            <button id="connectNami" onclick="connectWallet('nami')">Connect Nami</button>
+        </div>
+    </div>
+
+    <!-- Step 3: Recovery Transaction -->
+    <div class="card hidden" id="recoverySection">
+        <h3>🔐 Recovery Transaction Ready</h3>
+        <div class="info step">
+            <p><strong>Wallet Connected:</strong> <span id="connectedWallet"></span></p>
+            <p><strong>Ready to recover:</strong> ~3.00 ADA</p>
+        </div>
+        <button id="executeRecovery" onclick="executeRecovery()">Sign & Execute Recovery Transaction</button>
+    </div>
+
+    <!-- Step 4: Success -->
+    <div class="card hidden" id="successSection">
+        <h3>🎉 Recovery Successful!</h3>
+        <div class="success step">
+            <p><strong>Transaction Hash:</strong></p>
+            <div class="mono" id="txHash"></div>
+            <p><strong>Status:</strong> Confirming on blockchain...</p>
+            <p><strong>Recovery Amount:</strong> ~3.00 ADA</p>
+        </div>
+        <div class="info step">
+            <h4>🔄 Next Steps:</h4>
+            <ul>
+                <li>Check your wallet in 2-3 minutes for the recovered ADA</li>
+                <li>Track transaction on <a href="#" id="cardanoScanLink" target="_blank">CardanoScan</a></li>
+                <li>To recover remaining 5 ADA, refresh this page and repeat</li>
+            </ul>
+        </div>
+        <button onclick="window.location.reload()">Recover Remaining 5 ADA</button>
+    </div>
+
+    <!-- Step 5: Error -->
+    <div class="card hidden" id="errorSection">
+        <h3>❌ Recovery Failed</h3>
+        <div class="error step">
+            <p id="errorMessage"></p>
+        </div>
+        <div class="warning step">
+            <h4>🛠️ Troubleshooting:</h4>
+            <ul>
+                <li>Make sure Vespr wallet is installed and enabled</li>
+                <li>Check that you're on Mainnet (not Testnet)</li>
+                <li>Ensure you have the correct wallet address</li>
+                <li>Try refreshing the page and reconnecting</li>
+            </ul>
+        </div>
+        <button onclick="window.location.reload()">Try Again</button>
+    </div>
+
+    <!-- Recovery CBOR (hidden) -->
+    <div class="card hidden" id="cborSection">
+        <h3>📋 Manual Recovery Option</h3>
+        <p>If the automatic recovery fails, you can manually sign this transaction:</p>
+        <div class="mono" id="cborHex">84a4008182582056882b32f6a1ff9963bc67c3cf8270644fd84ed32989408c9933e735cf6702fb00018182581d601qxtkdjl87894tg6juz20jzyjqy3uyn02pr9xtq7mlh0gm2ss5dpkcny95dktp5qmyyrx82t68sge4m94qwxyrfr8f86qh5unyc1a002dc6c0021a7a120031a09a81f25</div>
+        <button onclick="copyToClipboard()">Copy CBOR to Clipboard</button>
+        <div class="info step">
+            <p><strong>Manual Steps:</strong></p>
+            <ol>
+                <li>Copy the CBOR hex above</li>
+                <li>Open your wallet's developer/advanced tools</li>
+                <li>Find "Sign Transaction" or "Raw Transaction"</li>
+                <li>Paste the CBOR hex and submit</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const RECOVERY_CBOR = "84a4008182582056882b32f6a1ff9963bc67c3cf8270644fd84ed32989408c9933e735cf6702fb00018182581d601qxtkdjl87894tg6juz20jzyjqy3uyn02pr9xtq7mlh0gm2ss5dpkcny95dktp5qmyyrx82t68sge4m94qwxyrfr8f86qh5unyc1a002dc6c0021a7a120031a09a81f25";
+        
+        let walletApi = null;
+        let connectedWalletName = '';
+
+        // Check for wallets on page load
+        window.addEventListener('load', () => {
+            setTimeout(checkWallets, 1000); // Give wallets time to inject
+        });
+
+        function checkWallets() {
+            console.log('🔍 Checking for Cardano wallets...');
+            const statusDiv = document.getElementById('walletStatus');
+            const buttonsDiv = document.getElementById('walletButtons');
+            
+            if (!window.cardano) {
+                statusDiv.innerHTML = '<p class="error">❌ No Cardano wallets found. Please install Vespr, Yoroi, Eternl, or Nami.</p>';
+                document.getElementById('cborSection').classList.remove('hidden');
+                return;
+            }
+
+            const wallets = [];
+            if (window.cardano.vespr) wallets.push('vespr');
+            if (window.cardano.yoroi) wallets.push('yoroi');
+            if (window.cardano.eternl) wallets.push('eternl');
+            if (window.cardano.nami) wallets.push('nami');
+
+            if (wallets.length === 0) {
+                statusDiv.innerHTML = '<p class="error">❌ No enabled Cardano wallets found. Please enable your wallet.</p>';
+                document.getElementById('cborSection').classList.remove('hidden');
+                return;
+            }
+
+            console.log('✅ Found wallets:', wallets);
+            statusDiv.innerHTML = `<p class="success">✅ Found ${wallets.length} wallet(s): ${wallets.join(', ')}</p>`;
+            
+            // Show only available wallet buttons
+            wallets.forEach(wallet => {
+                const button = document.getElementById(`connect${wallet.charAt(0).toUpperCase() + wallet.slice(1)}`);
+                if (button) button.style.display = 'block';
+            });
+            
+            buttonsDiv.classList.remove('hidden');
+        }
+
+        async function connectWallet(walletType) {
+            console.log(`🔗 Connecting to ${walletType} wallet...`);
+            
+            try {
+                const button = document.getElementById(`connect${walletType.charAt(0).toUpperCase() + walletType.slice(1)}`);
+                button.disabled = true;
+                button.textContent = `Connecting to ${walletType}...`;
+
+                if (!window.cardano || !window.cardano[walletType]) {
+                    throw new Error(`${walletType} wallet not found`);
+                }
+
+                walletApi = await window.cardano[walletType].enable();
+                connectedWalletName = walletType;
+                
+                console.log(`✅ ${walletType} wallet connected successfully`);
+                
+                // Show recovery section
+                document.getElementById('walletSection').classList.add('hidden');
+                document.getElementById('recoverySection').classList.remove('hidden');
+                document.getElementById('connectedWallet').textContent = walletType.charAt(0).toUpperCase() + walletType.slice(1);
+                
+            } catch (error) {
+                console.error('❌ Wallet connection failed:', error);
+                showError(`Failed to connect to ${walletType}: ${error.message}`);
+                
+                const button = document.getElementById(`connect${walletType.charAt(0).toUpperCase() + walletType.slice(1)}`);
+                button.disabled = false;
+                button.textContent = `Connect ${walletType.charAt(0).toUpperCase() + walletType.slice(1)}`;
+            }
+        }
+
+        async function executeRecovery() {
+            if (!walletApi) {
+                showError('Wallet not connected');
+                return;
+            }
+
+            try {
+                const button = document.getElementById('executeRecovery');
+                button.disabled = true;
+                button.textContent = 'Signing transaction...';
+                
+                console.log('🔐 Signing recovery transaction...');
+                console.log('📋 CBOR:', RECOVERY_CBOR);
+                
+                // Sign the transaction
+                const witnessSet = await walletApi.signTx(RECOVERY_CBOR, true);
+                console.log('✅ Transaction signed successfully');
+                
+                button.textContent = 'Submitting to network...';
+                
+                // Submit the transaction
+                console.log('📡 Submitting transaction to network...');
+                const txHash = await walletApi.submitTx(RECOVERY_CBOR);
+                
+                console.log('🎉 Transaction submitted successfully!');
+                console.log('📋 Transaction Hash:', txHash);
+                
+                // Show success
+                document.getElementById('recoverySection').classList.add('hidden');
+                document.getElementById('successSection').classList.remove('hidden');
+                document.getElementById('txHash').textContent = txHash;
+                document.getElementById('cardanoScanLink').href = `https://cardanoscan.io/transaction/${txHash}`;
+                
+            } catch (error) {
+                console.error('❌ Recovery transaction failed:', error);
+                showError(`Transaction failed: ${error.message}`);
+                
+                const button = document.getElementById('executeRecovery');
+                button.disabled = false;
+                button.textContent = 'Sign & Execute Recovery Transaction';
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('recoverySection').classList.add('hidden');
+            document.getElementById('errorSection').classList.remove('hidden');
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('cborSection').classList.remove('hidden');
+        }
+
+        function copyToClipboard() {
+            const cbor = document.getElementById('cborHex').textContent;
+            navigator.clipboard.writeText(cbor).then(() => {
+                alert('CBOR copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSL-Based Emergency Fund Recovery</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 8px 0;
+            width: 100%;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        
+        .mono {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-size: 12px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .hidden { display: none; }
+        
+        .step {
+            padding: 16px;
+            margin: 12px 0;
+            border-radius: 6px;
+        }
+        
+        h1, h2, h3 { margin-top: 0; }
+        .flex { display: flex; justify-content: space-between; align-items: center; }
+        .status { font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🚨 CSL-Based Emergency Fund Recovery</h1>
+        <p>Recover your 10 ADA stuck in smart contracts using proper Cardano Serialization Library</p>
+        <div class="info step">
+            <strong>🔧 This version prevents "Greyed Out Vespr" issues by using proper CSL transaction building!</strong>
+        </div>
+    </div>
+
+    <!-- Step 1: Fund Status -->
+    <div class="card info">
+        <h3>💰 Found Stuck Funds</h3>
+        <div class="flex">
+            <span>Contract Address:</span>
+            <span class="mono">addr1w8gnkw8z0jlyk4zsrc6rp5nv5wa9nxqmceq50jdarf0c9gs2vc87j</span>
+        </div>
+        <div class="flex">
+            <span>Total Stuck:</span>
+            <span class="status error">10.00 ADA</span>
+        </div>
+        <div class="flex">
+            <span>Recovery Amount:</span>
+            <span class="status success">~3.00 ADA (first batch)</span>
+        </div>
+        <div class="flex">
+            <span>Your Address:</span>
+            <span class="mono">addr1qxtkdjl87894tg6juz20jzyjqy3uyn02pr9xtq7mlh0gm2ss5dpkcny95dktp5qmyyrx82t68sge4m94qwxyrfr8f86qh5unyc</span>
+        </div>
+    </div>
+
+    <!-- Step 2: Build Transaction -->
+    <div class="card" id="buildSection">
+        <h3>🔧 Build Recovery Transaction</h3>
+        <div id="buildStatus" class="warning step">
+            <p>Ready to build recovery transaction using proper CSL...</p>
+        </div>
+        <button id="buildTransaction" onclick="buildRecoveryTransaction()">Build CSL Recovery Transaction</button>
+    </div>
+
+    <!-- Step 3: Wallet Connection -->
+    <div class="card hidden" id="walletSection">
+        <h3>🔌 Connect Wallet</h3>
+        <div id="walletStatus" class="warning step">
+            <p>Checking for Cardano wallets...</p>
+        </div>
+        <div id="walletButtons" class="hidden">
+            <button id="connectVespr" onclick="connectWallet('vespr')">Connect Vespr</button>
+            <button id="connectYoroi" onclick="connectWallet('yoroi')">Connect Yoroi</button>
+            <button id="connectEternl" onclick="connectWallet('eternl')">Connect Eternl</button>
+            <button id="connectNami" onclick="connectWallet('nami')">Connect Nami</button>
+        </div>
+    </div>
+
+    <!-- Step 4: Recovery Transaction -->
+    <div class="card hidden" id="recoverySection">
+        <h3>🔐 Recovery Transaction Ready</h3>
+        <div class="info step">
+            <p><strong>Wallet Connected:</strong> <span id="connectedWallet"></span></p>
+            <p><strong>Transaction Type:</strong> CSL-Generated (Prevents Greyed Out Issues)</p>
+            <p><strong>Ready to recover:</strong> <span id="recoveryAmount"></span> ADA</p>
+        </div>
+        <div class="success step">
+            <p><strong>✅ This transaction uses proper CSL library methods:</strong></p>
+            <ul>
+                <li>✅ Complete transaction structure: [transaction_body, witness_set]</li>
+                <li>✅ Proper CSL.TransactionBuilder.new() with config</li>
+                <li>✅ add_inputs_from() instead of manual CBOR</li>
+                <li>✅ Empty witness set initially for signing</li>
+            </ul>
+        </div>
+        <button id="executeRecovery" onclick="executeRecovery()">Sign & Execute CSL Recovery Transaction</button>
+    </div>
+
+    <!-- Step 5: Success -->
+    <div class="card hidden" id="successSection">
+        <h3>🎉 Recovery Successful!</h3>
+        <div class="success step">
+            <p><strong>Transaction Hash:</strong></p>
+            <div class="mono" id="txHash"></div>
+            <p><strong>Status:</strong> Confirming on blockchain...</p>
+            <p><strong>Recovery Amount:</strong> <span id="successAmount"></span> ADA</p>
+        </div>
+        <div class="info step">
+            <h4>🔄 Next Steps:</h4>
+            <ul>
+                <li>Check your wallet in 2-3 minutes for the recovered ADA</li>
+                <li>Track transaction on <a href="#" id="cardanoScanLink" target="_blank">CardanoScan</a></li>
+                <li>To recover remaining ADA, refresh this page and repeat</li>
+            </ul>
+        </div>
+        <button onclick="window.location.reload()">Recover Remaining ADA</button>
+    </div>
+
+    <!-- Step 6: Error -->
+    <div class="card hidden" id="errorSection">
+        <h3>❌ Recovery Failed</h3>
+        <div class="error step">
+            <p id="errorMessage"></p>
+        </div>
+        <div class="warning step">
+            <h4>🛠️ Troubleshooting:</h4>
+            <ul>
+                <li>This version uses proper CSL to prevent greyed out Vespr issues</li>
+                <li>Make sure you're on Mainnet (not Testnet)</li>
+                <li>Ensure you have enough ADA for transaction fees (~0.5 ADA)</li>
+                <li>Try refreshing the page and rebuilding the transaction</li>
+            </ul>
+        </div>
+        <button onclick="window.location.reload()">Try Again</button>
+    </div>
+
+    <!-- Transaction Details -->
+    <div class="card hidden" id="transactionDetails">
+        <h3>📋 CSL Transaction Details</h3>
+        <div class="mono" id="cborDisplay"></div>
+        <button onclick="copyToClipboard()">Copy CBOR to Clipboard</button>
+        <div class="info step">
+            <p><strong>CSL Transaction Features:</strong></p>
+            <ul>
+                <li>🔧 Built with @emurgo/cardano-serialization-lib-browser</li>
+                <li>⚙️ TransactionBuilderConfig with fallback mechanism</li>
+                <li>🔄 Proper add_inputs_from() method</li>
+                <li>✅ Complete transaction structure</li>
+                <li>🚫 No manual CBOR creation</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let walletApi = null;
+        let connectedWalletName = '';
+        let cslRecoveryCBOR = '';
+        let recoveryAmountADA = 0;
+
+        // Build recovery transaction using proper CSL
+        async function buildRecoveryTransaction() {
+            try {
+                const button = document.getElementById('buildTransaction');
+                button.disabled = true;
+                button.textContent = 'Building CSL transaction...';
+                
+                const statusDiv = document.getElementById('buildStatus');
+                statusDiv.innerHTML = '<p>🔧 Building transaction with proper CSL library...</p>';
+                
+                console.log('🚀 Building recovery transaction with CSL API...');
+
+                const response = await fetch('/api/cardano/build-recovery-transaction', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contractAddress: "addr1w8gnkw8z0jlyk4zsrc6rp5nv5wa9nxqmceq50jdarf0c9gs2vc87j",
+                        walletAddress: "addr1qxtkdjl87894tg6juz20jzyjqy3uyn02pr9xtq7mlh0gm2ss5dpkcny95dktp5qmyyrx82t68sge4m94qwxyrfr8f86qh5unyc"
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!result.success || !result.cbor) {
+                    throw new Error(result.error || 'Failed to build transaction');
+                }
+
+                cslRecoveryCBOR = result.cbor;
+                recoveryAmountADA = result.adaAmount;
+
+                console.log('✅ CSL transaction built successfully!');
+                console.log(`💰 Recovery amount: ${recoveryAmountADA} ADA`);
+                console.log(`📋 CBOR length: ${cslRecoveryCBOR.length} characters`);
+
+                // Show transaction details
+                document.getElementById('cborDisplay').textContent = cslRecoveryCBOR;
+                document.getElementById('transactionDetails').classList.remove('hidden');
+
+                // Update status and show wallet section
+                statusDiv.innerHTML = '<p class="success">✅ CSL recovery transaction built successfully! No greyed out Vespr issues expected.</p>';
+                document.getElementById('buildSection').classList.add('hidden');
+                document.getElementById('walletSection').classList.remove('hidden');
+                
+                // Check for wallets
+                setTimeout(checkWallets, 500);
+
+            } catch (error) {
+                console.error('❌ Failed to build CSL transaction:', error);
+                showError(`Failed to build transaction: ${error.message}`);
+                
+                const button = document.getElementById('buildTransaction');
+                button.disabled = false;
+                button.textContent = 'Build CSL Recovery Transaction';
+            }
+        }
+
+        function checkWallets() {
+            console.log('🔍 Checking for Cardano wallets...');
+            const statusDiv = document.getElementById('walletStatus');
+            const buttonsDiv = document.getElementById('walletButtons');
+            
+            if (!window.cardano) {
+                statusDiv.innerHTML = '<p class="error">❌ No Cardano wallets found. Please install Vespr, Yoroi, Eternl, or Nami.</p>';
+                return;
+            }
+
+            const wallets = [];
+            if (window.cardano.vespr) wallets.push('vespr');
+            if (window.cardano.yoroi) wallets.push('yoroi');
+            if (window.cardano.eternl) wallets.push('eternl');
+            if (window.cardano.nami) wallets.push('nami');
+
+            if (wallets.length === 0) {
+                statusDiv.innerHTML = '<p class="error">❌ No enabled Cardano wallets found. Please enable your wallet.</p>';
+                return;
+            }
+
+            console.log('✅ Found wallets:', wallets);
+            statusDiv.innerHTML = `<p class="success">✅ Found ${wallets.length} wallet(s): ${wallets.join(', ')}</p>`;
+            
+            // Show only available wallet buttons
+            wallets.forEach(wallet => {
+                const button = document.getElementById(`connect${wallet.charAt(0).toUpperCase() + wallet.slice(1)}`);
+                if (button) button.style.display = 'block';
+            });
+            
+            buttonsDiv.classList.remove('hidden');
+        }
+
+        async function connectWallet(walletType) {
+            console.log(`🔗 Connecting to ${walletType} wallet...`);
+            
+            try {
+                const button = document.getElementById(`connect${walletType.charAt(0).toUpperCase() + walletType.slice(1)}`);
+                button.disabled = true;
+                button.textContent = `Connecting to ${walletType}...`;
+
+                if (!window.cardano || !window.cardano[walletType]) {
+                    throw new Error(`${walletType} wallet not found`);
+                }
+
+                walletApi = await window.cardano[walletType].enable();
+                connectedWalletName = walletType;
+                
+                console.log(`✅ ${walletType} wallet connected successfully`);
+                
+                // Show recovery section
+                document.getElementById('walletSection').classList.add('hidden');
+                document.getElementById('recoverySection').classList.remove('hidden');
+                document.getElementById('connectedWallet').textContent = walletType.charAt(0).toUpperCase() + walletType.slice(1);
+                document.getElementById('recoveryAmount').textContent = recoveryAmountADA.toFixed(2);
+                
+            } catch (error) {
+                console.error('❌ Wallet connection failed:', error);
+                showError(`Failed to connect to ${walletType}: ${error.message}`);
+                
+                const button = document.getElementById(`connect${walletType.charAt(0).toUpperCase() + walletType.slice(1)}`);
+                button.disabled = false;
+                button.textContent = `Connect ${walletType.charAt(0).toUpperCase() + walletType.slice(1)}`;
+            }
+        }
+
+        async function executeRecovery() {
+            if (!walletApi || !cslRecoveryCBOR) {
+                showError('Wallet not connected or transaction not built');
+                return;
+            }
+
+            try {
+                const button = document.getElementById('executeRecovery');
+                button.disabled = true;
+                button.textContent = 'Signing CSL transaction...';
+                
+                console.log('🔐 Signing CSL recovery transaction...');
+                console.log('📋 CSL CBOR:', cslRecoveryCBOR);
+                
+                // Sign the CSL transaction
+                const witnessSet = await walletApi.signTx(cslRecoveryCBOR, true);
+                console.log('✅ CSL transaction signed successfully');
+                
+                button.textContent = 'Submitting to network...';
+                
+                // Submit the transaction
+                console.log('📡 Submitting CSL transaction to network...');
+                const txHash = await walletApi.submitTx(cslRecoveryCBOR);
+                
+                console.log('🎉 CSL transaction submitted successfully!');
+                console.log('📋 Transaction Hash:', txHash);
+                
+                // Show success
+                document.getElementById('recoverySection').classList.add('hidden');
+                document.getElementById('successSection').classList.remove('hidden');
+                document.getElementById('txHash').textContent = txHash;
+                document.getElementById('successAmount').textContent = recoveryAmountADA.toFixed(2);
+                document.getElementById('cardanoScanLink').href = `https://cardanoscan.io/transaction/${txHash}`;
+                
+            } catch (error) {
+                console.error('❌ CSL recovery transaction failed:', error);
+                showError(`CSL Transaction failed: ${error.message}`);
+                
+                const button = document.getElementById('executeRecovery');
+                button.disabled = false;
+                button.textContent = 'Sign & Execute CSL Recovery Transaction';
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('buildSection').classList.add('hidden');
+            document.getElementById('walletSection').classList.add('hidden');
+            document.getElementById('recoverySection').classList.add('hidden');
+            document.getElementById('errorSection').classList.remove('hidden');
+            document.getElementById('errorMessage').textContent = message;
+        }
+
+        function copyToClipboard() {
+            const cbor = document.getElementById('cborDisplay').textContent;
+            navigator.clipboard.writeText(cbor).then(() => {
+                alert('CSL CBOR copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>
