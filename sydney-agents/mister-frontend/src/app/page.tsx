@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useWallet } from "@/contexts/WalletContext";
+import ComingSoonOverlay from "@/components/ui/coming-soon-overlay";
 
 export default function LandingPage() {
   const { mainWallet, connectWallet, isLoading } = useWallet();
@@ -190,33 +191,38 @@ export default function LandingPage() {
                 </div>
 
                 {/* Agent Vault Smart Contracts - NOW LIVE */}
-                <div className="relative bg-card border rounded-lg p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                      <Bot className="w-6 h-6 text-green-600" />
+                <ComingSoonOverlay
+                  title="Agent Vault Coming Soon"
+                  description="Smart contract deployment is being finalized for maximum security. Full functionality available in development mode."
+                >
+                  <div className="relative bg-card border rounded-lg p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                        <Bot className="w-6 h-6 text-green-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold">Agent Vault Smart Contracts</h3>
+                        <p className="text-sm text-muted-foreground">Secure automated trading</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-semibold">Agent Vault Smart Contracts</h3>
-                      <p className="text-sm text-muted-foreground">Secure automated trading</p>
-                    </div>
-                  </div>
-                  <p className="text-muted-foreground mb-4">
-                    Deploy your personal Agent Vault smart contract for fully automated trading with our proven 62.5% win rate ADA Custom Algorithm.
-                  </p>
-                  <Button
-                    size="lg"
-                    onClick={() => window.location.href = '/agent-vault-setup'}
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-                  >
-                    <Bot className="mr-2 h-5 w-5" />
-                    Create Agent Vault
-                  </Button>
+                    <p className="text-muted-foreground mb-4">
+                      Deploy your personal Agent Vault smart contract for fully automated trading with our proven 62.5% win rate ADA Custom Algorithm.
+                    </p>
+                    <Button
+                      size="lg"
+                      onClick={() => window.location.href = '/agent-vault-setup'}
+                      className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                    >
+                      <Bot className="mr-2 h-5 w-5" />
+                      Create Agent Vault
+                    </Button>
 
-                  {/* Live Badge */}
-                  <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
-                    LIVE
+                    {/* Live Badge */}
+                    <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+                      LIVE
+                    </div>
                   </div>
-                </div>
+                </ComingSoonOverlay>
               </div>
 
               {/* Additional Options */}

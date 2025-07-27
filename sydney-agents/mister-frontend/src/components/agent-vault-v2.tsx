@@ -26,6 +26,7 @@ import { agentVaultV2Service, AGENT_VAULT_V2_CONFIG, VaultState } from '@/servic
 import { useWallet } from '@/contexts/WalletContext';
 import { useRequireAuth } from '@/contexts/AuthContext';
 import { TransactionStatus } from '@/components/transaction-status';
+import ComingSoonOverlay from '@/components/ui/coming-soon-overlay';
 
 export default function AgentVaultV2Component() {
   // Use existing wallet context instead of creating new connection
@@ -474,75 +475,85 @@ export default function AgentVaultV2Component() {
 
             {/* Deposit Tab */}
             <TabsContent value="deposit">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ArrowUpCircle className="h-5 w-5 text-green-600" />
-                    Deposit ADA
-                  </CardTitle>
-                  <CardDescription>
-                    Deposit ADA to your Agent Vault V2 (Minimum: {AGENT_VAULT_V2_CONFIG.minVaultBalance / 1_000_000} ADA)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="deposit-amount">Amount (ADA)</Label>
-                    <Input
-                      id="deposit-amount"
-                      type="number"
-                      placeholder={`Minimum ${AGENT_VAULT_V2_CONFIG.minVaultBalance / 1_000_000} ADA`}
-                      value={depositAmount}
-                      onChange={(e) => setDepositAmount(e.target.value)}
-                      min={AGENT_VAULT_V2_CONFIG.minVaultBalance / 1_000_000}
-                      step="0.1"
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleDeposit} 
-                    disabled={isLoading || !depositAmount}
-                    className="w-full"
-                  >
-                    {isLoading ? 'Processing...' : 'Deposit ADA'}
-                  </Button>
-                </CardContent>
-              </Card>
+              <ComingSoonOverlay
+                title="Deposit Coming Soon"
+                description="Deposit functionality is being finalized for maximum security. Full functionality available in development mode."
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ArrowUpCircle className="h-5 w-5 text-green-600" />
+                      Deposit ADA
+                    </CardTitle>
+                    <CardDescription>
+                      Deposit ADA to your Agent Vault V2 (Minimum: {AGENT_VAULT_V2_CONFIG.minVaultBalance / 1_000_000} ADA)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="deposit-amount">Amount (ADA)</Label>
+                      <Input
+                        id="deposit-amount"
+                        type="number"
+                        placeholder={`Minimum ${AGENT_VAULT_V2_CONFIG.minVaultBalance / 1_000_000} ADA`}
+                        value={depositAmount}
+                        onChange={(e) => setDepositAmount(e.target.value)}
+                        min={AGENT_VAULT_V2_CONFIG.minVaultBalance / 1_000_000}
+                        step="0.1"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleDeposit}
+                      disabled={isLoading || !depositAmount}
+                      className="w-full"
+                    >
+                      {isLoading ? 'Processing...' : 'Deposit ADA'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </ComingSoonOverlay>
             </TabsContent>
 
             {/* Withdraw Tab */}
             <TabsContent value="withdraw">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ArrowDownCircle className="h-5 w-5 text-blue-600" />
-                    Withdraw ADA
-                  </CardTitle>
-                  <CardDescription>
-                    Withdraw ADA from your Agent Vault V2
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="withdraw-amount">Amount (ADA)</Label>
-                    <Input
-                      id="withdraw-amount"
-                      type="number"
-                      placeholder={`Max: ${((vaultState?.availableBalance || 0) / 1_000_000).toFixed(2)} ADA`}
-                      value={withdrawAmount}
-                      onChange={(e) => setWithdrawAmount(e.target.value)}
-                      max={(vaultState?.availableBalance || 0) / 1_000_000}
-                      step="0.1"
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleWithdraw} 
-                    disabled={isLoading || !withdrawAmount || !vaultState?.availableBalance}
-                    className="w-full"
-                    variant="outline"
-                  >
-                    {isLoading ? 'Processing...' : 'Withdraw ADA'}
-                  </Button>
-                </CardContent>
-              </Card>
+              <ComingSoonOverlay
+                title="Withdrawal Coming Soon"
+                description="Withdrawal functionality is being finalized for maximum security. Full functionality available in development mode."
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ArrowDownCircle className="h-5 w-5 text-blue-600" />
+                      Withdraw ADA
+                    </CardTitle>
+                    <CardDescription>
+                      Withdraw ADA from your Agent Vault V2
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="withdraw-amount">Amount (ADA)</Label>
+                      <Input
+                        id="withdraw-amount"
+                        type="number"
+                        placeholder={`Max: ${((vaultState?.availableBalance || 0) / 1_000_000).toFixed(2)} ADA`}
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                        max={(vaultState?.availableBalance || 0) / 1_000_000}
+                        step="0.1"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleWithdraw}
+                      disabled={isLoading || !withdrawAmount || !vaultState?.availableBalance}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      {isLoading ? 'Processing...' : 'Withdraw ADA'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </ComingSoonOverlay>
             </TabsContent>
 
             {/* Settings Tab */}
