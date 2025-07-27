@@ -723,15 +723,15 @@ export class SignalGenerationService {
   private resetDailyCounterIfNeeded(): void {
     const now = new Date();
     const today = now.toDateString();
-    const lastResetDate = localStorage.getItem('signal_service_last_reset');
+    const lastResetDate = typeof window !== 'undefined' ? localStorage.getItem('signal_service_last_reset') : null;
     
     if (lastResetDate !== today) {
       this.signalsToday = 0;
-      localStorage.setItem('signal_service_last_reset', today);
+      if (typeof window !== 'undefined') localStorage.setItem('signal_service_last_reset', today);
       console.log('🔄 Daily signal counter reset');
     } else {
       // Load today's count from storage
-      const storedCount = localStorage.getItem('signal_service_signals_today');
+      const storedCount = typeof window !== 'undefined' ? localStorage.getItem('signal_service_signals_today') : null;
       this.signalsToday = storedCount ? parseInt(storedCount, 10) : 0;
     }
   }
@@ -740,7 +740,7 @@ export class SignalGenerationService {
    * Update daily counter in storage
    */
   private updateDailyCounter(): void {
-    localStorage.setItem('signal_service_signals_today', this.signalsToday.toString());
+    if (typeof window !== 'undefined') localStorage.setItem('signal_service_signals_today', this.signalsToday.toString());
   }
 }
 

@@ -86,7 +86,7 @@ export default function ChatPage() {
 
   // Load chat sessions from localStorage
   useEffect(() => {
-    const savedSessions = localStorage.getItem('mister-chat-sessions');
+    const savedSessions = typeof window !== 'undefined' ? localStorage.getItem('mister-chat-sessions') : null;
     if (savedSessions) {
       const sessions = JSON.parse(savedSessions);
 
@@ -115,7 +115,7 @@ export default function ChatPage() {
 
   // Save chat sessions to localStorage
   const saveChatSessions = (sessions: ChatSession[]) => {
-    localStorage.setItem('mister-chat-sessions', JSON.stringify(sessions));
+    if (typeof window !== 'undefined') localStorage.setItem('mister-chat-sessions', JSON.stringify(sessions));
     setChatSessions(sessions);
   };
 

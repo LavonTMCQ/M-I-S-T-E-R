@@ -670,7 +670,7 @@ export class DefaultWalletIntegration implements WalletIntegration {
     // For now, return null - implement based on your wallet context
     if (typeof window !== 'undefined') {
       // Try to get from localStorage or global state
-      return localStorage.getItem('wallet_address') || null;
+      return typeof window !== 'undefined' ? localStorage.getItem('wallet_address') || null : null;
     }
     return null;
   }
@@ -679,7 +679,7 @@ export class DefaultWalletIntegration implements WalletIntegration {
     // This would integrate with your existing WalletContext
     // For now, return mock balance - implement based on your wallet context
     if (typeof window !== 'undefined') {
-      const balance = localStorage.getItem('wallet_balance');
+      const balance = typeof window !== 'undefined' ? localStorage.getItem('wallet_balance') : null;
       return balance ? parseFloat(balance) : 100; // Default 100 ADA
     }
     return 100;
@@ -694,7 +694,7 @@ export class DefaultWalletIntegration implements WalletIntegration {
   getWalletType(): string | null {
     // This would integrate with your existing WalletContext
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('wallet_type') || null;
+      return typeof window !== 'undefined' ? localStorage.getItem('wallet_type') || null : null;
     }
     return null;
   }
@@ -702,7 +702,7 @@ export class DefaultWalletIntegration implements WalletIntegration {
   getUserId(): string | null {
     // This would integrate with your existing user system
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('user_id') || null;
+      return typeof window !== 'undefined' ? localStorage.getItem('user_id') || null : null;
     }
     return null;
   }
@@ -752,7 +752,7 @@ export class DefaultDiscordIntegration implements DiscordIntegration {
   getUserDiscordId(): string | null {
     // This would integrate with your user system
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('user_discord_id') || null;
+      return typeof window !== 'undefined' ? localStorage.getItem('user_discord_id') || null : null;
     }
     return null;
   }

@@ -35,7 +35,7 @@ export class DiscordNotifier {
   constructor() {
     // Get webhook URL from environment or localStorage
     this.webhookUrl = process.env.NEXT_PUBLIC_DISCORD_WEBHOOK_URL || 
-                     localStorage.getItem('discord_webhook_url') || 
+                     (typeof window !== 'undefined' ? localStorage.getItem('discord_webhook_url') : null) ||
                      null;
   }
 
@@ -51,7 +51,7 @@ export class DiscordNotifier {
    */
   setWebhookUrl(url: string): void {
     this.webhookUrl = url;
-    localStorage.setItem('discord_webhook_url', url);
+    if (typeof window !== 'undefined') localStorage.setItem('discord_webhook_url', url);
   }
 
   /**

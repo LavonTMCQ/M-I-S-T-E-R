@@ -42,7 +42,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
    */
   const getWalletStorage = () => {
     // Try to get user ID from localStorage (set by AuthContext)
-    const authToken = localStorage.getItem('auth_token');
+    const authToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (authToken) {
       let userId = null;
       if (authToken.startsWith('mock_token_')) {
@@ -60,9 +60,15 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
     // Fallback to global storage for backward compatibility
     return {
-      setItem: (key: string, value: string) => localStorage.setItem(key, value),
-      getItem: (key: string) => localStorage.getItem(key),
-      removeItem: (key: string) => localStorage.removeItem(key),
+      setItem: (key: string, value: string) => {
+        if (typeof window !== 'undefined') localStorage.setItem(key, value);
+      },
+      getItem: (key: string) => {
+        return typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+      },
+      removeItem: (key: string) => {
+        if (typeof window !== 'undefined') localStorage.removeItem(key);
+      },
       clear: () => {},
       getAllKeys: () => [],
       migrateGlobalData: () => {},

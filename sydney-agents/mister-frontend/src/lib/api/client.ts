@@ -18,7 +18,7 @@ export class ApiClient {
    */
   private loadAuthToken(): void {
     if (typeof window !== 'undefined') {
-      this.authToken = localStorage.getItem('mister_auth_token');
+      this.authToken = typeof window !== 'undefined' ? localStorage.getItem('mister_auth_token') : null;
     }
   }
 
@@ -27,7 +27,7 @@ export class ApiClient {
    */
   private saveAuthToken(token: string): void {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('mister_auth_token', token);
+      if (typeof window !== 'undefined') localStorage.setItem('mister_auth_token', token);
       this.authToken = token;
     }
   }
@@ -37,7 +37,7 @@ export class ApiClient {
    */
   private clearAuthToken(): void {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('mister_auth_token');
+      if (typeof window !== 'undefined') localStorage.removeItem('mister_auth_token');
       this.authToken = null;
     }
   }

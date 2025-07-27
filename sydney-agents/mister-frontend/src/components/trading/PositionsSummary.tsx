@@ -158,7 +158,7 @@ export function PositionsSummary() {
   const handleClosePosition = async (positionId: string) => {
     try {
       console.log('🔄 Closing position:', positionId);
-      console.log('🔍 Auth token:', localStorage.getItem('mister_auth_token') ? 'Present' : 'Missing');
+      console.log('🔍 Auth token:', (typeof window !== 'undefined' && localStorage.getItem('mister_auth_token')) ? 'Present' : 'Missing');
 
       // Step 1: Get the close position CBOR from our Next.js API route
       console.log('🌐 Making close position API request...');
@@ -166,7 +166,7 @@ export function PositionsSummary() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('mister_auth_token')}`
+          'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('mister_auth_token') : ''}`
         },
         body: JSON.stringify({
           positionId: positionId,
