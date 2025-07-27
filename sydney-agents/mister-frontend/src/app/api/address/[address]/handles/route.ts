@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { bech32 } from 'bech32';
 
 // Get the Blockfrost API key from environment variables
 const getBlockfrostApiKey = (isTestnet: boolean = false): string => {

@@ -256,8 +256,8 @@ const getCachedFibonacciAnalysis = async () => {
       nextLevelToWatch: (() => {
         // Find the closest support level below current price
         const supportLevels = fibLevelsWithDistance
-          .filter(level => level.isSupport && level.price < currentPrice)
-          .sort((a, b) => b.price - a.price); // Sort by price descending (closest first)
+          .filter((level: any) => level.isSupport && level.price < currentPrice)
+          .sort((a: any, b: any) => b.price - a.price); // Sort by price descending (closest first)
 
         if (supportLevels.length > 0) {
           const closestSupport = supportLevels[0];
