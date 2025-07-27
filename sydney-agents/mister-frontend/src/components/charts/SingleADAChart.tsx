@@ -325,4 +325,4 @@ export function CompactADAChart({ className = '' }: { className?: string }) {
   );
 }
 
-export { SingleADAChart, EnhancedADAChart, CleanADAPriceAnalysis, CompactADAChart };
+// Note: Components are exported individually above

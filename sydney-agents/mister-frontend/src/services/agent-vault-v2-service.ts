@@ -5,6 +5,7 @@
 
 import { simpleTransactionService, SimpleTransactionService, AGENT_VAULT_V2_CONFIG as SIMPLE_CONFIG } from './simple-transaction-service';
 import { meshTransactionService } from './mesh-transaction-service';
+import { plutusTransactionService } from './plutus-transaction-service';
 
 // Re-export configuration for compatibility
 export const AGENT_VAULT_V2_CONFIG = SIMPLE_CONFIG;
@@ -247,9 +248,9 @@ export class AgentVaultV2Service {
         throw new Error(`Insufficient funds in vault. Available: ${totalAvailable} ADA, Requested: ${amount} ADA`);
       }
 
-      // Step 2: Build REAL contract withdrawal transaction (back to CSL with fixes)
-      console.log(`🔧 Building REAL contract withdrawal transaction with FIXED CSL...`);
-      const txCbor = await this.buildRealContractWithdrawal(walletApi, amount, contractAddress, contractUtxos);
+      // Step 2: Build REAL contract withdrawal transaction using Mesh
+      console.log(`🔧 Building REAL contract withdrawal transaction with Mesh...`);
+      const txCbor = await this.buildMeshContractWithdrawal(walletApi, amount, contractAddress, contractUtxos);
 
       if (!txCbor) {
         throw new Error('Failed to build contract withdrawal transaction');
@@ -286,11 +287,11 @@ export class AgentVaultV2Service {
         const completeSignedTx = assembleResult.signedTxCbor;
 
         console.log(`✅ Complete signed transaction: ${completeSignedTx.length} characters`);
-        console.log(`📤 Submitting complete transaction via Mesh...`);
+        console.log(`📤 Submitting complete transaction via Plutus service...`);
 
-        // Submit via Mesh (handles all edge cases properly)
-        txHash = await meshTransactionService.submitTransaction(completeSignedTx);
-        console.log(`✅ Transaction submitted successfully via Mesh: ${txHash}`);
+        // Submit via Plutus transaction service (handles smart contracts properly)
+        txHash = await plutusTransactionService.submitTransaction(completeSignedTx);
+        console.log(`✅ Transaction submitted successfully via Plutus service: ${txHash}`);
 
       } catch (submitError) {
         console.error('❌ Transaction submission failed:', submitError);
@@ -413,13 +414,14 @@ export class AgentVaultV2Service {
       console.log(`   📍 Contract: ${contractAddress}`);
       console.log(`   👤 User: ${userAddress}`);
 
-      // Use Mesh transaction service
-      const txCbor = await meshTransactionService.buildWithdrawalTransaction({
+      // Use Plutus transaction service for REAL contract withdrawal
+      console.log('🔧 Using Plutus transaction service for smart contract withdrawal...');
+      const txCbor = await plutusTransactionService.buildContractWithdrawal({
         userAddress: userAddress,
         contractAddress: contractAddress,
-        withdrawAmount: amount,
         contractUtxos: meshContractUtxos,
-        userUtxos: meshUserUtxos
+        userUtxos: meshUserUtxos,
+        withdrawAmount: amount * 1000000 // Convert to lovelace
       });
 
       console.log(`✅ Mesh transaction built successfully: ${txCbor.length} characters`);
