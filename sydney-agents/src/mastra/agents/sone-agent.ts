@@ -4,16 +4,17 @@ import { Memory } from '@mastra/memory';
 import { LibSQLStore, LibSQLVector } from '@mastra/libsql';
 import { fastembed } from '@mastra/fastembed';
 import { TokenLimiter, ToolCallFilter } from '@mastra/memory/processors';
-import {
-  SummarizationMetric,
-  AnswerRelevancyMetric,
-  BiasMetric,
-  ToxicityMetric
-} from '@mastra/evals/llm';
-import {
-  ContentSimilarityMetric,
-  ToneConsistencyMetric
-} from '@mastra/evals/nlp';
+// Evals imports commented out for deployment compatibility
+// import {
+//   SummarizationMetric,
+//   AnswerRelevancyMetric,
+//   BiasMetric,
+//   ToxicityMetric
+// } from '@mastra/evals/llm';
+// import {
+//   ContentSimilarityMetric,
+//   ToneConsistencyMetric
+// } from '@mastra/evals/nlp';
 // Voice imports removed for deployment compatibility
 // import { CompositeVoice } from '@mastra/core/voice';
 // import { GoogleVoice } from '@mastra/voice-google';
@@ -1996,18 +1997,18 @@ export const soneAgent = new Agent({
   // Knowledge base tools for document management and retrieval
   tools: knowledgeBaseTools,
 
-  // Evaluation metrics for quality assurance
-  evals: {
-    // Content quality metrics
-    summarization: new SummarizationMetric(evalModel),
-    answerRelevancy: new AnswerRelevancyMetric(evalModel),
+  // Evaluation metrics commented out for deployment compatibility
+  // evals: {
+  //   // Content quality metrics
+  //   summarization: new SummarizationMetric(evalModel),
+  //   answerRelevancy: new AnswerRelevancyMetric(evalModel),
 
-    // Safety and bias metrics
-    bias: new BiasMetric(evalModel),
-    toxicity: new ToxicityMetric(evalModel),
+  //   // Safety and bias metrics
+  //   bias: new BiasMetric(evalModel),
+  //   toxicity: new ToxicityMetric(evalModel),
 
-    // Communication quality metrics
-    contentSimilarity: new ContentSimilarityMetric(),
-    toneConsistency: new ToneConsistencyMetric(),
-  },
+  //   // Communication quality metrics
+  //   contentSimilarity: new ContentSimilarityMetric(),
+  //   toneConsistency: new ToneConsistencyMetric(),
+  // },
 });
