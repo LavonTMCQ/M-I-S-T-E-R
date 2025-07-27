@@ -29,6 +29,7 @@ export function createUserStorage(userId: string | null): UserStorageManager {
      * Set user-specific localStorage item
      */
     setItem: (key: string, value: string): void => {
+      if (typeof window === 'undefined') return; // SSR check
       const userKey = getUserKey(key);
       try {
         localStorage.setItem(userKey, value);
@@ -41,6 +42,7 @@ export function createUserStorage(userId: string | null): UserStorageManager {
      * Get user-specific localStorage item
      */
     getItem: (key: string): string | null => {
+      if (typeof window === 'undefined') return null; // SSR check
       const userKey = getUserKey(key);
       try {
         return localStorage.getItem(userKey);
@@ -54,6 +56,7 @@ export function createUserStorage(userId: string | null): UserStorageManager {
      * Remove user-specific localStorage item
      */
     removeItem: (key: string): void => {
+      if (typeof window === 'undefined') return; // SSR check
       const userKey = getUserKey(key);
       try {
         localStorage.removeItem(userKey);
@@ -66,6 +69,7 @@ export function createUserStorage(userId: string | null): UserStorageManager {
      * Clear all user-specific localStorage items
      */
     clear: (): void => {
+      if (typeof window === 'undefined') return; // SSR check
       if (!userId) {
         console.warn('⚠️ Cannot clear user storage without user ID');
         return;
@@ -91,6 +95,7 @@ export function createUserStorage(userId: string | null): UserStorageManager {
      * Get all user-specific localStorage keys
      */
     getAllKeys: (): string[] => {
+      if (typeof window === 'undefined') return []; // SSR check
       if (!userId) {
         return [];
       }
@@ -117,6 +122,7 @@ export function createUserStorage(userId: string | null): UserStorageManager {
      * Useful for upgrading existing localStorage data
      */
     migrateGlobalData: (globalKey: string, userKey: string): void => {
+      if (typeof window === 'undefined') return; // SSR check
       if (!userId) {
         console.warn('⚠️ Cannot migrate data without user ID');
         return;
