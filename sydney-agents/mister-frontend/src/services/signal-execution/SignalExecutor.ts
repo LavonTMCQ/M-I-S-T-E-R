@@ -78,7 +78,7 @@ export class SignalExecutor {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}` // Use auth token
+          'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('auth_token') : ''}` // Use auth token
         },
         body: JSON.stringify({
           symbol: 'ADA/USD',
@@ -373,7 +373,7 @@ export class SignalExecutor {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}` // Use stored auth token
+          'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('auth_token') : ''}` // Use stored auth token
         },
         body: JSON.stringify(strikeRequest)
       });
