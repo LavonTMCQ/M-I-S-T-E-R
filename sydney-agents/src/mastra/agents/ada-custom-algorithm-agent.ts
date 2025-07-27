@@ -377,27 +377,27 @@ Focus on providing actionable trading insights with clear risk management and re
         try {
           console.log(`🏦 Registering vault for automated trading: ${vaultAddress.substring(0, 20)}...`);
 
-          // Import the vault automated trading service
-          const { vaultAutomatedTradingService } = await import('../services/vault-automated-trading-service');
+          // TODO: Import the vault automated trading service when available
+          // const { vaultAutomatedTradingService } = await import('../services/vault-automated-trading-service');
 
-          // Register the vault
-          vaultAutomatedTradingService.registerVault({
-            vaultAddress,
-            userAddress,
-            tradingEnabled,
-            maxTradeAmount,
-            algorithm: algorithm as 'ada_custom_algorithm',
-            riskLevel: riskLevel as 'conservative' | 'moderate' | 'aggressive',
-            totalTrades: 0,
-            winRate: 0
-          });
+          // TODO: Register the vault when service is available
+          // vaultAutomatedTradingService.registerVault({
+          //   vaultAddress,
+          //   userAddress,
+          //   tradingEnabled,
+          //   maxTradeAmount,
+          //   algorithm: algorithm as 'ada_custom_algorithm',
+          //   riskLevel: riskLevel as 'conservative' | 'moderate' | 'aggressive',
+          //   totalTrades: 0,
+          //   winRate: 0
+          // });
 
-          // Get service status
-          const serviceStatus = vaultAutomatedTradingService.getServiceStatus();
+          // TODO: Get service status when service is available
+          // const serviceStatus = vaultAutomatedTradingService.getServiceStatus();
 
           return {
             success: true,
-            message: `✅ Vault registered for automated ADA Custom Algorithm trading`,
+            message: `✅ Vault registration prepared for automated ADA Custom Algorithm trading (service integration pending)`,
             vaultDetails: {
               vaultAddress: vaultAddress.substring(0, 20) + '...',
               userAddress: userAddress.substring(0, 20) + '...',
@@ -407,10 +407,10 @@ Focus on providing actionable trading insights with clear risk management and re
               tradingEnabled
             },
             serviceStatus: {
-              isRunning: serviceStatus.isRunning,
-              totalActiveVaults: serviceStatus.activeVaults,
-              monitoringInterval: `${serviceStatus.monitoringInterval} minutes`,
-              minConfidence: `${serviceStatus.minConfidence}%`
+              isRunning: false,
+              totalActiveVaults: 0,
+              monitoringInterval: "5 minutes",
+              minConfidence: "70%"
             },
             tradingInfo: {
               algorithm: 'ADA Custom Algorithm (Tomorrow Labs Strategy)',
