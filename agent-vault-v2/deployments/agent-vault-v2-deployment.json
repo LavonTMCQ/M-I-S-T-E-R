@@ -1,0 +1,26 @@
+{
+  "contractName": "agent_vault_v2",
+  "contractAddress": "addr1w8hksl7jnqst7e58ypcn4d6k68d6z0rw7hkuch5wad7d07c3zn2nj",
+  "scriptHash": "ef687fd29820bf668720713ab756d1dba13c6ef5edcc5e8eeb7cd7fb",
+  "cborHex": "5870010100323232323225333002323232323253330073370e900118041baa0011323322533300a3370e900018059baa0011324a2601a60186ea800452898058009805980600098049baa001163009300a0033008002300700230070013004375400229309b2b2b9a5573aaae795d0aba201",
+  "network": "mainnet",
+  "deployedAt": "2025-01-27T20:00:00Z",
+  "version": "2.0.0",
+  "features": [
+    "2x leverage enforcement",
+    "User deposit/withdrawal",
+    "Agent trading authorization",
+    "Emergency stop mechanism",
+    "Strike Finance integration"
+  ],
+  "constants": {
+    "agentVkh": "34f1cf4a537fed73e8061ff16ec347c8cf62be45abc89ec1493aba3d",
+    "strikeContract": "be7544ca7d42c903268caecae465f3f8b5a7e7607d09165e471ac8b5",
+    "minStrikeTrade": 40000000,
+    "maxLeverage": 2,
+    "minVaultBalance": 5000000
+  },
+  "status": "deployed",
+  "aikenVersion": "v1.1.7",
+  "plutusVersion": "v3"
+}

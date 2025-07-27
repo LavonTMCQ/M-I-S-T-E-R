@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FUCK IT - Just Recover The Money</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+        }
+        .card {
+            background: #111;
+            border: 2px solid #ff0000;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        button {
+            background: #ff0000;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+            width: 100%;
+            font-weight: bold;
+        }
+        button:hover { background: #cc0000; }
+        button:disabled { background: #666; cursor: not-allowed; }
+        .mono {
+            font-family: monospace;
+            background: #222;
+            padding: 10px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-size: 12px;
+        }
+        .hidden { display: none; }
+        .error { color: #ff6666; }
+        .success { color: #66ff66; }
+        .warning { color: #ffff66; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔥 FUCK IT - JUST RECOVER THE MONEY</h1>
+        <p>No more CSL bullshit. No more complex transactions. Let's just get your ADA back.</p>
+    </div>
+
+    <div class="card">
+        <h3>💰 Your Stuck Funds</h3>
+        <p>Contract: <span class="mono">addr1w8gnkw8z0jlyk4zsrc6rp5nv5wa9nxqmceq50jdarf0c9gs2vc87j</span></p>
+        <p>Your Wallet: <span class="mono">addr1qxtkdjl87894tg6juz20jzyjqy3uyn02pr9xtq7mlh0gm2ss5dpkcny95dktp5qmyyrx82t68sge4m94qwxyrfr8f86qh5unyc</span></p>
+        <p id="balance" class="warning">Checking balance...</p>
+    </div>
+
+    <div class="card" id="step1">
+        <h3>Step 1: Get CURRENT UTxOs</h3>
+        <p>We'll fetch the ACTUAL current UTxOs from the blockchain, not use some old hardcoded CBOR.</p>
+        <button onclick="fetchCurrentUTxOs()">Fetch Current UTxOs</button>
+        <div id="utxoResults" class="hidden">
+            <p class="success">Found UTxOs:</p>
+            <div id="utxoList"></div>
+        </div>
+    </div>
+
+    <div class="card hidden" id="step2">
+        <h3>Step 2: Connect Vespr</h3>
+        <p>Connect your wallet. If it's greyed out, we'll know the CBOR is fucked.</p>
+        <button onclick="connectVespr()">Connect Vespr</button>
+        <div id="walletStatus"></div>
+    </div>
+
+    <div class="card hidden" id="step3">
+        <h3>Step 3: Build SIMPLE Transaction</h3>
+        <p>Build the simplest possible transaction that just moves ADA from contract to your wallet.</p>
+        <button onclick="buildSimpleTransaction()">Build Simple Transaction</button>
+        <div id="transactionResults" class="hidden">
+            <p>Transaction CBOR:</p>
+            <div id="cborDisplay" class="mono"></div>
+        </div>
+    </div>
+
+    <div class="card hidden" id="step4">
+        <h3>Step 4: Test With Vespr</h3>
+        <p>Try to sign it. If it's greyed out, we'll see exactly why.</p>
+        <button onclick="testTransaction()">Test Transaction</button>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="card hidden" id="step5">
+        <h3>🎉 Success or GTFO</h3>
+        <p>Either it works or we give up and use a different wallet.</p>
+        <button onclick="executeTransaction()">Execute Transaction</button>
+        <div id="finalResults"></div>
+    </div>
+
+    <script>
+        let walletApi = null;
+        let currentCBOR = null;
+        let currentUTxOs = [];
+
+        const CONTRACT_ADDRESS = "addr1w8gnkw8z0jlyk4zsrc6rp5nv5wa9nxqmceq50jdarf0c9gs2vc87j";
+        const WALLET_ADDRESS = "addr1qxtkdjl87894tg6juz20jzyjqy3uyn02pr9xtq7mlh0gm2ss5dpkcny95dktp5qmyyrx82t68sge4m94qwxyrfr8f86qh5unyc";
+        const BLOCKFROST_PROJECT_ID = "mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu";
+
+        async function fetchCurrentUTxOs() {
+            try {
+                console.log('🔍 Fetching CURRENT UTxOs...');
+                
+                const response = await fetch(
+                    `https://cardano-mainnet.blockfrost.io/api/v0/addresses/${CONTRACT_ADDRESS}/utxos`,
+                    { headers: { 'project_id': BLOCKFROST_PROJECT_ID } }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Blockfrost failed: ${response.statusText}`);
+                }
+
+                const utxos = await response.json();
+                currentUTxOs = utxos;
+                
+                console.log('✅ Found UTxOs:', utxos);
+                
+                if (utxos.length === 0) {
+                    document.getElementById('balance').innerHTML = '<span class="error">❌ NO UTxOs FOUND! Money already recovered or moved.</span>';
+                    return;
+                }
+
+                let totalADA = 0;
+                let utxoHTML = '';
+                
+                utxos.forEach((utxo, index) => {
+                    const adaAmount = parseInt(utxo.amount.find(a => a.unit === 'lovelace')?.quantity || '0') / 1_000_000;
+                    totalADA += adaAmount;
+                    utxoHTML += `<p>${index + 1}. ${utxo.tx_hash.substring(0, 16)}...#${utxo.output_index}: ${adaAmount} ADA</p>`;
+                });
+
+                document.getElementById('balance').innerHTML = `<span class="success">✅ Found ${totalADA} ADA in ${utxos.length} UTxO(s)</span>`;
+                document.getElementById('utxoList').innerHTML = utxoHTML;
+                document.getElementById('utxoResults').classList.remove('hidden');
+                document.getElementById('step2').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('❌ Failed to fetch UTxOs:', error);
+                document.getElementById('balance').innerHTML = `<span class="error">❌ Failed: ${error.message}</span>`;
+            }
+        }
+
+        async function connectVespr() {
+            try {
+                if (!window.cardano?.vespr) {
+                    throw new Error('Vespr wallet not found');
+                }
+
+                walletApi = await window.cardano.vespr.enable();
+                document.getElementById('walletStatus').innerHTML = '<span class="success">✅ Vespr connected</span>';
+                document.getElementById('step3').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('❌ Vespr connection failed:', error);
+                document.getElementById('walletStatus').innerHTML = `<span class="error">❌ Failed: ${error.message}</span>`;
+            }
+        }
+
+        async function buildSimpleTransaction() {
+            if (currentUTxOs.length === 0) {
+                alert('No UTxOs found');
+                return;
+            }
+
+            try {
+                console.log('🔨 Building SIMPLE transaction...');
+                
+                // Use the FIRST UTxO
+                const utxo = currentUTxOs[0];
+                const adaAmount = parseInt(utxo.amount.find(a => a.unit === 'lovelace')?.quantity || '0');
+                
+                console.log(`Using UTxO: ${utxo.tx_hash}#${utxo.output_index} with ${adaAmount / 1_000_000} ADA`);
+
+                // Call our API to build the transaction
+                const response = await fetch('/api/cardano/build-recovery-transaction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contractAddress: CONTRACT_ADDRESS,
+                        walletAddress: WALLET_ADDRESS
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Transaction building failed');
+                }
+
+                currentCBOR = result.cbor;
+                document.getElementById('cborDisplay').textContent = currentCBOR;
+                document.getElementById('transactionResults').classList.remove('hidden');
+                document.getElementById('step4').classList.remove('hidden');
+                
+                console.log('✅ Transaction built successfully');
+                console.log('CBOR:', currentCBOR);
+
+            } catch (error) {
+                console.error('❌ Transaction building failed:', error);
+                alert(`Transaction building failed: ${error.message}`);
+            }
+        }
+
+        async function testTransaction() {
+            if (!walletApi || !currentCBOR) {
+                alert('Wallet not connected or transaction not built');
+                return;
+            }
+
+            try {
+                console.log('🧪 Testing transaction with Vespr...');
+                console.log('CBOR to test:', currentCBOR);
+                
+                // Try to sign the transaction
+                // This will show if it's greyed out or not
+                console.log('Calling walletApi.signTx...');
+                
+                const witnessSet = await walletApi.signTx(currentCBOR, true);
+                
+                console.log('✅ Transaction signed successfully! NOT GREYED OUT!');
+                document.getElementById('testResults').innerHTML = '<span class="success">✅ SUCCESS! Transaction signed. Vespr is NOT greyed out!</span>';
+                document.getElementById('step5').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('❌ Transaction test failed:', error);
+                
+                if (error.message.includes('user declined') || error.message.includes('rejected')) {
+                    document.getElementById('testResults').innerHTML = '<span class="warning">⚠️ You declined the transaction. But Vespr showed it properly (not greyed out)!</span>';
+                    document.getElementById('step5').classList.remove('hidden');
+                } else {
+                    document.getElementById('testResults').innerHTML = `<span class="error">❌ Test failed: ${error.message}</span>`;
+                }
+            }
+        }
+
+        async function executeTransaction() {
+            if (!walletApi || !currentCBOR) {
+                alert('Wallet not connected or transaction not built');
+                return;
+            }
+
+            try {
+                console.log('🚀 Executing final transaction...');
+                
+                // Sign the transaction
+                const witnessSet = await walletApi.signTx(currentCBOR, true);
+                console.log('✅ Transaction signed');
+                
+                // Submit to network
+                const txHash = await walletApi.submitTx(currentCBOR);
+                console.log('🎉 Transaction submitted:', txHash);
+                
+                document.getElementById('finalResults').innerHTML = `
+                    <span class="success">🎉 SUCCESS!</span><br>
+                    <span class="success">Transaction Hash: ${txHash}</span><br>
+                    <span class="success">Check CardanoScan: https://cardanoscan.io/transaction/${txHash}</span>
+                `;
+                
+            } catch (error) {
+                console.error('❌ Execution failed:', error);
+                document.getElementById('finalResults').innerHTML = `<span class="error">❌ Failed: ${error.message}</span>`;
+            }
+        }
+
+        // Auto-start
+        window.addEventListener('load', () => {
+            fetchCurrentUTxOs();
+        });
+    </script>
+</body>
+</html>

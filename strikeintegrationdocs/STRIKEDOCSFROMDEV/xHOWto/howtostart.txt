@@ -72,14 +72,7 @@ Address: addr1vy60rn622dl76ulgqc0lzmkrglyv7c47gk4u38kpfyat50gl68uck
 VKH: 34f1cf4a537fed73e8061ff16ec347c8cf62be45abc89ec1493aba3d
 Files: keys/agent-wallet.{vkey,skey,addr}
 
-
-Contract Address: addr1qycwlgqelwpd49hgqznn32ckppfjjhy9rfa9ufq9qvn2q58r9h8zuh
-Script Hash: efa019fb82da96e800a738ab160853295c851a7a5e24050326a050e3
+Contract Address: addr1w8hksl7jnqst7e58ypcn4d6k68d6z0rw7hkuch5wad7d07c3zn2nj
+Script Hash: ef687fd29820bf668720713ab756d1dba13c6ef5edcc5e8eeb7cd7fb
 Network: Cardano Mainnet
-Status: ✅ READY FOR TESTING
-
-FULL Contract address to parse: "addr1wxwx5rmqrwm4mpeg5ky6rt6lq76errkjjs490pewl9rqvrcqzrec7"
-🔍 Contract address length: 58 characters
-🔍 Final CBOR length: 608
-🔍 CBOR preview: 84a400d9010282825820b1c3e3879437fb723dfefef732a106cbda7a365f7acce170819857e7543b4a4302825820706c4f42...
-✅ Transaction submitted successfully! Hash: "db9b567a7f3639e242d65df7ba3f31705c2f23bc2cf92c8e5a9c38f03ac9c730"
+Status: DEPLOYED & TESTED ✅

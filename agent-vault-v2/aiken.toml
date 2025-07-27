@@ -1,0 +1,18 @@
+name = "mister/agent-vault-v2"
+version = "2.0.0"
+compiler = "v1.1.7"
+plutus = "v3"
+license = "MIT"
+description = "Agent Vault V2 - Secure 2x leverage trading with Strike Finance integration"
+
+[repository]
+user = "mister"
+project = "agent-vault-v2"
+platform = "github"
+
+[[dependencies]]
+name = "aiken-lang/stdlib"
+version = "v2.2.0"
+source = "github"
+
+[config]

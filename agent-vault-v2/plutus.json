@@ -1,0 +1,46 @@
+{
+  "preamble": {
+    "title": "mister/agent-vault-v2",
+    "description": "Agent Vault V2 - Secure 2x leverage trading with Strike Finance integration",
+    "version": "2.0.0",
+    "plutusVersion": "v3",
+    "compiler": {
+      "name": "Aiken",
+      "version": "v1.1.7+e2fb28b"
+    },
+    "license": "MIT"
+  },
+  "validators": [
+    {
+      "title": "simple_test.agent_vault_v2.spend",
+      "datum": {
+        "title": "datum",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "redeemer": {
+        "title": "redeemer",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "compiledCode": "5870010100323232323225333002323232323253330073370e900118041baa0011323322533300a3370e900018059baa0011324a2601a60186ea800452898058009805980600098049baa001163009300a0033008002300700230070013004375400229309b2b2b9a5573aaae795d0aba201",
+      "hash": "aa47201cefe61236f2303230bc7439ecb3c0b5f6938f42624e7e63a9"
+    },
+    {
+      "title": "simple_test.agent_vault_v2.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "5870010100323232323225333002323232323253330073370e900118041baa0011323322533300a3370e900018059baa0011324a2601a60186ea800452898058009805980600098049baa001163009300a0033008002300700230070013004375400229309b2b2b9a5573aaae795d0aba201",
+      "hash": "aa47201cefe61236f2303230bc7439ecb3c0b5f6938f42624e7e63a9"
+    }
+  ],
+  "definitions": {
+    "Data": {
+      "title": "Data",
+      "description": "Any Plutus data."
+    }
+  }
+}
