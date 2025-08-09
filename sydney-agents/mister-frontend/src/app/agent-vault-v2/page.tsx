@@ -176,7 +176,7 @@ export default function AgentVaultV2Page() {
   // Show loading state while auth or wallet is loading
   if (!auth.user || walletLoading) {
     // For demo purposes, let's show the UI with mock data
-    console.log('🔧 Demo mode: showing UI with mock data');
+    // console.log('🔧 Demo mode: showing UI with mock data'); // Removed to prevent spam
   }
 
   // Use mock wallet data if no wallet connected (for demo)
