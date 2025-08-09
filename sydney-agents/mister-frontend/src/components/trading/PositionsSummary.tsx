@@ -68,8 +68,8 @@ export function PositionsSummary() {
         return;
       }
 
-      // Fetch real positions from Strike Finance via proxy
-      const response = await fetch(`https://friendly-reprieve-production.up.railway.app/api/strike/perpetuals/getPositions?address=${encodeURIComponent(mainWallet.address)}`);
+      // Fetch real positions from Strike Finance via local Next.js API route (avoids CORS)
+      const response = await fetch(`/api/strike/positions?address=${encodeURIComponent(mainWallet.address)}`);
       const data = await response.json();
 
       if (data.success && data.data && data.data.length > 0) {
