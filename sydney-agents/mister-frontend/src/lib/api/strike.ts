@@ -159,6 +159,36 @@ export class StrikeAPI {
   }
 
   /**
+   * Open a new position (convenience method)
+   */
+  async openPosition(params: {
+    address: string;
+    side: 'Long' | 'Short';
+    collateralAmount: number;
+    enteredPositionTime?: number;
+    leverage?: number;
+    pair?: string;
+  }): Promise<ApiResponse<{
+    success: boolean;
+    cbor?: string;
+    data?: any;
+    error?: string;
+  }>> {
+    console.log(`🎯 Opening Strike Finance position...`);
+
+    return this.executeTrade({
+      userId: 'frontend-user',
+      walletAddress: params.address,
+      walletType: 'connected',
+      action: 'open',
+      side: params.side,
+      pair: params.pair || 'ADA/USD',
+      size: params.collateralAmount,
+      leverage: params.leverage || 2
+    });
+  }
+
+  /**
    * Get trade preview/simulation
    */
   async getTradePreview(params: {

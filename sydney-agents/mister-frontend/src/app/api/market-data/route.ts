@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       console.error('Failed to fetch from Kraken, using fallback data:', error);
       // Fallback to mock data
-      const basePrice = 0.4500;
+      const basePrice = 0.80;
       const priceVariation = (Math.random() - 0.5) * 0.05;
       const currentPrice = basePrice + priceVariation;
 

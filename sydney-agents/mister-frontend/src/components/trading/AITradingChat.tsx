@@ -242,9 +242,9 @@ export function AITradingChat() {
   ];
 
   return (
-    <Card className="flex flex-col h-full min-h-[500px]">
+    <Card className="flex flex-col h-full">
       {/* Enhanced Chat Header */}
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 flex-shrink-0">
         <div className="flex items-center justify-between min-w-0">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
@@ -282,7 +282,7 @@ export function AITradingChat() {
       </CardHeader>
 
       {/* Professional Quick Commands */}
-      <div className="px-6 py-2 border-b bg-gradient-to-r from-muted/20 to-muted/40">
+      <div className="px-6 py-2 border-b bg-gradient-to-r from-muted/20 to-muted/40 flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold">Quick Commands</span>
           <Button variant="ghost" size="sm" onClick={() => setMessages([])}>
@@ -306,8 +306,8 @@ export function AITradingChat() {
       </div>
 
       {/* Enhanced Messages Area */}
-      <CardContent className="flex-1 p-0">
-        <div className="h-[480px] overflow-y-auto p-3 space-y-3" ref={scrollAreaRef}>
+      <CardContent className="flex-1 p-0 min-h-0">
+        <div className="h-full overflow-y-auto p-3 space-y-3" ref={scrollAreaRef}>
           {messages.map((message) => (
             <div
               key={message.id}
@@ -403,7 +403,7 @@ export function AITradingChat() {
       </CardContent>
 
       {/* Compact Input Area */}
-      <div className="p-3 border-t bg-muted/20">
+      <div className="p-3 border-t bg-muted/20 flex-shrink-0">
         <div className="flex gap-2">
           <div className="flex-1 relative">
             <Input

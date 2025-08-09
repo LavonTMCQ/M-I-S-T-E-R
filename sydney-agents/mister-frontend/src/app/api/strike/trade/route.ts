@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { StrikeFinanceApiClient } from '@/services/strike-finance/StrikeFinanceClient';
 
-// This would import our actual backend services
-// import { StrikeFinanceAPI } from '@/backend/services/strike-finance-api';
-// import { WalletManager } from '@/backend/services/wallet-manager';
+// Initialize the real Strike Finance API client
+const strikeFinanceClient = new StrikeFinanceApiClient();
 
 /**
  * POST /api/strike/trade
@@ -35,26 +35,33 @@ export async function POST(request: NextRequest) {
     console.log(`🎯 Executing ${action} trade for ${pair}...`);
     console.log(`📋 Trade details:`, { userId, action, side, pair, size, leverage, walletType });
 
-    // Execute trade using Strike Finance API
-    const result = await strikeAPI.executeTrade({
-      userId,
-      walletAddress,
-      walletType: walletType || 'connected',
-      action,
-      side,
-      pair,
-      size,
-      leverage,
-      positionId,
-      stopLoss,
-      takeProfit
-    });
+    // Execute trade using real Strike Finance API
+    let result;
+
+    if (action === 'open') {
+      // Open new position
+      result = await strikeFinanceClient.executeTrade({
+        signal_id: `manual_${Date.now()}`,
+        wallet_address: walletAddress,
+        side: side as 'Long' | 'Short',
+        size: size || 50, // Default size
+        leverage: leverage || 2,
+        pair: pair,
+        stop_loss: stopLoss,
+        take_profit: takeProfit,
+        user_confirmed: true
+      });
+    } else {
+      // Close position
+      result = await strikeFinanceClient.closePosition(positionId || '');
+    }
 
     if (!result.success) {
+      console.error('❌ Strike Finance API error:', result.error);
       return NextResponse.json(
         {
           success: false,
-          error: result.error || 'Trade execution failed'
+          error: result.error?.message || 'Trade execution failed'
         },
         { status: 500 }
       );
@@ -66,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     const tradeResult = {
       success: true,
-      cbor: result.cbor, // CBOR transaction data for wallet signing
+      cbor: result.transaction_id, // This might be CBOR or transaction ID
       action,
       pair,
       side: side || null,

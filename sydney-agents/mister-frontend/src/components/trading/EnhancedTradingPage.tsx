@@ -122,12 +122,12 @@ function TradingPageContent() {
 
   // Market data state
   const [marketData, setMarketData] = useState({
-    price: 0.47,
+    price: 0.80,
     change24h: 2.34,
     volume24h: 1234567890,
     marketCap: 15678901234,
-    high24h: 0.48,
-    low24h: 0.46,
+    high24h: 0.82,
+    low24h: 0.78,
   });
 
   // Left panel toggle state
@@ -304,7 +304,7 @@ function TradingPageContent() {
                           walletAddress={mainWallet?.address || ""}
                           walletType="connected"
                           balance={mainWallet?.balance || 0}
-                          currentPrice={marketData?.price || 0.47}
+                          currentPrice={marketData?.price || 0.80}
                         />
                       ) : (
                         <AITradingChat />

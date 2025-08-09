@@ -10,3 +10,10 @@ coverage
 *.log
 *.db
 *.sqlite
+cardano-service
+scripts/test-*.ts
+test-*.js
+debug-*.js
+legacy-documentation
+aiken-repo
+awesome-aiken

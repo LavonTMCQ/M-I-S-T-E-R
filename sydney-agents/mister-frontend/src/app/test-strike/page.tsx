@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { strikeAPI } from '@/lib/api/strike';
 import { useWallet } from '@/contexts/WalletContext';
 
 // Extend Window interface for Cardano wallet
@@ -23,16 +25,330 @@ declare global {
   }
 }
 
-export default function TestStrikePage() {
+interface TestResult {
+  endpoint: string;
+  method: string;
+  status: 'success' | 'error' | 'loading';
+  response?: any;
+  error?: string;
+  timestamp: string;
+}
+
+export default function ComprehensiveStrikeTestPage() {
   const { toast } = useToast();
   const { mainWallet } = useWallet();
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [testResults, setTestResults] = useState<string[]>([]);
   const [tradeSize, setTradeSize] = useState('10');
 
-  const addLog = (message: string) => {
-    console.log(message);
-    setTestResults(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+  // Form states for different endpoints
+  const [openPositionForm, setOpenPositionForm] = useState({
+    collateralAmount: '50',
+    leverage: '2',
+    position: 'Long' as 'Long' | 'Short',
+    assetTicker: 'ADA',
+    stopLossPrice: '',
+    takeProfitPrice: ''
+  });
+
+  const [closePositionForm, setClosePositionForm] = useState({
+    txHash: '',
+    outputIndex: '0',
+    assetTicker: 'ADA'
+  });
+
+  const [updatePositionForm, setUpdatePositionForm] = useState({
+    txHash: '',
+    outputIndex: '0',
+    stopLossPrice: '0.4',
+    takeProfitPrice: '0.6',
+    assetTicker: 'ADA'
+  });
+
+  const [liquidityForm, setLiquidityForm] = useState({
+    amount: '1000',
+    assetTicker: 'ADA'
+  });
+
+  const addTestResult = (result: TestResult) => {
+    console.log(`${result.method} ${result.endpoint}:`, result);
+    setTestResults(prev => [result, ...prev]);
+  };
+
+  const makeStrikeAPICall = async (
+    endpoint: string,
+    method: 'GET' | 'POST',
+    data?: any
+  ): Promise<TestResult> => {
+    const timestamp = new Date().toISOString();
+    const testResult: TestResult = {
+      endpoint,
+      method,
+      status: 'loading',
+      timestamp
+    };
+
+    try {
+      // Use our Railway proxy instead of direct Strike Finance calls
+      const url = `https://friendly-reprieve-production.up.railway.app/api/strike${endpoint}`;
+      const options: RequestInit = {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      };
+
+      if (data && method === 'POST') {
+        options.body = JSON.stringify(data);
+      }
+
+      const response = await fetch(url, options);
+      const responseData = await response.text();
+
+      // Try to parse as JSON, fallback to text
+      let parsedData;
+      try {
+        parsedData = JSON.parse(responseData);
+      } catch {
+        parsedData = responseData;
+      }
+
+      if (response.ok) {
+        testResult.status = 'success';
+        testResult.response = parsedData;
+      } else {
+        testResult.status = 'error';
+        testResult.error = `HTTP ${response.status}: ${response.statusText}`;
+        testResult.response = parsedData;
+      }
+    } catch (error) {
+      testResult.status = 'error';
+      testResult.error = error instanceof Error ? error.message : 'Unknown error';
+    }
+
+    return testResult;
+  };
+
+  // Test individual API endpoints
+  const testGetPositions = async () => {
+    if (!mainWallet?.address) {
+      toast({ title: "No Wallet", description: "Connect wallet first", variant: "destructive" });
+      return;
+    }
+
+    const result = await makeStrikeAPICall(
+      `/api/perpetuals/getPositions?address=${mainWallet.address}`,
+      'GET'
+    );
+    addTestResult(result);
+  };
+
+  const testGetOverallInfo = async () => {
+    const result = await makeStrikeAPICall('/api/perpetuals/getOverallInfo', 'GET');
+    addTestResult(result);
+  };
+
+  const testGetPoolInfo = async () => {
+    const result = await makeStrikeAPICall('/api/perpetuals/getPoolInfo', 'GET');
+    addTestResult(result);
+  };
+
+  const testGetPoolInfoV2 = async () => {
+    const result = await makeStrikeAPICall('/api/perpetuals/getPoolInfoV2', 'GET');
+    addTestResult(result);
+  };
+
+  const testGetLPProfit = async () => {
+    const result = await makeStrikeAPICall('/api/perpetuals/getLPProfit', 'GET');
+    addTestResult(result);
+  };
+
+  const testGetPerpetualHistory = async () => {
+    if (!mainWallet?.address) {
+      toast({ title: "No Wallet", description: "Connect wallet first", variant: "destructive" });
+      return;
+    }
+
+    const result = await makeStrikeAPICall(
+      `/api/perpetuals/getPerpetualHistory?address=${mainWallet.address}`,
+      'GET'
+    );
+    addTestResult(result);
+  };
+
+  const testGetLiquidityHistory = async () => {
+    if (!mainWallet?.address) {
+      toast({ title: "No Wallet", description: "Connect wallet first", variant: "destructive" });
+      return;
+    }
+
+    const result = await makeStrikeAPICall(
+      `/api/perpetuals/getLiquidityHistoryTransactions?address=${mainWallet.address}`,
+      'GET'
+    );
+    addTestResult(result);
+  };
+
+  const testGetTradeHistory = async () => {
+    const result = await makeStrikeAPICall('/api/perpetuals/getTradeHistory', 'GET');
+    addTestResult(result);
+  };
+
+  const testGetOpenOrders = async () => {
+    const result = await makeStrikeAPICall('/api/perpetuals/getOpenOrders', 'GET');
+    addTestResult(result);
+  };
+
+  const testOpenPosition = async () => {
+    if (!mainWallet?.address) {
+      toast({ title: "No Wallet", description: "Connect wallet first", variant: "destructive" });
+      return;
+    }
+
+    const requestData = {
+      request: {
+        address: mainWallet.address,
+        asset: {
+          policyId: "",
+          assetName: ""
+        },
+        assetTicker: openPositionForm.assetTicker,
+        collateralAmount: parseFloat(openPositionForm.collateralAmount),
+        leverage: parseFloat(openPositionForm.leverage),
+        position: openPositionForm.position,
+        enteredPositionTime: Math.floor(Date.now() / 1000),
+        ...(openPositionForm.stopLossPrice && { stopLossPrice: parseFloat(openPositionForm.stopLossPrice) }),
+        ...(openPositionForm.takeProfitPrice && { takeProfitPrice: parseFloat(openPositionForm.takeProfitPrice) })
+      }
+    };
+
+    const result = await makeStrikeAPICall('/api/perpetuals/openPosition', 'POST', requestData);
+    addTestResult(result);
+  };
+
+  const testClosePosition = async () => {
+    if (!mainWallet?.address) {
+      toast({ title: "No Wallet", description: "Connect wallet first", variant: "destructive" });
+      return;
+    }
+
+    const requestData = {
+      request: {
+        address: mainWallet.address,
+        asset: {
+          policyId: "",
+          assetName: ""
+        },
+        assetTicker: closePositionForm.assetTicker,
+        outRef: {
+          txHash: closePositionForm.txHash,
+          outputIndex: parseInt(closePositionForm.outputIndex)
+        },
+        enteredPositionTime: Math.floor(Date.now() / 1000)
+      }
+    };
+
+    const result = await makeStrikeAPICall('/api/perpetuals/closePosition', 'POST', requestData);
+    addTestResult(result);
+  };
+
+  const testUpdatePosition = async () => {
+    if (!mainWallet?.address) {
+      toast({ title: "No Wallet", description: "Connect wallet first", variant: "destructive" });
+      return;
+    }
+
+    const requestData = {
+      request: {
+        address: mainWallet.address,
+        asset: {
+          policyId: "",
+          assetName: ""
+        },
+        assetTicker: updatePositionForm.assetTicker,
+        outRef: {
+          txHash: updatePositionForm.txHash,
+          outputIndex: parseInt(updatePositionForm.outputIndex)
+        },
+        stopLossPrice: parseFloat(updatePositionForm.stopLossPrice),
+        takeProfitPrice: parseFloat(updatePositionForm.takeProfitPrice)
+      }
+    };
+
+    const result = await makeStrikeAPICall('/api/perpetuals/updatePosition', 'POST', requestData);
+    addTestResult(result);
+  };
+
+  const testProvideLiquidity = async () => {
+    if (!mainWallet?.address) {
+      toast({ title: "No Wallet", description: "Connect wallet first", variant: "destructive" });
+      return;
+    }
+
+    const requestData = {
+      request: {
+        address: mainWallet.address,
+        asset: {
+          policyId: "",
+          assetName: ""
+        },
+        amount: parseFloat(liquidityForm.amount) * 1000000 // Convert to lovelace
+      }
+    };
+
+    const result = await makeStrikeAPICall('/api/perpetuals/provideLiquidity', 'POST', requestData);
+    addTestResult(result);
+  };
+
+  const testWithdrawLiquidity = async () => {
+    if (!mainWallet?.address) {
+      toast({ title: "No Wallet", description: "Connect wallet first", variant: "destructive" });
+      return;
+    }
+
+    const requestData = {
+      request: {
+        address: mainWallet.address,
+        asset: {
+          policyId: "",
+          assetName: ""
+        },
+        amount: parseFloat(liquidityForm.amount) * 1000000 // Convert to lovelace
+      }
+    };
+
+    const result = await makeStrikeAPICall('/api/perpetuals/withdrawLiquidity', 'POST', requestData);
+    addTestResult(result);
+  };
+
+  const testAllReadOnlyEndpoints = async () => {
+    setIsLoading(true);
+    toast({ title: "Testing All Read-Only Endpoints", description: "Running comprehensive tests..." });
+
+    const tests = [
+      testGetOverallInfo,
+      testGetPoolInfo,
+      testGetPoolInfoV2,
+      testGetLPProfit,
+      testGetTradeHistory,
+      testGetOpenOrders,
+      testGetPositions,
+      testGetPerpetualHistory,
+      testGetLiquidityHistory
+    ];
+
+    for (const test of tests) {
+      await test();
+      await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between requests
+    }
+
+    setIsLoading(false);
+    toast({ title: "Complete", description: "All read-only endpoint tests finished" });
+  };
+
+  const clearResults = () => {
+    setTestResults([]);
   };
 
   const testStrikeIntegration = async () => {
@@ -47,173 +363,67 @@ export default function TestStrikePage() {
 
     setIsLoading(true);
     setTestResults([]);
-    
+
     try {
+      const addLog = (message: string) => {
+        console.log(message);
+        setTestResults(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+      };
+
       addLog('🚀 Starting Strike Finance integration test...');
       addLog(`📍 Using wallet address: ${mainWallet.address.substring(0, 20)}...`);
-      
-      // Step 1: Call Strike Finance API
-      addLog('📡 Step 1: Calling Strike Finance API...');
-      const result = await strikeAPI.openPosition({
-        address: mainWallet.address,
-        side: 'Long',
-        collateralAmount: parseFloat(tradeSize),
-        enteredPositionTime: Math.floor(Date.now() / 1000)
-      });
 
-      if (!result.success || !result.data) {
-        addLog(`❌ Strike API failed: ${result.error}`);
-        return;
-      }
+      // Test Strike Finance API endpoints
+      addLog('📡 Testing Strike Finance API endpoints...');
 
-      addLog('✅ Strike Finance API successful');
-      addLog(`🔍 CBOR length: ${result.data.cbor.length}`);
-      addLog(`🔍 CBOR starts: ${result.data.cbor.substring(0, 40)}`);
-      addLog(`🔍 CBOR ends: ${result.data.cbor.substring(result.data.cbor.length - 40)}`);
-
-      // Step 2: Analyze the CBOR structure
-      addLog('🔍 Step 2: Analyzing CBOR structure...');
-      const originalCbor = result.data.cbor;
-      
-      // Look for witness set patterns
-      if (originalCbor.includes('a0')) {
-        addLog('🔍 Found empty witness set (a0) in original CBOR');
-      }
-      
-      const witnessPattern = /a1[0-9a-f]{2,}/gi;
-      const witnessMatches = originalCbor.match(witnessPattern);
-      if (witnessMatches) {
-        addLog(`🔍 Found ${witnessMatches.length} witness set patterns: ${witnessMatches.map(m => m.substring(0, 10)).join(', ')}`);
-      }
-
-      // Step 3: Get wallet API
-      addLog('🔍 Step 3: Getting wallet API...');
-      if (!window.cardano || !window.cardano[mainWallet?.walletType || 'eternl']) {
-        addLog('❌ Wallet not available');
-        return;
-      }
-
-      const walletApi = await window.cardano[mainWallet?.walletType || 'eternl'].enable();
-      addLog('✅ Wallet API obtained');
-
-      // Step 4: Sign with partial signing
-      addLog('🔍 Step 4: Signing with partial signing...');
-      const ourWitnessSet = await walletApi.signTx(originalCbor, true);
-      addLog(`✅ Signing successful, witness set length: ${ourWitnessSet.length}`);
-      addLog(`🔍 Our witness set: ${ourWitnessSet}`);
-      
-      // Analyze our witness set
-      if (ourWitnessSet.startsWith('a10081')) {
-        addLog('🔍 Our witness set format: a10081... (correct format)');
-        const vkeyWitness = ourWitnessSet.substring(6);
-        addLog(`🔍 VKey witness: ${vkeyWitness.substring(0, 50)}...`);
-      }
-
-      // Step 5: Try different combination approaches
-      addLog('🔍 Step 5: Testing witness set combination approaches...');
-      
-      // Approach 1: Replace a0 with our witness set
-      if (originalCbor.includes('a0')) {
-        const combined1 = originalCbor.replace('a0', ourWitnessSet);
-        addLog(`🔧 Approach 1 (replace a0): ${combined1.length} chars`);
-        
-        // Test this combination
-        try {
-          addLog('📡 Testing Approach 1 via Blockfrost...');
-          const response = await fetch('https://cardano-mainnet.blockfrost.io/api/v0/tx/submit', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/cbor',
-              'project_id': 'mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu'
-            },
-            body: Buffer.from(combined1, 'hex')
-          });
-          
-          if (response.ok) {
-            const txHash = await response.text();
-            addLog(`🎉 SUCCESS! Transaction submitted: ${txHash}`);
-            toast({
-              title: "Success!",
-              description: `Transaction submitted: ${txHash.substring(0, 16)}...`,
-            });
-            return;
-          } else {
-            const errorText = await response.text();
-            addLog(`❌ Approach 1 failed: ${errorText}`);
-          }
-        } catch (error) {
-          addLog(`❌ Approach 1 error: ${error}`);
-        }
-      }
-
-      // Approach 2: Replace existing witness sets
-      if (witnessMatches && witnessMatches.length > 0) {
-        for (let i = 0; i < witnessMatches.length; i++) {
-          const combined2 = originalCbor.replace(witnessMatches[i], ourWitnessSet);
-          addLog(`🔧 Approach 2.${i+1} (replace ${witnessMatches[i].substring(0, 10)}): ${combined2.length} chars`);
-          
-          try {
-            addLog(`📡 Testing Approach 2.${i+1} via Blockfrost...`);
-            const response = await fetch('https://cardano-mainnet.blockfrost.io/api/v0/tx/submit', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/cbor',
-                'project_id': 'mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu'
-              },
-              body: Buffer.from(combined2, 'hex')
-            });
-            
-            if (response.ok) {
-              const txHash = await response.text();
-              addLog(`🎉 SUCCESS! Transaction submitted: ${txHash}`);
-              toast({
-                title: "Success!",
-                description: `Transaction submitted: ${txHash.substring(0, 16)}...`,
-              });
-              return;
-            } else {
-              const errorText = await response.text();
-              addLog(`❌ Approach 2.${i+1} failed: ${errorText}`);
-            }
-          } catch (error) {
-            addLog(`❌ Approach 2.${i+1} error: ${error}`);
-          }
-        }
-      }
-
-      // Approach 3: Try submitting original CBOR directly
-      addLog('🔧 Approach 3: Submitting original CBOR directly...');
+      // Test getPositions via proxy
       try {
-        const response = await fetch('https://cardano-mainnet.blockfrost.io/api/v0/tx/submit', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/cbor',
-            'project_id': 'mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu'
-          },
-          body: Buffer.from(originalCbor, 'hex')
-        });
-        
+        const response = await fetch(`https://friendly-reprieve-production.up.railway.app/api/strike/perpetuals/getPositions?address=${mainWallet.address}`);
+        const data = await response.text();
+
         if (response.ok) {
-          const txHash = await response.text();
-          addLog(`🎉 SUCCESS! Original CBOR worked: ${txHash}`);
-          toast({
-            title: "Success!",
-            description: `Transaction submitted: ${txHash.substring(0, 16)}...`,
-          });
-          return;
+          addLog('✅ getPositions API successful (via proxy)');
+          addLog(`📊 Response: ${data.substring(0, 100)}...`);
         } else {
-          const errorText = await response.text();
-          addLog(`❌ Approach 3 failed: ${errorText}`);
+          addLog(`❌ getPositions failed: ${response.status} ${response.statusText}`);
+          addLog(`📄 Response: ${data.substring(0, 200)}...`);
         }
       } catch (error) {
-        addLog(`❌ Approach 3 error: ${error}`);
+        addLog(`❌ getPositions error: ${error}`);
       }
 
-      addLog('❌ All approaches failed. Need to investigate further.');
+      // Test getOverallInfo via proxy
+      try {
+        const response = await fetch('https://friendly-reprieve-production.up.railway.app/api/strike/perpetuals/getOverallInfo');
+        const data = await response.text();
+
+        if (response.ok) {
+          addLog('✅ getOverallInfo API successful (via proxy)');
+          addLog(`📊 Response: ${data.substring(0, 100)}...`);
+        } else {
+          addLog(`❌ getOverallInfo failed: ${response.status} ${response.statusText}`);
+          addLog(`📄 Response: ${data.substring(0, 200)}...`);
+        }
+      } catch (error) {
+        addLog(`❌ getOverallInfo error: ${error}`);
+      }
+
+      addLog('🎯 Strike Finance API test completed. Check comprehensive test page for detailed testing.');
+
+      toast({
+        title: "Test Complete",
+        description: "Check the comprehensive test page for detailed API testing",
+      });
 
     } catch (error) {
-      addLog(`❌ Test failed: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Test error:', error);
+
+      toast({
+        title: "Test Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }

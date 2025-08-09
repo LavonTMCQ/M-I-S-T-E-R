@@ -62,7 +62,7 @@ export class SignalExecutor {
     console.log('🔥 Generating REAL signal with current market price:', currentMarketPrice);
 
     // Use real market data to create realistic signals
-    const currentPrice = currentMarketPrice || 0.47;
+    const currentPrice = currentMarketPrice || 0.80;
 
     // Simulate real algorithm analysis with current market conditions
     const marketAnalysis = this.analyzeMarketConditions(currentPrice);
@@ -182,7 +182,7 @@ export class SignalExecutor {
    */
   private convertAlgorithmSignal(algorithmData: any, currentMarketPrice?: number): TradingSignal {
     const signalId = `real_${Date.now()}`;
-    const currentPrice = currentMarketPrice || algorithmData.current_price || 0.47;
+    const currentPrice = currentMarketPrice || algorithmData.current_price || 0.80;
 
     const signal: TradingSignal = {
       id: signalId,
@@ -220,7 +220,7 @@ export class SignalExecutor {
     console.log('📊 Generating signal with REAL market data:', currentMarketPrice);
 
     // ALWAYS use real market price - no more fake data!
-    const currentPrice = currentMarketPrice || 0.47;
+    const currentPrice = currentMarketPrice || 0.80;
 
     // Generate realistic market-based signal
     const marketAnalysis = this.analyzeMarketConditions(currentPrice);

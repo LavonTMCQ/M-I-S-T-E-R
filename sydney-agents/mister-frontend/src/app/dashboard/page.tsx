@@ -25,7 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth, useRequireAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { useUserIdentity } from "@/hooks/useUserIdentity";
 import { MisterLogo } from "@/components/ui/mister-logo";
@@ -48,7 +48,7 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const auth = useRequireAuth();
+  const auth = useAuth(); // Optional auth instead of required
   const { mainWallet, isLoading: walletLoading } = useWallet();
   const { userStorage } = useUserIdentity();
   const [isLoading, setIsLoading] = useState(true);
@@ -80,8 +80,8 @@ export default function DashboardPage() {
    * Load all dashboard data from backend services
    */
   const loadDashboardData = useCallback(async () => {
-    if (!auth.user?.id || !mainWallet) {
-      console.warn('No user ID or wallet available for dashboard data loading');
+    if (!mainWallet) {
+      console.warn('No wallet available for dashboard data loading');
       setIsLoading(false);
       return;
     }
@@ -227,7 +227,7 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [auth.user?.id, mainWallet?.stakeAddress]); // Depend on user ID and wallet so it reloads when either changes
+  }, [mainWallet?.stakeAddress]); // Depend on wallet so it reloads when wallet changes
 
   /**
    * Load portfolio performance data for specific timeframe
@@ -303,8 +303,8 @@ export default function DashboardPage() {
    * Close a position
    */
   const closePosition = async (positionId: string) => {
-    if (!auth.user?.id) {
-      console.error('No user ID available for closing position');
+    if (!mainWallet?.address) {
+      console.error('No wallet available for closing position');
       return;
     }
 
@@ -312,7 +312,7 @@ export default function DashboardPage() {
       setClosingPositions(prev => new Set(prev).add(positionId));
       console.log(`❌ Closing position ${positionId}...`);
 
-      const response = await positionsAPI.closePosition(positionId, auth.user.id, 'Manual close');
+      const response = await positionsAPI.closePosition(positionId, mainWallet.address, 'Manual close');
 
       if (response.success) {
         console.log('✅ Position closed successfully:', response.data);
@@ -352,7 +352,7 @@ export default function DashboardPage() {
 
   // Load dashboard data on component mount
   useEffect(() => {
-    if (auth.user && !walletLoading) {
+    if (!walletLoading) {
       if (mainWallet) {
         console.log('🔄 Loading dashboard data for connected wallet:', mainWallet.displayName);
       } else {
@@ -360,7 +360,7 @@ export default function DashboardPage() {
       }
       loadDashboardData();
     }
-  }, [auth.user, mainWallet, walletLoading, loadDashboardData]);
+  }, [mainWallet, walletLoading, loadDashboardData]);
 
   /**
    * Create empty dashboard data when no real data is available
@@ -378,7 +378,7 @@ export default function DashboardPage() {
     aiActivity: [],
     aiStatus: createFallbackAIStatus(),
     wallet: {
-      userId: auth.user?.id || 'demo_user',
+      userId: mainWallet?.address || 'demo_user',
       bech32Address: mainWallet?.stakeAddress || '',
       createdAt: new Date(),
       isActive: true,
@@ -497,72 +497,34 @@ export default function DashboardPage() {
     }).format(date);
   };
 
-  if (auth.isLoading || isLoading || walletLoading) {
+  // Only show loading state while wallet is actually loading (not API calls)
+  if (walletLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
           <div className="space-y-2">
             <h2 className="text-xl font-semibold">Loading Dashboard</h2>
-            <p className="text-muted-foreground">
-              {walletLoading ? 'Connecting to your wallet...' :
-               auth.isLoading ? 'Authenticating...' : 'Connecting to MISTER AI...'}
-            </p>
+            <p className="text-muted-foreground">Connecting to your wallet...</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Show wallet connection requirement only if not authenticated at all
-  if (!auth.isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold">Authentication Required</h2>
-            <p className="text-muted-foreground">
-              Please log in or connect your wallet to access the dashboard.
-            </p>
-            <div className="flex gap-2 justify-center">
-              <Button onClick={() => window.location.href = '/login'}>
-                Email Login
-              </Button>
-              <Button variant="outline" onClick={() => window.location.href = '/'}>
-                Connect Wallet
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  // Demo mode: show UI with mock data if no auth or wallet (like trading page)
+  if (!auth.user || !mainWallet) {
+    console.log('🔧 Demo mode: showing dashboard with mock data');
   }
 
-  // Show wallet connection prompt if authenticated but no wallet (for direct trading features)
-  if (!mainWallet) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto" />
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold">Wallet Connection Recommended</h2>
-            <p className="text-muted-foreground">
-              Connect your Cardano wallet to access direct trading features, or use managed wallets for AI trading.
-            </p>
-            <div className="flex gap-2 justify-center">
-              <Button onClick={() => window.location.href = '/'}>
-                Connect Wallet
-              </Button>
-              <Button variant="outline" onClick={() => window.location.href = '/managed-dashboard'}>
-                Managed Trading
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Use mock wallet data if no wallet connected (for demo)
+  const mockWallet = {
+    address: 'addr1qy...demo',
+    balance: 100,
+    displayName: 'Demo Wallet'
+  };
+
+  const walletData = mainWallet || mockWallet;
 
   return (
     <div className="min-h-screen bg-background pt-8">
@@ -656,7 +618,7 @@ export default function DashboardPage() {
                 <div>
                   <h3 className="text-xs font-medium text-muted-foreground">Portfolio Value</h3>
                   <p className="text-lg font-bold text-foreground">
-                    ${livePortfolioValue ? livePortfolioValue.toFixed(2) : (mainWallet?.balance ? (mainWallet.balance * (marketData?.price || 0.75)).toFixed(2) : '--')}
+                    ${livePortfolioValue ? livePortfolioValue.toFixed(2) : (walletData?.balance ? (walletData.balance * (marketData?.price || 0.75)).toFixed(2) : '--')}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {mainWallet?.balance?.toFixed(2) || '--'} ADA

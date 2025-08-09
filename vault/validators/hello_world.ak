@@ -1,0 +1,27 @@
+use aiken/hash.{Blake2b_224, Hash}
+use aiken/list
+use aiken/transaction.{ScriptContext, Spend, find_input}
+use aiken/transaction/credential.{VerificationKey}
+
+type VerificationKeyHash =
+  Hash<Blake2b_224, VerificationKey>
+
+type Datum {
+  owner: VerificationKeyHash,
+}
+
+type Redeemer {
+  msg: ByteArray,
+}
+
+validator hello_world {
+  spend(datum: Datum, redeemer: Redeemer, context: ScriptContext) -> Bool {
+    let must_say_hello =
+      redeemer.msg == "Hello, World!"
+
+    let must_be_signed =
+      list.has(context.transaction.extra_signatories, datum.owner)
+
+    must_say_hello && must_be_signed
+  }
+}

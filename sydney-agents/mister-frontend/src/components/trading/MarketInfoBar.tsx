@@ -21,7 +21,7 @@ interface MarketInfoBarProps {
 export function MarketInfoBar({ marketData }: MarketInfoBarProps) {
   // Ensure all values have defaults to prevent undefined errors
   const safeMarketData = {
-    price: marketData?.price || 0.47,
+    price: marketData?.price || 0.80,
     change24h: marketData?.change24h || 0,
     change24hPercent: marketData?.change24hPercent || 0,
     // TODO: Need to integrate broader market data from major exchanges

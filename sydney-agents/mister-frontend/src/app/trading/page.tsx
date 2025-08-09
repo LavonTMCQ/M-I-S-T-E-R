@@ -6,12 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Activity, Bot, Brain, User, Zap, Settings, Loader2 } from 'lucide-react';
+import { Activity, Bot, Brain, User, Zap, Settings, Loader2, Vault, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { ManualTradingInterface } from '@/components/trading/ManualTradingInterface';
 import { TradingChart } from '@/components/trading/TradingChart';
 import { AITradingChat } from '@/components/trading/AITradingChat';
-import { AIThinkingTerminal } from '@/components/trading/AIThinkingTerminal';
-import { StrategySelection } from '@/components/trading/StrategySelection';
 import { PositionsSummary } from '@/components/trading/PositionsSummary';
 import { MarketInfoBar } from '@/components/trading/MarketInfoBar';
 import { MisterLogo } from '@/components/ui/mister-logo';
@@ -47,13 +45,22 @@ export default function TradingPage() {
   // NEW: Signal trading mode toggle
   const [signalMode, setSignalMode] = useState(false);
 
-  // MISTER Trading mode state
-  const [isMisterMode, setIsMisterMode] = useState(false);
-  const [selectedStrategy, setSelectedStrategy] = useState<string>('ada_custom_algorithm');
-  const [showStrategySelection, setShowStrategySelection] = useState(false);
+  // NEW: Agent Vault mode toggle
+  const [vaultMode, setVaultMode] = useState(false);
+
+  // Check URL parameters for auto-enabling modes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('vault') === 'true') {
+        setVaultMode(true);
+        setSignalMode(false);
+      }
+    }
+  }, []);
 
   const [marketData, setMarketData] = useState({
-    price: 0.47,
+    price: 0.80,
     change24h: 0.025,
     change24hPercent: 5.6,
     volume24h: 1250000,
@@ -119,6 +126,37 @@ export default function TradingPage() {
     }
   }, [tradingPreferences, signalMode, isAuthenticated, userStorage]);
 
+  // Fetch real market data (independent of authentication)
+  useEffect(() => {
+    const fetchMarketData = async () => {
+      try {
+        console.log('📊 Fetching real market data from Kraken API...');
+        const response = await fetch('/api/market-data');
+        const data = await response.json();
+        if (data.success && data.data) {
+          console.log('📊 Real market data received:', data.data.price);
+          setMarketData(prev => ({
+            ...prev,
+            price: data.data.price || prev.price,
+            change24h: data.data.change24h || prev.change24h,
+            change24hPercent: data.data.change24hPercentage || prev.change24hPercent,
+            volume24h: data.data.volume24h || prev.volume24h
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch market data:', error);
+        // Keep existing default values on error
+      }
+    };
+
+    fetchMarketData();
+    // Reduced polling frequency to prevent rate limiting
+    const interval = setInterval(fetchMarketData, 120000); // Update every 2 minutes
+
+    return () => clearInterval(interval);
+  }, []); // No dependencies - always fetch market data
+
+  // Register wallet when authenticated
   useEffect(() => {
     if (auth.user && mainWallet) {
       // Register wallet for direct trading
@@ -129,31 +167,6 @@ export default function TradingPage() {
         balance: mainWallet.balance * 1_000_000, // Convert to lovelace
         handle: mainWallet.handle
       });
-
-      // Fetch real market data
-      const fetchMarketData = async () => {
-        try {
-          const response = await fetch('/api/market-data');
-          const data = await response.json();
-          if (data.success && data.data) {
-            setMarketData(prev => ({
-              ...prev,
-              price: data.data.price || prev.price,
-              change24h: data.data.change24h || prev.change24h,
-              change24hPercent: data.data.change24hPercentage || prev.change24hPercent,
-              volume24h: data.data.volume24h || prev.volume24h
-            }));
-          }
-        } catch (error) {
-          console.error('Failed to fetch market data:', error);
-          // Keep existing default values on error
-        }
-      };
-
-      fetchMarketData();
-      const interval = setInterval(fetchMarketData, 30000); // Update every 30 seconds
-
-      return () => clearInterval(interval);
     }
   }, [auth.user, mainWallet]);
 
@@ -202,6 +215,279 @@ export default function TradingPage() {
     checkSufficientBalance,
     walletConnected
   } = useSignalExecution();
+
+  // Agent Vault State - USING SAME SYSTEM AS AGENT-VAULT-V2 PAGE
+  const [vaultLoading, setVaultLoading] = useState(false);
+  const [vaultError, setVaultError] = useState('');
+  const [vaultCredentials, setVaultCredentials] = useState<any>(null);
+  const [vaultBalance, setVaultBalance] = useState(0);
+  const [networkInfo, setNetworkInfo] = useState<any>(null);
+  const [isVaultActive, setIsVaultActive] = useState(false); // Persistent vault state
+  const [userVaultCount, setUserVaultCount] = useState(0); // Track user's vault count
+  const [maxVaultsReached, setMaxVaultsReached] = useState(false); // Vault limit enforcement
+  const [userVaults, setUserVaults] = useState<any[]>([]); // All user's vaults
+  const [currentVaultId, setCurrentVaultId] = useState<string | null>(null);
+
+  const CARDANO_SERVICE_URL = process.env.NEXT_PUBLIC_CARDANO_SERVICE_URL || 'http://localhost:3001';
+
+  // Agent Vault Functions
+  const checkVaultHealth = async () => {
+    try {
+      setVaultLoading(true);
+      setVaultError('');
+      
+      const response = await fetch(`${CARDANO_SERVICE_URL}/health`);
+      const data = await response.json();
+      
+      setNetworkInfo(data);
+      console.log('🏦 Vault service health:', data);
+    } catch (err: any) {
+      setVaultError(`Cannot connect to Cardano service at ${CARDANO_SERVICE_URL}`);
+    } finally {
+      setVaultLoading(false);
+    }
+  };
+
+  const generateVaultCredentials = async () => {
+    // Check vault limit before generating
+    if (maxVaultsReached) {
+      setVaultError('Maximum 2 vaults reached. Delete an existing vault to create a new one.');
+      return;
+    }
+
+    try {
+      setVaultLoading(true);
+      setVaultError('');
+      
+      const response = await fetch(`${CARDANO_SERVICE_URL}/generate-credentials`, {
+        method: 'POST'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setVaultCredentials(data);
+        console.log('🏦 Generated vault credentials:', data.address?.substring(0, 20) + '...');
+        
+        // Create new vault object
+        const newVault = {
+          id: `vault_${Date.now()}`,
+          name: `Vault ${userVaultCount + 1}`,
+          credentials: data,
+          isActive: false,
+          createdAt: new Date().toISOString(),
+          network: networkInfo?.network || 'mainnet',
+          balance: 0
+        };
+        
+        // Add to user vaults array
+        const updatedVaults = [...userVaults, newVault];
+        setUserVaults(updatedVaults);
+        localStorage.setItem('mister-user-vaults', JSON.stringify(updatedVaults));
+        localStorage.setItem('mister-current-vault-id', newVault.id);
+        
+        // Update state
+        setCurrentVaultId(newVault.id);
+        setUserVaultCount(updatedVaults.length);
+        setMaxVaultsReached(updatedVaults.length >= 2);
+        
+        console.log(`✅ Vault ${newVault.name} created (${updatedVaults.length}/2)`);
+      } else {
+        setVaultError(data.error || 'Failed to generate vault credentials');
+      }
+    } catch (err: any) {
+      setVaultError(`Service connection error: ${err.message}`);
+    } finally {
+      setVaultLoading(false);
+    }
+  };
+
+  const checkVaultBalance = async (addressOverride?: string) => {
+    const targetAddress = addressOverride || vaultCredentials?.address;
+    if (!targetAddress) return;
+    
+    try {
+      const response = await fetch(`${CARDANO_SERVICE_URL}/check-balance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: targetAddress
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setVaultBalance(data.balanceAda || 0);
+        
+        // Update vault balance in localStorage if this is the current vault
+        if (currentVaultId) {
+          const savedVaults = JSON.parse(localStorage.getItem('mister-user-vaults') || '[]');
+          const updatedVaults = savedVaults.map((vault: any) => 
+            vault.id === currentVaultId 
+              ? { ...vault, balance: data.balanceAda || 0 }
+              : vault
+          );
+          setUserVaults(updatedVaults);
+          localStorage.setItem('mister-user-vaults', JSON.stringify(updatedVaults));
+        }
+      }
+    } catch (err: any) {
+      console.error('Balance check error:', err);
+    }
+  };
+
+  // Switch active vault function
+  const switchVault = async (vaultId: string) => {
+    const vault = userVaults.find(v => v.id === vaultId);
+    if (!vault || vault.id === currentVaultId) return;
+    
+    try {
+      setCurrentVaultId(vaultId);
+      setVaultCredentials(vault.credentials);
+      setIsVaultActive(vault.isActive);
+      localStorage.setItem('mister-current-vault-id', vaultId);
+      
+      // Check balance for switched vault
+      if (vault.credentials?.address) {
+        setTimeout(() => checkVaultBalance(vault.credentials.address), 500);
+      }
+      
+      console.log('🔄 Switched to vault:', vault.name);
+    } catch (error) {
+      console.error('❌ Error switching vault:', error);
+      setVaultError('Failed to switch vault');
+    }
+  };
+
+  // Delete vault function
+  const deleteVault = async (vaultId: string) => {
+    if (!vaultId) return;
+    
+    try {
+      setVaultLoading(true);
+      setVaultError('');
+      
+      const vaultToDelete = userVaults.find(v => v.id === vaultId);
+      if (!vaultToDelete) {
+        setVaultError('Vault not found');
+        return;
+      }
+      
+      // Remove from array
+      const updatedVaults = userVaults.filter(v => v.id !== vaultId);
+      setUserVaults(updatedVaults);
+      setUserVaultCount(updatedVaults.length);
+      setMaxVaultsReached(updatedVaults.length >= 2);
+      localStorage.setItem('mister-user-vaults', JSON.stringify(updatedVaults));
+      
+      // Handle current vault deletion
+      if (vaultId === currentVaultId) {
+        if (updatedVaults.length > 0) {
+          // Switch to the first available vault
+          const newCurrentVault = updatedVaults[0];
+          setCurrentVaultId(newCurrentVault.id);
+          setVaultCredentials(newCurrentVault.credentials);
+          setIsVaultActive(newCurrentVault.isActive);
+          localStorage.setItem('mister-current-vault-id', newCurrentVault.id);
+          console.log('🔄 Switched to vault:', newCurrentVault.name);
+        } else {
+          // No vaults left
+          setCurrentVaultId(null);
+          setVaultCredentials(null);
+          setIsVaultActive(false);
+          setVaultBalance(0);
+          localStorage.removeItem('mister-current-vault-id');
+          console.log('🗑️ All vaults deleted');
+        }
+      }
+      
+      console.log(`🗑️ Vault ${vaultToDelete.name} deleted. Remaining: ${updatedVaults.length}/2`);
+    } catch (error) {
+      console.error('❌ Error deleting vault:', error);
+      setVaultError('Failed to delete vault');
+    } finally {
+      setVaultLoading(false);
+    }
+  };
+
+  const lockFundsToVault = async (amount: string) => {
+    if (!vaultCredentials?.seed) {
+      setVaultError('Generate vault credentials first');
+      return;
+    }
+
+    try {
+      setVaultLoading(true);
+      setVaultError('');
+      
+      const response = await fetch(`${CARDANO_SERVICE_URL}/lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          seed: vaultCredentials.seed,
+          amount: (parseFloat(amount) * 1_000_000).toString() // Convert to lovelace
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('✅ Funds locked to vault:', data.txHash);
+        // Refresh balance after successful lock
+        setTimeout(() => checkVaultBalance(), 3000);
+      } else {
+        setVaultError(data.error || 'Failed to lock funds to vault');
+      }
+    } catch (err: any) {
+      setVaultError(`Service connection error: ${err.message}`);
+    } finally {
+      setVaultLoading(false);
+    }
+  };
+
+  // Initialize vault health check when vault mode is enabled - PERSISTENT VAULT SYSTEM
+  useEffect(() => {
+    if (vaultMode) {
+      checkVaultHealth();
+      
+      // Load all user vaults (maximum 2) - SAME AS AGENT-VAULT-V2
+      const savedVaults = JSON.parse(localStorage.getItem('mister-user-vaults') || '[]');
+      setUserVaults(savedVaults);
+      setUserVaultCount(savedVaults.length);
+      setMaxVaultsReached(savedVaults.length >= 2);
+      
+      console.log(`👤 User has ${savedVaults.length}/2 vaults`);
+      
+      // Load current vault if it exists
+      const savedCurrentVaultId = localStorage.getItem('mister-current-vault-id');
+      if (savedCurrentVaultId && savedVaults.length > 0) {
+        const currentVault = savedVaults.find((v: any) => v.id === savedCurrentVaultId);
+        if (currentVault) {
+          setCurrentVaultId(savedCurrentVaultId);
+          setVaultCredentials(currentVault.credentials);
+          setIsVaultActive(currentVault.isActive);
+          console.log('🏦 Restored current vault:', currentVault.name);
+          
+          // Check current balance
+          setTimeout(() => {
+            if (currentVault.credentials?.address) {
+              checkVaultBalance(currentVault.credentials.address);
+            }
+          }, 1000);
+        }
+      }
+    }
+  }, [vaultMode]);
+
+  // Check balance when credentials are available
+  useEffect(() => {
+    if (vaultCredentials?.address) {
+      const interval = setInterval(checkVaultBalance, 10000); // Check every 10 seconds
+      checkVaultBalance(); // Initial check
+      return () => clearInterval(interval);
+    }
+  }, [vaultCredentials]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col pt-8">
@@ -259,49 +545,41 @@ export default function TradingPage() {
                 )}
               </div>
 
-              {/* MISTER Trading Mode Toggle */}
+
+              {/* NEW: Agent Vault Mode Toggle */}
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className={`font-medium ${!isMisterMode ? 'text-primary' : 'text-muted-foreground'}`}>
-                    Manual
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                  <span className={`font-medium ${!vaultMode ? 'text-primary' : 'text-muted-foreground'}`}>
+                    Trading
                   </span>
                 </div>
 
                 <Switch
-                  checked={isMisterMode}
+                  checked={vaultMode}
                   onCheckedChange={(checked) => {
-                    console.log('🔄 MISTER mode toggled:', checked);
-                    setIsMisterMode(checked);
+                    console.log('🔄 Vault mode toggled:', checked);
+                    setVaultMode(checked);
+                    // Disable other modes when vault is active
                     if (checked) {
-                      setShowStrategySelection(true);
+                      setSignalMode(false);
                     }
                   }}
-                  className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-blue-500 data-[state=checked]:to-purple-600"
+                  className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-orange-500 data-[state=checked]:to-red-600"
                 />
 
                 <div className="flex items-center gap-2 text-sm">
-                  <Bot className="h-4 w-4 text-muted-foreground" />
-                  <span className={`font-medium ${isMisterMode ? 'text-primary' : 'text-muted-foreground'}`}>
-                    MISTER
+                  <Vault className="h-4 w-4 text-muted-foreground" />
+                  <span className={`font-medium ${vaultMode ? 'text-primary' : 'text-muted-foreground'}`}>
+                    Agent Vault
                   </span>
                 </div>
 
-                {isMisterMode && (
-                  <>
-                    <Badge variant="secondary" className="flex items-center gap-1 bg-gradient-to-r from-blue-500/10 to-purple-600/10 border-blue-500/20 text-blue-700">
-                      <Brain className="h-3 w-3" />
-                      AI Trading
-                    </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowStrategySelection(!showStrategySelection)}
-                      className="text-xs"
-                    >
-                      {showStrategySelection ? 'Back to Terminal' : 'Change Strategy'}
-                    </Button>
-                  </>
+                {vaultMode && (
+                  <Badge variant="secondary" className="flex items-center gap-1 bg-gradient-to-r from-orange-500/10 to-red-600/10 border-orange-500/20 text-orange-700">
+                    <Vault className="h-3 w-3" />
+                    Vault Mode
+                  </Badge>
                 )}
               </div>
             </div>
@@ -319,8 +597,184 @@ export default function TradingPage() {
         <div className="grid grid-cols-12 gap-4" style={{ minHeight: 'calc(100vh - 16rem)' }}>
 
           {/* Left Panel - Trading Controls */}
-          <div className="col-span-3 space-y-4" style={{ maxHeight: 'calc(100vh - 16rem)', overflowY: 'auto' }}>
-            {signalMode ? (
+          <div className="col-span-3 flex flex-col gap-4" style={{ height: 'calc(100vh - 16rem)' }}>
+            {vaultMode ? (
+              /* NEW: Agent Vault Interface */
+              <Card className="h-full shadow-lg border-border/50 bg-gradient-to-br from-card to-card/95">
+                <CardHeader className="pb-3 border-b border-border/30">
+                  <CardTitle className="flex items-center space-x-2">
+                    <div className="p-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                      <Vault className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <span className="font-semibold">Agent Vault</span>
+                    <Badge variant="secondary" className={`${networkInfo?.network === 'mainnet' ? 'bg-red-500/10 text-red-700 border-red-500/20' : 'bg-green-500/10 text-green-700 border-green-500/20'}`}>
+                      {networkInfo?.network?.toUpperCase() || 'LOADING'}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 max-h-[calc(100vh-20rem)] overflow-y-auto">
+                  
+                  {/* Network Warning */}
+                  {networkInfo?.network === 'mainnet' && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <h3 className="font-semibold text-red-900 mb-1 flex items-center gap-2">
+                        🚨 MAINNET MODE
+                      </h3>
+                      <p className="text-xs text-red-800">Using REAL ADA! Max: {networkInfo.mainnet_safety_limit}</p>
+                    </div>
+                  )}
+
+                  {/* Service Status */}
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 bg-muted rounded">
+                      <div className={`font-semibold ${networkInfo ? 'text-green-600' : 'text-gray-500'}`}>
+                        {networkInfo ? 'ONLINE' : 'OFFLINE'}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Service</div>
+                    </div>
+                    <div className="p-2 bg-muted rounded">
+                      <div className="font-semibold">{vaultBalance.toFixed(2)} ADA</div>
+                      <div className="text-xs text-muted-foreground">Balance</div>
+                    </div>
+                    <div className="p-2 bg-muted rounded">
+                      <div className="font-semibold">{userVaultCount}/2</div>
+                      <div className="text-xs text-muted-foreground">Vaults</div>
+                    </div>
+                  </div>
+
+                  {/* Vault Selector - SAME AS AGENT-VAULT-V2 */}
+                  {userVaults.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium">Your Vaults</h4>
+                      <div className="space-y-1">
+                        {userVaults.map((vault) => (
+                          <div
+                            key={vault.id}
+                            className={`p-2 rounded border cursor-pointer transition-colors ${
+                              vault.id === currentVaultId
+                                ? 'border-orange-500 bg-orange-50'
+                                : 'border-border hover:bg-muted'
+                            }`}
+                            onClick={() => vault.id !== currentVaultId && switchVault(vault.id)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                {vault.id === currentVaultId && (
+                                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                )}
+                                <span className="text-sm font-medium">{vault.name}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {vault.balance?.toFixed(2) || '0.00'} ADA
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Generate Vault Wallet - WITH 2 VAULT LIMIT */}
+                  {!vaultCredentials ? (
+                    <div className="space-y-2">
+                      <Button
+                        onClick={generateVaultCredentials}
+                        disabled={vaultLoading || !networkInfo || maxVaultsReached}
+                        className="w-full bg-orange-600 hover:bg-orange-700"
+                        size="lg"
+                      >
+                        {vaultLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Vault className="mr-2 h-4 w-4" />
+                            {maxVaultsReached ? 'Maximum Vaults Reached' : `Generate Vault ${userVaultCount + 1}`}
+                          </>
+                        )}
+                      </Button>
+                      {maxVaultsReached && (
+                        <p className="text-xs text-orange-600 text-center">
+                          You have reached the maximum of 2 vaults. Switch between existing vaults above.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Wallet Info */}
+                      <div className="p-3 bg-muted rounded">
+                        <p className="text-xs font-mono break-all mb-1">
+                          <strong>Address:</strong> {vaultCredentials.address?.substring(0, 30)}...
+                        </p>
+                        <p className={`text-xs ${networkInfo?.network === 'mainnet' ? 'text-red-600 font-semibold' : 'text-green-600'}`}>
+                          {networkInfo?.network === 'mainnet' 
+                            ? '🚨 MAINNET wallet - needs REAL ADA!' 
+                            : '✅ Testnet wallet - needs testnet ADA'}
+                        </p>
+                      </div>
+
+                      {/* Deposit Instructions */}
+                      {vaultBalance === 0 && (
+                        <div className="p-3 bg-yellow-50 rounded border border-yellow-200">
+                          <h4 className="font-semibold text-yellow-900 mb-2">📋 Deposit Instructions:</h4>
+                          <ol className="text-xs text-yellow-700 space-y-1">
+                            <li>1. Copy wallet address above</li>
+                            <li>2. Send ADA from your main wallet</li>
+                            <li>3. Wait for confirmation (~2 minutes)</li>
+                            <li>4. Use "Lock to Vault" below</li>
+                          </ol>
+                        </div>
+                      )}
+
+                      {/* Lock Funds Button */}
+                      {vaultBalance > 0 && (
+                        <Button
+                          onClick={() => lockFundsToVault('1')}
+                          disabled={vaultLoading}
+                          className="w-full bg-green-600 hover:bg-green-700"
+                          size="lg"
+                        >
+                          {vaultLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Locking...
+                            </>
+                          ) : (
+                            <>
+                              <ArrowUpCircle className="mr-2 h-4 w-4" />
+                              Lock 1 ADA to Vault
+                            </>
+                          )}
+                        </Button>
+                      )}
+
+                      {/* Vault Operations */}
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-sm">Vault Operations</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button variant="outline" size="sm" disabled>
+                            <ArrowDownCircle className="mr-1 h-3 w-3" />
+                            Withdraw
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={checkVaultBalance}>
+                            Refresh
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error Display */}
+                  {vaultError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded">
+                      <p className="text-xs text-red-800">{vaultError}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : signalMode ? (
               /* NEW: Signal Trading Interface */
               <Card className="h-full shadow-lg border-border/50 bg-gradient-to-br from-card to-card/95">
                 <CardHeader className="pb-3 border-b border-border/30">
@@ -408,40 +862,22 @@ export default function TradingPage() {
                   </div>
                 </CardContent>
               </Card>
-            ) : isMisterMode ? (
-              /* MISTER AI Trading Terminal */
-              showStrategySelection ? (
-                <StrategySelection
-                  onStrategySelect={(strategyId) => {
-                    setSelectedStrategy(strategyId);
-                    setShowStrategySelection(false);
-                  }}
-                  selectedStrategy={selectedStrategy}
-                  walletBalance={walletData.balance}
-                />
-              ) : (
-                <AIThinkingTerminal
-                  walletAddress={walletData.address}
-                  selectedStrategy={selectedStrategy}
-                  isActive={isMisterMode}
-                  onToggleTrading={() => {
-                    setIsMisterMode(!isMisterMode);
-                    console.log('Toggle MISTER trading');
-                  }}
-                />
-              )
             ) : (
               /* Manual Trading Interface */
               <>
-                <ManualTradingInterface
-                  walletAddress={walletData.address}
-                  walletType="connected"
-                  balance={walletData.balance}
-                  currentPrice={marketData.price}
-                />
+                <div className="flex-1 min-h-0">
+                  <ManualTradingInterface
+                    walletAddress={walletData.address}
+                    walletType="connected"
+                    balance={walletData.balance}
+                    currentPrice={marketData.price}
+                  />
+                </div>
 
-                {/* Positions Summary */}
-                <PositionsSummary />
+                {/* Positions Summary - Fixed Height */}
+                <div className="flex-shrink-0">
+                  <PositionsSummary />
+                </div>
               </>
             )}
           </div>
@@ -549,6 +985,19 @@ export default function TradingPage() {
                     <div className="flex items-center gap-2">
                       <Zap className="w-3 h-3 text-blue-500" />
                       <span className="text-sm font-medium text-blue-600">Signal Mode Active</span>
+                    </div>
+                  </>
+                )}
+
+                {vaultMode && (
+                  <>
+                    <div className="h-4 w-px bg-border/50"></div>
+                    <div className="flex items-center gap-2">
+                      <Vault className="w-3 h-3 text-orange-500" />
+                      <span className="text-sm font-medium text-orange-600">Agent Vault Active</span>
+                      {networkInfo?.network === 'mainnet' && (
+                        <span className="text-xs text-red-600 font-semibold">MAINNET</span>
+                      )}
                     </div>
                   </>
                 )}

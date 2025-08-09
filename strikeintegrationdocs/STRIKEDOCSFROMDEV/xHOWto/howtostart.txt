@@ -16,7 +16,26 @@ cd MMISTERMCP && npm start
 https://substantial-scarce-magazin.mastra.cloud/api/agents/strikeAgent/generate
 
 
+Now here are the commands to run both services in the foreground:
 
+  Terminal 1: Cardano Service (Port 3001)
+
+  cd sydney-agents/mister-frontend/cardano-service
+  npm start
+
+  Terminal 2: Next.js Frontend (Port 3000)
+
+  cd sydney-agents/mister-frontend
+  npm run dev
+
+  Notes:
+  - Cardano service must start first and be running on port 3001
+  - Next.js frontend will connect to the Cardano service via REST API
+  - Both will run in foreground so you can see all logs directly
+  - Use Ctrl+C to stop each service when needed
+
+  The Cardano service handles all blockchain operations while the Next.js
+  app provides the frontend interface.
 
 
 claude mcp add browser-mcp -s user npx @browsermcp/mcp@latest    
@@ -25,6 +44,10 @@ claude mcp add context7 -s user npx @upstash/context7-mcp@latest
 claude mcp add mastra-docs -s user npx @mastra/mcp-docs-server
 claude mcp add magicuidesign -s user npx @magicuidesign/mcp@latest
 claude mcp add --transport http bright-data "https://server.smithery.ai/@luminati-io/brightdata-mcp/mcp?api_key=5d46ee62-9232-4bdd-9ba4-34f166cfd819&profile=gradual-herring-KdrLAg
+claude mcp add cardano-dev -- npx tsx /Users/coldgame/Desktop/tomorrow-agents-mastra/mister-v2-cloud/MistersCardanoDevMCP/src/mcp-server.ts --stdio
+claude mcp add serena -- uvx --from git+https://github.com/oraios/serena serena start-mcp-server --context ide-assistant --project $(pwd)
+claude mcp add zen -s user -- /Users/coldgame/Desktop/GOD/zen-mcp-server/.zen_venv/bin/python/Users/coldgame/Desktop/GOD/zen-mcp-server/server.py
+
 
 
 HOW TO PUSH
@@ -38,41 +61,4 @@ git commit -m "cashcoldgame"
 
 git push origin main
 
-Here's your current production setup:
 
-1. 🌐 Mastra Cloud (AI Agents)
-URL: https://substantial-scarce-magazin.mastra.cloud
-Purpose: Hosts your AI agents (Strike Agent, Fibonacci Agent, etc.)
-Deployment: Auto-deploys from git commits
-Status: ✅ PRODUCTION
-2. 🌉 Bridge Server (API Gateway)
-URL: https://bridge-server-cjs-production.up.railway.app
-Purpose: Bridges frontend ↔ Mastra Cloud ↔ Strike Finance
-Deployment: Railway auto-deploys from git
-Status: ✅ PRODUCTION
-3. 📊 ADA Backtesting Service
-URL: https://ada-backtesting-service-production.up.railway.app
-Purpose: Provides ADA algorithm signals
-Deployment: Railway (separate service)
-Status: ✅ PRODUCTION
-4. 🤖 CNT Trading Bot
-URL: https://cnt-trading-api-production.up.railway.app
-Purpose: CNT trading functionality
-Deployment: Railway (separate service)
-Status: ✅ PRODUCTION
-5. 💻 Frontend (MISTER UI)
-URL: http://localhost:3000 (LOCAL ONLY)
-Purpose: User interface for trading
-Deployment: NOT YET DEPLOYED - running locally
-Status: ⚠️ LOCAL DEVELOPMENT
-
-
-
-Address: addr1vy60rn622dl76ulgqc0lzmkrglyv7c47gk4u38kpfyat50gl68uck
-VKH: 34f1cf4a537fed73e8061ff16ec347c8cf62be45abc89ec1493aba3d
-Files: keys/agent-wallet.{vkey,skey,addr}
-
-Contract Address: addr1w8hksl7jnqst7e58ypcn4d6k68d6z0rw7hkuch5wad7d07c3zn2nj
-Script Hash: ef687fd29820bf668720713ab756d1dba13c6ef5edcc5e8eeb7cd7fb
-Network: Cardano Mainnet
-Status: DEPLOYED & TESTED ✅

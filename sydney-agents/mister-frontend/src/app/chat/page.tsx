@@ -10,7 +10,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MisterLogo } from '@/components/ui/mister-logo';
+import { AIThinkingTerminal } from '@/components/trading/AIThinkingTerminal';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import {
   Send,
@@ -24,7 +26,9 @@ import {
   Trash2,
   Download,
   Upload,
-  Activity
+  Activity,
+  Brain,
+  Terminal
 } from 'lucide-react';
 
 interface Message {
@@ -52,6 +56,7 @@ export default function ChatPage() {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState('tomorrow-labs');
+  const [activeTab, setActiveTab] = useState('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -286,7 +291,7 @@ export default function ChatPage() {
                 </h1>
                 <Badge variant="outline" className="flex items-center gap-1 bg-primary/5 border-primary/20 text-primary">
                   <Activity className="h-3 w-3" />
-                  Tomorrow Labs Network
+                  Chat & Terminal
                 </Badge>
               </div>
             </div>
@@ -418,31 +423,54 @@ export default function ChatPage() {
           </Card>
         </div>
 
-        {/* Main Chat Area */}
+        {/* Main Content Area with Tabs */}
         <div className="flex-1 flex flex-col">
-          <Card className="h-full backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-0 shadow-xl">
-            
-            {/* Chat Header */}
-            <CardHeader className="border-b border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${currentAgent.color} flex items-center justify-center text-white text-lg font-bold shadow-lg`}>
-                    {currentAgent.avatar}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+            {/* Tab Navigation */}
+            <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <TabsList className="w-full h-12 bg-transparent p-0">
+                <TabsTrigger 
+                  value="chat" 
+                  className="flex-1 h-full data-[state=active]:bg-primary/10 data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary rounded-none"
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  AI Chat
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="terminal" 
+                  className="flex-1 h-full data-[state=active]:bg-primary/10 data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary rounded-none"
+                >
+                  <Brain className="h-4 w-4 mr-2" />
+                  AI Terminal
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* Tab Contents */}
+            <TabsContent value="chat" className="flex-1 mt-0">
+              <Card className="h-full backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-0 shadow-xl">
+                
+                {/* Chat Header */}
+                <CardHeader className="border-b border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${currentAgent.color} flex items-center justify-center text-white text-lg font-bold shadow-lg`}>
+                        {currentAgent.avatar}
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold">
+                          {currentAgent.name}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          {currentAgent.description}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="bg-green-100 text-green-700">
+                      Online
+                    </Badge>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold">
-                      {currentAgent.name}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      {currentAgent.description}
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-700">
-                  Online
-                </Badge>
-              </div>
-            </CardHeader>
+                </CardHeader>
 
             {/* Messages Area */}
             <CardContent className="flex-1 p-0">
@@ -566,7 +594,44 @@ export default function ChatPage() {
                 </div>
               </div>
             </div>
-          </Card>
+              </Card>
+            </TabsContent>
+
+            {/* AI Terminal Tab */}
+            <TabsContent value="terminal" className="flex-1 mt-0">
+              <Card className="h-full backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border-0 shadow-xl">
+                <CardHeader className="border-b border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold shadow-lg">
+                        <Brain className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold">MISTER AI Terminal</h2>
+                        <p className="text-sm text-muted-foreground">Real-time trading signals and AI analysis</p>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                      Live Terminal
+                    </Badge>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="p-0 h-[calc(100vh-200px)]">
+                  <AIThinkingTerminal
+                    walletAddress="demo_address"
+                    selectedStrategy="ada_custom_algorithm"
+                    isActive={activeTab === 'terminal'}
+                    onToggleTrading={() => {
+                      // Read-only terminal - no toggle functionality
+                      console.log('AI Terminal is read-only');
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+          </Tabs>
         </div>
         </div>
       </main>

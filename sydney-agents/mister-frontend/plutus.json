@@ -1,0 +1,196 @@
+{
+  "preamble": {
+    "title": "mrstrike/simple-vault",
+    "version": "0.1.0",
+    "plutusVersion": "v3",
+    "compiler": {
+      "name": "Aiken",
+      "version": "v1.1.7+e2fb28b"
+    }
+  },
+  "validators": [
+    {
+      "title": "agent_vault_v2.agent_vault_v2.spend",
+      "datum": {
+        "title": "datum_opt",
+        "schema": {
+          "$ref": "#/definitions/agent_vault_v2~1VaultDatum"
+        }
+      },
+      "redeemer": {
+        "title": "redeemer",
+        "schema": {
+          "$ref": "#/definitions/agent_vault_v2~1VaultRedeemer"
+        }
+      },
+      "compiledCode": "5901850101003232323232322533300232323232325332330083001300937540042646644646464a66601c60060022a66602260206ea80240085854ccc038c01c00454ccc044c040dd50048010b0a99980719b87480100044c8c94ccc04cc05400854ccc040c014c044dd5000899191919299980b980c8010040b1bad30170013017002375c602a00260246ea80045858c04c004c040dd50048b18071baa0081533300c3001300d375400426464646464a666022600c0022660040086eb8c00cc04cdd50028a99980898050008998010021bae301530163013375400a2646600600a6eb8c010c050dd5003180a98099baa00c3011375401644646600200200644a66602c00229404cc894ccc054cdc78010028a51133004004001375c602e0026030002460260026eb0c044c048c048c048c048c048c048c048c048c03cdd5004980818071baa00216370e900018068009806980700098051baa002370e90010b1805180580198048011804001180400098021baa00114984d9595cd2ab9d5573caae7d5d0aba201",
+      "hash": "8f1e4ac2d79fe8fc5e1c58ce54853ebf894f3cd4518327343c2d0cac"
+    },
+    {
+      "title": "agent_vault_v2.agent_vault_v2.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "5901850101003232323232322533300232323232325332330083001300937540042646644646464a66601c60060022a66602260206ea80240085854ccc038c01c00454ccc044c040dd50048010b0a99980719b87480100044c8c94ccc04cc05400854ccc040c014c044dd5000899191919299980b980c8010040b1bad30170013017002375c602a00260246ea80045858c04c004c040dd50048b18071baa0081533300c3001300d375400426464646464a666022600c0022660040086eb8c00cc04cdd50028a99980898050008998010021bae301530163013375400a2646600600a6eb8c010c050dd5003180a98099baa00c3011375401644646600200200644a66602c00229404cc894ccc054cdc78010028a51133004004001375c602e0026030002460260026eb0c044c048c048c048c048c048c048c048c048c03cdd5004980818071baa00216370e900018068009806980700098051baa002370e90010b1805180580198048011804001180400098021baa00114984d9595cd2ab9d5573caae7d5d0aba201",
+      "hash": "8f1e4ac2d79fe8fc5e1c58ce54853ebf894f3cd4518327343c2d0cac"
+    },
+    {
+      "title": "always_succeed.always_succeed.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "5834010100323232322533300232323232324a260106012006600e004600c004600c00260066ea8004526136565734aae795d0aba201",
+      "hash": "4a7e1c230a3a9ecd5dd11aab74e9adc6e4d24b8bb5d7a0e8a0412c52"
+    },
+    {
+      "title": "working_vault.simple_vault.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "5834010100323232322533300232323232324a260106012006600e004600c004600c00260066ea8004526136565734aae795d0aba201",
+      "hash": "4a7e1c230a3a9ecd5dd11aab74e9adc6e4d24b8bb5d7a0e8a0412c52"
+    },
+    {
+      "title": "working_vault.ultra_simple.spend",
+      "datum": {
+        "title": "_datum",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "redeemer": {
+        "title": "_redeemer",
+        "schema": {
+          "$ref": "#/definitions/Data"
+        }
+      },
+      "compiledCode": "5857010100323232323225333002323232323253330073370e900118041baa00113233224a260160026016601800260126ea800458c024c02800cc020008c01c008c01c004c010dd50008a4c26cacae6955ceaab9e5742ae89",
+      "hash": "91f740da89f81ef5e99264e2c482f96be96ceab7f9e47907f414db9b"
+    },
+    {
+      "title": "working_vault.ultra_simple.else",
+      "redeemer": {
+        "schema": {}
+      },
+      "compiledCode": "5857010100323232323225333002323232323253330073370e900118041baa00113233224a260160026016601800260126ea800458c024c02800cc020008c01c008c01c004c010dd50008a4c26cacae6955ceaab9e5742ae89",
+      "hash": "91f740da89f81ef5e99264e2c482f96be96ceab7f9e47907f414db9b"
+    }
+  ],
+  "definitions": {
+    "ByteArray": {
+      "title": "ByteArray",
+      "dataType": "bytes"
+    },
+    "Data": {
+      "title": "Data",
+      "description": "Any Plutus data."
+    },
+    "Int": {
+      "dataType": "integer"
+    },
+    "Option$ByteArray": {
+      "title": "Option",
+      "anyOf": [
+        {
+          "title": "Some",
+          "description": "An optional value.",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "$ref": "#/definitions/ByteArray"
+            }
+          ]
+        },
+        {
+          "title": "None",
+          "description": "Nothing.",
+          "dataType": "constructor",
+          "index": 1,
+          "fields": []
+        }
+      ]
+    },
+    "agent_vault_v2/VaultDatum": {
+      "title": "VaultDatum",
+      "description": "Vault datum that stores owner and admin information\n Following CIP-32 for inline datums",
+      "anyOf": [
+        {
+          "title": "VaultDatum",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "owner",
+              "description": "Owner who can deposit and withdraw normally",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "admin",
+              "description": "Admin who can perform emergency withdrawals",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "metadata",
+              "description": "Optional metadata for tracking purposes",
+              "$ref": "#/definitions/Option$ByteArray"
+            }
+          ]
+        }
+      ]
+    },
+    "agent_vault_v2/VaultRedeemer": {
+      "title": "VaultRedeemer",
+      "description": "Redeemer for different vault operations",
+      "anyOf": [
+        {
+          "title": "UserWithdraw",
+          "description": "User withdraws their own funds",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": []
+        },
+        {
+          "title": "AdminWithdraw",
+          "description": "Admin performs emergency withdrawal",
+          "dataType": "constructor",
+          "index": 1,
+          "fields": []
+        },
+        {
+          "title": "AgentTrade",
+          "description": "Agent executes a trade (for future use with CIP-31 reference inputs)",
+          "dataType": "constructor",
+          "index": 2,
+          "fields": [
+            {
+              "title": "oracle_ref",
+              "$ref": "#/definitions/cardano~1transaction~1OutputReference"
+            }
+          ]
+        }
+      ]
+    },
+    "cardano/transaction/OutputReference": {
+      "title": "OutputReference",
+      "description": "An `OutputReference` is a unique reference to an output on-chain. The `output_index`\n corresponds to the position in the output list of the transaction (identified by its id)\n that produced that output",
+      "anyOf": [
+        {
+          "title": "OutputReference",
+          "dataType": "constructor",
+          "index": 0,
+          "fields": [
+            {
+              "title": "transaction_id",
+              "$ref": "#/definitions/ByteArray"
+            },
+            {
+              "title": "output_index",
+              "$ref": "#/definitions/Int"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

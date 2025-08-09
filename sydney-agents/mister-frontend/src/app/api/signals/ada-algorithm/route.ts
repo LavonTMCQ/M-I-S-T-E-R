@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     console.error('❌ [API] Algorithm API error:', error);
     
     // Generate market-based signal as fallback
-    const body = await request.json().catch(() => ({ current_price: 0.47 }));
+    const body = await request.json().catch(() => ({ current_price: 0.80 }));
     const marketSignal = generateMarketBasedAlgorithmSignal(body.current_price);
     
     return NextResponse.json({

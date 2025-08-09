@@ -1,0 +1,16 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm ci"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[variables]
+CARDANO_NETWORK = "mainnet"
+BLOCKFROST_MAINNET_PROJECT_ID = "mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu"
+PORT = "${{PORT}}"
+NODE_ENV = "production"

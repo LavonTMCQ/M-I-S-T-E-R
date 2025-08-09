@@ -314,54 +314,53 @@ export function ManualTradingInterface({
   };
 
   return (
-    <Card className="w-full bg-gradient-to-br from-card via-card to-card/95 border shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-primary/3 via-primary/5 to-primary/3 border-b p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-primary/12 rounded-lg shadow-sm">
-              <DollarSign className="h-5 w-5 text-primary" />
+    <Card className="w-full h-full bg-gradient-to-br from-card via-card to-card/95 border shadow-lg">
+      <CardHeader className="bg-gradient-to-r from-primary/3 via-primary/5 to-primary/3 border-b p-2">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1.5">
+            <div className="p-1 bg-primary/12 rounded shadow-sm">
+              <DollarSign className="h-3 w-3 text-primary" />
             </div>
-            <div>
-              <CardTitle className="text-lg font-bold text-foreground mb-0.5">
-                Manual Trading
-              </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Professional Trading Interface
-              </CardDescription>
-            </div>
+            <CardTitle className="text-sm font-bold text-foreground">
+              Manual Trading
+            </CardTitle>
           </div>
-          <Badge variant="outline" className="bg-primary/8 border-primary/25 text-primary text-xs px-2 py-1">
+          <Badge variant="outline" className="bg-primary/8 border-primary/25 text-primary text-xs px-1.5 py-0.5">
             {walletType}
           </Badge>
         </div>
 
-        <div className="flex items-center justify-between pt-3 border-t border-primary/8">
-          <div className="text-xs text-muted-foreground">Available Balance</div>
-          <div className="text-right">
-            <div className="text-lg font-bold text-primary">{balance.toFixed(2)} ADA</div>
-            <div className="text-xs text-muted-foreground">${(balance * currentPrice).toFixed(2)} USD</div>
+        <div className="pt-1.5 border-t border-primary/8">
+          <div className="text-center mb-1">
+            <div className="text-sm font-bold text-primary">Balance</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm font-bold text-primary">{balance.toFixed(2)} ADA</div>
+            <div className="text-xs text-muted-foreground">${(balance * currentPrice).toFixed(2)}</div>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4 p-4">
-        {/* Enhanced Trading Form */}
-        <form onSubmit={handleTradeSubmit} className="space-y-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Target className="h-4 w-4 text-primary" />
-            <span className="font-medium text-sm">Trading Parameters</span>
+      <CardContent className="flex-1 p-2 overflow-hidden">
+        {/* Compact Trading Form */}
+        <form onSubmit={handleTradeSubmit} className="space-y-2">
+          <div className="text-center mb-2 py-1.5 bg-gradient-to-r from-primary/5 to-primary/10 rounded-md border border-primary/20">
+            <div className="flex items-center justify-center gap-1.5">
+              <Target className="h-3 w-3 text-primary" />
+              <span className="font-semibold text-sm text-primary">Trading Parameters</span>
+            </div>
           </div>
 
-          {/* Side Selection Only */}
-          <div className="space-y-1.5">
-            <Label htmlFor="side" className="text-sm font-medium">Position Side</Label>
+          {/* Side Selection */}
+          <div className="space-y-1">
+            <Label htmlFor="side" className="text-xs font-medium">Position Side</Label>
             <Select
               value={tradeForm.side}
               onValueChange={(value: 'Long' | 'Short') =>
                 setTradeForm({...tradeForm, side: value})
               }
             >
-              <SelectTrigger className={`bg-background/50 border-2 transition-colors ${
+              <SelectTrigger className={`bg-background/50 border h-8 text-sm transition-colors ${
                 tradeForm.side === 'Long'
                   ? 'border-green-500/50 hover:border-green-500'
                   : 'border-red-500/50 hover:border-red-500'
@@ -371,47 +370,35 @@ export function ManualTradingInterface({
               <SelectContent>
                 <SelectItem value="Long">
                   <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-green-500" />
-                    <span className="font-medium">Long</span>
+                    <TrendingUp className="h-3 w-3 text-green-500" />
+                    <span className="font-medium text-xs">Long</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="Short">
                   <div className="flex items-center gap-2">
-                    <TrendingDown className="h-4 w-4 text-red-500" />
-                    <span className="font-medium">Short</span>
+                    <TrendingDown className="h-3 w-3 text-red-500" />
+                    <span className="font-medium text-xs">Short</span>
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Trading Pair */}
-          <div className="space-y-1.5">
-            <Label htmlFor="pair" className="text-sm font-medium">Trading Pair</Label>
-            <Select
-              value={tradeForm.pair}
-              onValueChange={(value) => setTradeForm({...tradeForm, pair: value})}
-            >
-              <SelectTrigger className="bg-background/50 border-2 hover:border-primary/50 transition-colors">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ADA/USD">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">₳</span>
-                    </div>
-                    <span className="font-medium">ADA/USD</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Trading Pair - Simplified */}
+          <div className="space-y-1">
+            <Label htmlFor="pair" className="text-xs font-medium">Trading Pair</Label>
+            <div className="bg-background/50 border rounded-md px-2 py-1.5 h-8 flex items-center">
+              <div className="w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center mr-1.5">
+                <span className="text-white text-xs font-bold">₳</span>
+              </div>
+              <span className="text-xs font-medium">ADA/USD</span>
+            </div>
           </div>
 
-          {/* Size & Leverage */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="size" className="text-sm font-medium">Size (ADA)</Label>
+          {/* Size & Leverage - Compact Grid */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="space-y-1">
+              <Label htmlFor="size" className="text-xs font-medium">Size (ADA)</Label>
               <Input
                 id="size"
                 type="number"
@@ -421,65 +408,38 @@ export function ManualTradingInterface({
                 min="0"
                 max={balance}
                 step="0.01"
-                className="bg-background/50 border-2 hover:border-primary/50 focus:border-primary transition-colors"
+                className="bg-background/50 h-8 text-sm"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="leverage" className="text-sm font-medium">Leverage</Label>
+            <div className="space-y-1">
+              <Label htmlFor="leverage" className="text-xs font-medium">Leverage</Label>
               <Select
                 value={tradeForm.leverage}
                 onValueChange={(value) => setTradeForm({...tradeForm, leverage: value})}
               >
-                <SelectTrigger className="bg-background/50 border-2 hover:border-primary/50 transition-colors">
+                <SelectTrigger className="bg-background/50 h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">
-                    <span className="font-medium">1x</span>
-                  </SelectItem>
-                  <SelectItem value="1.1">
-                    <span className="font-medium">1.1x</span>
-                  </SelectItem>
-                  <SelectItem value="1.3">
-                    <span className="font-medium">1.3x</span>
-                  </SelectItem>
-                  <SelectItem value="2">
-                    <span className="font-medium">2x</span>
-                  </SelectItem>
-                  <SelectItem value="2.5">
-                    <span className="font-medium">2.5x</span>
-                  </SelectItem>
-                  <SelectItem value="3">
-                    <span className="font-medium">3x</span>
-                  </SelectItem>
-                  <SelectItem value="5">
-                    <span className="font-medium">5x</span>
-                  </SelectItem>
-                  <SelectItem value="7">
-                    <span className="font-medium text-orange-500">7x</span>
-                  </SelectItem>
-                  <SelectItem value="9">
-                    <span className="font-medium text-orange-500">9x</span>
-                  </SelectItem>
-                  <SelectItem value="10">
-                    <span className="font-medium text-orange-500">10x</span>
-                  </SelectItem>
-                  <SelectItem value="12">
-                    <span className="font-medium text-red-500">12x</span>
-                  </SelectItem>
-                  <SelectItem value="15">
-                    <span className="font-medium text-red-500">15x</span>
-                  </SelectItem>
+                  <SelectItem value="1"><span className="text-xs">1x</span></SelectItem>
+                  <SelectItem value="1.1"><span className="text-xs">1.1x</span></SelectItem>
+                  <SelectItem value="1.3"><span className="text-xs">1.3x</span></SelectItem>
+                  <SelectItem value="2"><span className="text-xs">2x</span></SelectItem>
+                  <SelectItem value="2.5"><span className="text-xs">2.5x</span></SelectItem>
+                  <SelectItem value="3"><span className="text-xs">3x</span></SelectItem>
+                  <SelectItem value="5"><span className="text-xs text-orange-500">5x</span></SelectItem>
+                  <SelectItem value="7"><span className="text-xs text-orange-500">7x</span></SelectItem>
+                  <SelectItem value="10"><span className="text-xs text-red-500">10x</span></SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {/* Stop Loss & Take Profit */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="stopLoss" className="text-sm font-medium text-red-600">Stop Loss ($)</Label>
+          {/* Stop Loss & Take Profit - Compact */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="space-y-1">
+              <Label htmlFor="stopLoss" className="text-xs font-medium text-red-600">Stop Loss ($)</Label>
               <Input
                 id="stopLoss"
                 type="number"
@@ -487,12 +447,12 @@ export function ManualTradingInterface({
                 value={tradeForm.stopLoss}
                 onChange={(e) => setTradeForm({...tradeForm, stopLoss: e.target.value})}
                 step="0.0001"
-                className="bg-background/50 border-2 hover:border-red-500/50 focus:border-red-500 transition-colors"
+                className="bg-background/50 h-8 text-sm"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="takeProfit" className="text-sm font-medium text-green-600">Take Profit ($)</Label>
+            <div className="space-y-1">
+              <Label htmlFor="takeProfit" className="text-xs font-medium text-green-600">Take Profit ($)</Label>
               <Input
                 id="takeProfit"
                 type="number"
@@ -500,75 +460,41 @@ export function ManualTradingInterface({
                 value={tradeForm.takeProfit}
                 onChange={(e) => setTradeForm({...tradeForm, takeProfit: e.target.value})}
                 step="0.0001"
-                className="bg-background/50 border-2 hover:border-green-500/50 focus:border-green-500 transition-colors"
+                className="bg-background/50 h-8 text-sm"
               />
             </div>
           </div>
 
-          {/* Enhanced Trade Summary */}
-          {tradeSize > 0 && (
-            <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-4 rounded-xl border-2 border-primary/20 space-y-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Activity className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-sm">Trade Summary</span>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center p-2 bg-background/30 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Position Value:</span>
-                  <span className="font-bold text-primary">{positionValue.toFixed(2)} ADA</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-background/30 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Liquidation Price:</span>
-                  <span className="font-bold text-orange-500">${liquidationPrice.toFixed(4)}</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-background/30 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Est. Open Fee:</span>
-                  <span className="font-bold">{(tradeSize * leverage * 0.001).toFixed(4)} ADA</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-background/30 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Batcher Fee:</span>
-                  <span className="font-bold">1.5 ADA</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-background/30 rounded-lg border-t border-primary/20">
-                  <span className="text-sm text-muted-foreground font-semibold">Total Fees:</span>
-                  <span className="font-bold text-primary">{((tradeSize * leverage * 0.001) + 1.5).toFixed(4)} ADA</span>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Minimal Risk Warning */}
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-50/50 dark:bg-yellow-900/10 rounded-lg border border-yellow-200/50 dark:border-yellow-800/30">
-            <AlertTriangle className="h-3 w-3 text-yellow-600 flex-shrink-0" />
-            <p className="text-xs text-yellow-700 dark:text-yellow-300">
-              Beta - Leveraged trading involves risk
-            </p>
+          <div className="flex items-center gap-1 px-1.5 py-1 bg-yellow-50/50 dark:bg-yellow-900/10 rounded border border-yellow-200/50 dark:border-yellow-800/30">
+            <AlertTriangle className="h-2.5 w-2.5 text-yellow-600 flex-shrink-0" />
+            <p className="text-xs text-yellow-700 dark:text-yellow-300">Beta - Risk involved</p>
           </div>
 
-          {/* Enhanced Submit Button */}
+          {/* Compact Submit Button */}
           <Button
             type="submit"
-            className={`w-full h-12 text-base font-semibold transition-all duration-200 ${
+            className={`w-full h-8 text-xs font-semibold transition-all duration-200 ${
               tradeForm.side === 'Long'
-                ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-green-500/25'
-                : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg hover:shadow-red-500/25'
+                ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
+                : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
             }`}
             disabled={isExecuting || !tradeSize || tradeSize <= 0}
           >
             {isExecuting ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Executing Trade...
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Executing...
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 {tradeForm.side === 'Long' ? (
-                  <TrendingUp className="h-5 w-5" />
+                  <TrendingUp className="h-3 w-3" />
                 ) : (
-                  <TrendingDown className="h-5 w-5" />
+                  <TrendingDown className="h-3 w-3" />
                 )}
-                {`Open ${tradeForm.side} Position`}
+                {`Open ${tradeForm.side}`}
               </div>
             )}
           </Button>

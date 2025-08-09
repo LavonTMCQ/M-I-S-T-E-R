@@ -313,159 +313,90 @@ export function PositionsSummary() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Positions ({positions.length})
+      <CardHeader className="pb-2">
+        <div className="text-center py-1.5 bg-gradient-to-r from-primary/5 to-primary/10 rounded-md border border-primary/20">
+          <div className="flex items-center justify-center gap-1.5">
+            <DollarSign className="h-3 w-3 text-primary" />
+            <span className="font-semibold text-sm text-primary">Positions ({positions.length})</span>
           </div>
-          {positions.length > 0 && (
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
+          {positions.length > 0 && totalPnL !== 0 && (
+            <div className={`text-xs font-bold mt-1 ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(1)} P&L
+            </div>
           )}
-        </CardTitle>
+        </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
-        {/* Total P&L Summary */}
-        {positions.length > 0 && (
-          <>
-            <div className="p-3 bg-muted/50 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Total P&L</span>
-                <div className={`text-right ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  <div className="font-medium">
-                    {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
-                  </div>
-                  <div className="text-xs">
-                    {totalPnLPercent >= 0 ? '+' : ''}{totalPnLPercent.toFixed(2)}%
-                  </div>
-                </div>
-              </div>
-            </div>
-            <Separator />
-          </>
-        )}
-
+      <CardContent className="pt-0 space-y-2">
         {/* Positions List */}
         {positions.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-muted-foreground mb-2">No open positions</div>
-            <div className="text-sm text-muted-foreground">
-              Execute your first trade to see positions here
-            </div>
+          <div className="text-center py-4">
+            <div className="text-xs text-muted-foreground">No open positions</div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2 max-h-32 overflow-y-auto">
             {positions.map((position) => (
-              <div key={position.id} className="border rounded-lg p-3 space-y-3">
-                {/* Position Header */}
+              <div key={position.id} className="border rounded p-2 space-y-1">
+                {/* Compact Position Header */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <Badge 
                       variant={position.side === 'Long' ? 'default' : 'destructive'}
-                      className="flex items-center gap-1"
+                      className="text-xs px-1 py-0 h-4"
                     >
                       {position.side === 'Long' ? (
-                        <TrendingUp className="h-3 w-3" />
+                        <TrendingUp className="h-2 w-2 mr-0.5" />
                       ) : (
-                        <TrendingDown className="h-3 w-3" />
+                        <TrendingDown className="h-2 w-2 mr-0.5" />
                       )}
                       {position.side}
                     </Badge>
-                    <span className="font-medium">{position.pair}</span>
-                    <Badge variant="outline">{position.leverage}x</Badge>
+                    <span className="text-xs font-medium">{position.pair}</span>
+                    <Badge variant="outline" className="text-xs px-1 py-0 h-4">{position.leverage}x</Badge>
                   </div>
                   
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={() => handleClosePosition(position.id)}
-                    className="h-6 w-6 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/20"
+                    className="h-5 w-5 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/20"
                     title="Close Position"
                   >
                     <X className="h-3 w-3" />
                   </Button>
                 </div>
 
-                {/* Position Details */}
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                {/* Compact Position Details */}
+                <div className="grid grid-cols-3 gap-1 text-xs">
                   <div>
                     <div className="text-muted-foreground">Size</div>
-                    <div className="font-medium">{position.size.toFixed(2)} ADA</div>
+                    <div className="font-medium">{position.size.toFixed(0)} ADA</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Entry</div>
-                    <div className="font-medium">${position.entryPrice.toFixed(4)}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground">Current</div>
-                    <div className="font-medium">${position.currentPrice.toFixed(4)}</div>
+                    <div className="font-medium">${position.entryPrice.toFixed(3)}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">P&L</div>
                     <div className={`font-medium ${position.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {position.pnl >= 0 ? '+' : ''}${position.pnl.toFixed(2)}
+                      {position.pnl >= 0 ? '+' : ''}${position.pnl.toFixed(1)}
                     </div>
                   </div>
                 </div>
 
-                {/* Risk Management */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Liquidation</span>
-                    <span className="text-red-500">${position.liquidationPrice.toFixed(4)}</span>
-                  </div>
-                  
-                  {position.stopLoss && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Stop Loss</span>
-                      <span className="text-orange-500">${position.stopLoss.toFixed(4)}</span>
-                    </div>
-                  )}
-                  
-                  {position.takeProfit && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Take Profit</span>
-                      <span className="text-green-500">${position.takeProfit.toFixed(4)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Enhanced Position Actions */}
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="flex-1">
-                    Modify
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
-                    onClick={() => handleClosePosition(position.id)}
-                  >
-                    <X className="h-3 w-3 mr-1" />
-                    Close Position
-                  </Button>
-                </div>
+                {/* Single Close Button */}
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="w-full h-6 text-xs bg-red-500 hover:bg-red-600"
+                  onClick={() => handleClosePosition(position.id)}
+                >
+                  <X className="h-2 w-2 mr-1" />
+                  Close
+                </Button>
               </div>
             ))}
           </div>
-        )}
-
-        {/* Quick Actions */}
-        {positions.length > 0 && (
-          <>
-            <Separator />
-            <div className="space-y-2">
-              <Button variant="outline" size="sm" className="w-full">
-                Close All Positions
-              </Button>
-              <Button variant="outline" size="sm" className="w-full">
-                Set Stop Loss for All
-              </Button>
-            </div>
-          </>
         )}
       </CardContent>
     </Card>

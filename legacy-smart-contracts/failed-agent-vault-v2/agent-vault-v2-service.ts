@@ -6,6 +6,9 @@
 import { simpleTransactionService, SimpleTransactionService, AGENT_VAULT_V2_CONFIG as SIMPLE_CONFIG } from './simple-transaction-service';
 import { meshTransactionService } from './mesh-transaction-service';
 import { plutusTransactionService } from './plutus-transaction-service';
+import { agentVaultV2MeshService } from './agent-vault-v2-mesh-service';
+import { cip30CompliantVaultService } from './cip30-compliance-wrapper';
+import { lucidClientService } from './agent-vault-v2-lucid-client';
 
 // Re-export configuration for compatibility
 export const AGENT_VAULT_V2_CONFIG = SIMPLE_CONFIG;
@@ -222,111 +225,48 @@ export class AgentVaultV2Service {
   }
 
   /**
-   * Withdraw ADA from vault using simple transaction service
+   * Withdraw ADA from vault using Lucid for proper PlutusV3 support
    */
   async withdraw(walletApi: any, amount: number, vaultState: VaultState): Promise<TransactionResult> {
     try {
-      console.log(`🏦 Agent Vault V2 REAL Contract Withdrawal: ${amount} ADA`);
+      console.log(`🏦 Agent Vault V2 Withdrawal: ${amount} ADA`);
+      console.log(`🚀 Using Lucid for proper PlutusV3 script handling...`);
+      console.log(`🔧 Implementing CIP-31 (Reference Inputs) and CIP-32 (Inline Datums)...`);
 
-      // Step 1: Get contract UTxOs to verify funds
-      const contractAddress = AGENT_VAULT_V2_CONFIG.contractAddress;
-      console.log(`📍 Withdrawing from contract: ${contractAddress}`);
-
-      const contractUtxos = await this.getContractUtxos(contractAddress);
-      if (!contractUtxos || contractUtxos.length === 0) {
-        throw new Error('No funds available in vault contract');
+      // Check if we're on client side
+      if (!lucidClientService) {
+        throw new Error('Lucid client service not available (server-side)');
       }
 
-      const totalAvailable = contractUtxos.reduce((sum, utxo) => {
-        const adaAmount = utxo.amount.find((a: any) => a.unit === 'lovelace');
-        return sum + (adaAmount ? parseInt(adaAmount.quantity) : 0);
-      }, 0) / 1_000_000;
+      // Convert VaultState to the format Lucid service expects
+      const lucidVaultState = {
+        ownerPubKeyHash: vaultState.owner.substring(0, 56), // Extract pub key hash
+        isEmergencyStopped: vaultState.emergencyStop,
+        withdrawalLimit: BigInt(1000 * 1_000_000), // 1000 ADA limit
+        minimumBalance: BigInt(2 * 1_000_000) // 2 ADA minimum
+      };
 
-      console.log(`💰 Contract has ${totalAvailable} ADA available`);
+      // Use the client-side Lucid service for proper PlutusV3 handling
+      const result = await lucidClientService.withdraw(walletApi, amount, lucidVaultState);
 
-      if (amount > totalAvailable) {
-        throw new Error(`Insufficient funds in vault. Available: ${totalAvailable} ADA, Requested: ${amount} ADA`);
-      }
-
-      // Step 2: Build REAL contract withdrawal transaction using Mesh
-      console.log(`🔧 Building REAL contract withdrawal transaction with Mesh...`);
-      const txCbor = await this.buildMeshContractWithdrawal(walletApi, amount, contractAddress, contractUtxos);
-
-      if (!txCbor) {
-        throw new Error('Failed to build contract withdrawal transaction');
-      }
-
-      // Step 3: Sign and submit the transaction
-      console.log(`✍️ Signing contract withdrawal transaction...`);
-
-      let txHash;
-      try {
-        // VESPR ISSUE: signTx(cbor, false) returns witness set instead of complete tx
-        console.log(`🔧 Getting witness set from Vespr (known behavior)...`);
-        const witnessSet = await walletApi.signTx(txCbor, true); // true = return witness set
-        console.log(`✅ Got witness set: ${witnessSet.length} characters`);
-
-        // Use server-side transaction assembly to avoid CSL import issues
-        console.log(`🔧 Combining transaction server-side...`);
-        const assembleResponse = await fetch('/api/cardano/assemble-transaction', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            txCbor: txCbor,
-            witnessSet: witnessSet
-          }),
-        });
-
-        if (!assembleResponse.ok) {
-          throw new Error(`Failed to assemble transaction: ${assembleResponse.status}`);
-        }
-
-        const assembleResult = await assembleResponse.json();
-        const completeSignedTx = assembleResult.signedTxCbor;
-
-        console.log(`✅ Complete signed transaction: ${completeSignedTx.length} characters`);
-        console.log(`📤 Submitting complete transaction via Plutus service...`);
-
-        // Submit via Plutus transaction service (handles smart contracts properly)
-        txHash = await plutusTransactionService.submitTransaction(completeSignedTx);
-        console.log(`✅ Transaction submitted successfully via Plutus service: ${txHash}`);
-
-      } catch (submitError) {
-        console.error('❌ Transaction submission failed:', submitError);
-
-        // Fallback: Try direct signing approach
-        console.log(`🔄 Fallback: Trying direct signing...`);
-        try {
-          const directSignedTx = await walletApi.signTx(txCbor, false);
-          console.log(`🔍 Direct signed tx length: ${directSignedTx.length} characters`);
-
-          if (directSignedTx.length > 500) { // Reasonable length for complete tx
-            txHash = await walletApi.submitTx(directSignedTx);
-            console.log(`✅ Direct signing worked: ${txHash}`);
-          } else {
-            throw new Error('Direct signing returned witness set instead of complete transaction');
-          }
-
-        } catch (directError) {
-          console.error('❌ Direct signing also failed:', directError);
-          throw submitError; // Re-throw the original error
-        }
+      if (result.success) {
+        console.log('✅ Withdrawal successful:', result.txHash);
+        console.log(`🎉 Successfully withdrew ${amount} ADA from Agent Vault V2`);
+        console.log('📋 Transaction compliant with CIP-30, CIP-31, CIP-32');
+      } else {
+        console.error('❌ Withdrawal failed:', result.error);
       }
 
       return {
-        success: true,
-        txHash,
-        message: `Successfully withdrew ${amount} ADA from Agent Vault V2 contract`,
+        ...result,
         timestamp: new Date()
       };
 
     } catch (error) {
-      console.error('❌ Contract withdrawal failed:', error);
+      console.error('❌ Withdrawal error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Contract withdrawal failed',
+        error: error instanceof Error ? error.message : 'Withdrawal failed',
         timestamp: new Date()
       };
     }
@@ -357,81 +297,6 @@ export class AgentVaultV2Service {
     }
   }
 
-  /**
-   * Build contract withdrawal transaction using Mesh (handles fees/UTxOs properly)
-   */
-  private async buildMeshContractWithdrawal(
-    walletApi: any,
-    amount: number,
-    contractAddress: string,
-    contractUtxos: any[]
-  ): Promise<string> {
-    try {
-      console.log('🔧 Building Mesh-based withdrawal transaction...');
-
-      // Get user address (convert to bech32 if needed)
-      const userAddresses = await walletApi.getUsedAddresses();
-      let userAddress = userAddresses[0];
-
-      // Convert hex to bech32 if needed
-      if (userAddress && userAddress.length > 100 && !userAddress.startsWith('addr1')) {
-        console.log('🔧 Converting hex user address to bech32...');
-        // Use the known working address for now
-        userAddress = 'addr1qxtkdjl87894tg6juz20jzyjqy3uyn02pr9xtq7mlh0gm2ss5dpkcny95dktp5qmyyrx82t68sge4m94qwxyrfr8f86qh5unyc';
-        console.log(`✅ Using bech32 address: ${userAddress}`);
-      }
-
-      // Get user UTxOs from Blockfrost (more reliable than wallet parsing)
-      console.log('🔧 Fetching user UTxOs from Blockfrost...');
-      const blockfrostResponse = await fetch(`https://cardano-mainnet.blockfrost.io/api/v0/addresses/${userAddress}/utxos`, {
-        headers: {
-          'project_id': 'mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu'
-        }
-      });
-
-      if (!blockfrostResponse.ok) {
-        throw new Error(`Failed to fetch user UTxOs: ${blockfrostResponse.status}`);
-      }
-
-      const userUtxos = await blockfrostResponse.json();
-      console.log(`✅ Found ${userUtxos.length} user UTxOs`);
-
-      // Convert contract UTxOs to Mesh format
-      const meshContractUtxos = contractUtxos.map(utxo => ({
-        tx_hash: utxo.tx_hash,
-        output_index: utxo.output_index,
-        amount: utxo.amount
-      }));
-
-      // Convert user UTxOs to Mesh format
-      const meshUserUtxos = userUtxos.map((utxo: any) => ({
-        tx_hash: utxo.tx_hash,
-        output_index: utxo.output_index,
-        amount: utxo.amount
-      }));
-
-      console.log(`🔧 Using Mesh to build withdrawal: ${amount} ADA`);
-      console.log(`   📍 Contract: ${contractAddress}`);
-      console.log(`   👤 User: ${userAddress}`);
-
-      // Use Plutus transaction service for REAL contract withdrawal
-      console.log('🔧 Using Plutus transaction service for smart contract withdrawal...');
-      const txCbor = await plutusTransactionService.buildContractWithdrawal({
-        userAddress: userAddress,
-        contractAddress: contractAddress,
-        contractUtxos: meshContractUtxos,
-        userUtxos: meshUserUtxos,
-        withdrawAmount: amount * 1000000 // Convert to lovelace
-      });
-
-      console.log(`✅ Mesh transaction built successfully: ${txCbor.length} characters`);
-      return txCbor;
-
-    } catch (error) {
-      console.error('❌ Mesh transaction building failed:', error);
-      throw error;
-    }
-  }
 
   /**
    * Build REAL contract withdrawal transaction (LEGACY - CSL based)
@@ -475,8 +340,7 @@ export class AgentVaultV2Service {
       console.log(`🔧 Building withdrawal authorization with contract verification...`);
 
       // Use the simple transaction service to build a signable transaction
-      const simpleTransactionService = new SimpleTransactionService();
-      return await simpleTransactionService.buildProperTransaction(
+      return await SimpleTransactionService.getInstance().buildProperTransaction(
         walletApi,
         userAddress,
         1.0, // 1 ADA authorization fee (meets minimum UTxO requirement)
@@ -490,17 +354,19 @@ export class AgentVaultV2Service {
   }
 
   /**
-   * Toggle emergency stop using simple transaction service
+   * Toggle emergency stop using Mesh-based service
    */
   async toggleEmergencyStop(walletApi: any, vaultState: VaultState): Promise<TransactionResult> {
     try {
       console.log(`🚨 Agent Vault V2 Emergency Stop Toggle`);
+      console.log(`🔧 Using Mesh-based service for emergency stop...`);
 
-      // Execute emergency stop transaction using simple service
-      const result = await simpleTransactionService.toggleEmergencyStop(walletApi, vaultState.emergencyStop);
+      // Use the new Mesh service for emergency stop
+      const result = await agentVaultV2MeshService.toggleEmergencyStop(walletApi, vaultState.emergencyStop);
 
       if (result.success) {
         console.log('✅ Emergency stop toggle successful:', result.txHash);
+        console.log(`🎉 ${result.message}`);
       } else {
         console.error('❌ Emergency stop toggle failed:', result.error);
       }

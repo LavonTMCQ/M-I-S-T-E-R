@@ -205,7 +205,7 @@ export default function EnhancedTradingInterface() {
               walletAddress="addr1..."
               walletType="connected"
               balance={100}
-              currentPrice={0.47}
+              currentPrice={0.80}
             />
           </div>
         ) : (
