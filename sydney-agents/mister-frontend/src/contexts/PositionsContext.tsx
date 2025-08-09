@@ -33,6 +33,12 @@ const PositionsContext = createContext<PositionsContextType | undefined>(undefin
 let globalInterval: NodeJS.Timeout | null = null;
 let priceInterval: NodeJS.Timeout | null = null;
 let contextInstanceCount = 0;
+let lastPositionsFetch = 0;
+let lastPriceFetch = 0;
+let isCurrentlyFetching = false;
+let isCurrentlyFetchingPrice = false;
+const MIN_POSITIONS_INTERVAL = 30000; // Minimum 30 seconds between position calls
+const MIN_PRICE_INTERVAL = 30000; // Minimum 30 seconds between price calls
 
 export function PositionsProvider({ children }: { children: React.ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([]);
@@ -41,9 +47,17 @@ export function PositionsProvider({ children }: { children: React.ReactNode }) {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { mainWallet } = useWallet();
 
-  // Fetch current market price
+  // Fetch current market price with rate limiting
   const fetchMarketData = async () => {
+    const now = Date.now();
+    if (now - lastPriceFetch < MIN_PRICE_INTERVAL || isCurrentlyFetchingPrice) {
+      console.log('⚡ [SHARED] Skipping price fetch due to rate limiting or in progress');
+      return;
+    }
+    
     try {
+      isCurrentlyFetchingPrice = true;
+      lastPriceFetch = now;
       const response = await fetch('/api/market-data');
       const result = await response.json();
       if (result.success && result.data) {
@@ -52,10 +66,18 @@ export function PositionsProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('❌ [SHARED] Failed to fetch market data:', error);
+    } finally {
+      isCurrentlyFetchingPrice = false;
     }
   };
 
   const fetchPositions = async () => {
+    const now = Date.now();
+    if (now - lastPositionsFetch < MIN_POSITIONS_INTERVAL || isCurrentlyFetching) {
+      console.log('⚡ [SHARED] Skipping positions fetch due to rate limiting or in progress');
+      return;
+    }
+    
     try {
       if (!mainWallet?.address) {
         console.log('⚠️ [SHARED] No wallet address available for fetching positions');
@@ -63,6 +85,8 @@ export function PositionsProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      isCurrentlyFetching = true;
+      lastPositionsFetch = now;
       console.log('📊 [SHARED] Fetching positions from Strike Finance...');
 
       // Fetch real positions from Strike Finance via local Next.js API route (avoids CORS)
@@ -126,6 +150,7 @@ export function PositionsProvider({ children }: { children: React.ReactNode }) {
       // Show empty state on error
       setPositions([]);
     } finally {
+      isCurrentlyFetching = false;
       setIsLoading(false);
       setLastUpdated(new Date());
     }
@@ -137,29 +162,39 @@ export function PositionsProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Prevent execution during SSR
+    if (typeof window === 'undefined') return;
+    
     contextInstanceCount++;
     console.log(`📊 [SHARED] PositionsProvider instance ${contextInstanceCount} mounted`);
 
     if (mainWallet?.address) {
-      // Initial fetch
-      fetchPositions();
-      fetchMarketData();
+      // Small delay to prevent hydration issues
+      const initTimeout = setTimeout(() => {
+        // Initial fetch
+        fetchPositions();
+        fetchMarketData();
 
-      // Clear any existing intervals to prevent duplicates
-      if (globalInterval) {
-        clearInterval(globalInterval);
-        console.log('🔄 [SHARED] Cleared existing positions interval');
-      }
-      if (priceInterval) {
-        clearInterval(priceInterval);
-        console.log('🔄 [SHARED] Cleared existing price interval');
-      }
+        // Clear any existing intervals to prevent duplicates
+        if (globalInterval) {
+          clearInterval(globalInterval);
+          console.log('🔄 [SHARED] Cleared existing positions interval');
+        }
+        if (priceInterval) {
+          clearInterval(priceInterval);
+          console.log('🔄 [SHARED] Cleared existing price interval');
+        }
 
-      // Set up new intervals (singleton approach)
-      globalInterval = setInterval(fetchPositions, 300000); // Update positions every 5 minutes
-      priceInterval = setInterval(fetchMarketData, 60000); // Update price every 1 minute
+        // Set up new intervals (singleton approach)
+        globalInterval = setInterval(fetchPositions, 300000); // Update positions every 5 minutes
+        priceInterval = setInterval(fetchMarketData, 60000); // Update price every 1 minute
 
-      console.log('✅ [SHARED] Set up singleton intervals - positions: 5min, price: 1min');
+        console.log('✅ [SHARED] Set up singleton intervals - positions: 5min, price: 1min');
+      }, 100); // Small delay to prevent hydration mismatch
+
+      return () => {
+        clearTimeout(initTimeout);
+      };
     }
 
     // Cleanup function
