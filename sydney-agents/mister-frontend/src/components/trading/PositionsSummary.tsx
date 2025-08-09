@@ -68,8 +68,8 @@ export function PositionsSummary() {
         return;
       }
 
-      // Fetch real positions from Strike Finance via bridge server with wallet address
-      const response = await fetch(`https://bridge-server-cjs-production.up.railway.app/api/strike/positions?walletAddress=${encodeURIComponent(mainWallet.address)}`);
+      // Fetch real positions from Strike Finance via proxy
+      const response = await fetch(`https://friendly-reprieve-production.up.railway.app/api/strike/perpetuals/getPositions?address=${encodeURIComponent(mainWallet.address)}`);
       const data = await response.json();
 
       if (data.success && data.data && data.data.length > 0) {
