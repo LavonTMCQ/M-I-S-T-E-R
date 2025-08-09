@@ -138,29 +138,29 @@ export default function ComprehensiveStrikeTestPage() {
     }
 
     const result = await makeStrikeAPICall(
-      `/api/perpetuals/getPositions?address=${mainWallet.address}`,
+      `/perpetuals/getPositions?address=${mainWallet.address}`,
       'GET'
     );
     addTestResult(result);
   };
 
   const testGetOverallInfo = async () => {
-    const result = await makeStrikeAPICall('/api/perpetuals/getOverallInfo', 'GET');
+    const result = await makeStrikeAPICall('/perpetuals/getOverallInfo', 'GET');
     addTestResult(result);
   };
 
   const testGetPoolInfo = async () => {
-    const result = await makeStrikeAPICall('/api/perpetuals/getPoolInfo', 'GET');
+    const result = await makeStrikeAPICall('/perpetuals/getPoolInfo', 'GET');
     addTestResult(result);
   };
 
   const testGetPoolInfoV2 = async () => {
-    const result = await makeStrikeAPICall('/api/perpetuals/getPoolInfoV2', 'GET');
+    const result = await makeStrikeAPICall('/perpetuals/getPoolInfoV2', 'GET');
     addTestResult(result);
   };
 
   const testGetLPProfit = async () => {
-    const result = await makeStrikeAPICall('/api/perpetuals/getLPProfit', 'GET');
+    const result = await makeStrikeAPICall('/perpetuals/getLPProfit', 'GET');
     addTestResult(result);
   };
 
@@ -171,7 +171,7 @@ export default function ComprehensiveStrikeTestPage() {
     }
 
     const result = await makeStrikeAPICall(
-      `/api/perpetuals/getPerpetualHistory?address=${mainWallet.address}`,
+      `/perpetuals/getPerpetualHistory?address=${mainWallet.address}`,
       'GET'
     );
     addTestResult(result);
@@ -184,19 +184,19 @@ export default function ComprehensiveStrikeTestPage() {
     }
 
     const result = await makeStrikeAPICall(
-      `/api/perpetuals/getLiquidityHistoryTransactions?address=${mainWallet.address}`,
+      `/perpetuals/getLiquidityHistoryTransactions?address=${mainWallet.address}`,
       'GET'
     );
     addTestResult(result);
   };
 
   const testGetTradeHistory = async () => {
-    const result = await makeStrikeAPICall('/api/perpetuals/getTradeHistory', 'GET');
+    const result = await makeStrikeAPICall('/perpetuals/getTradeHistory', 'GET');
     addTestResult(result);
   };
 
   const testGetOpenOrders = async () => {
-    const result = await makeStrikeAPICall('/api/perpetuals/getOpenOrders', 'GET');
+    const result = await makeStrikeAPICall('/perpetuals/getOpenOrders', 'GET');
     addTestResult(result);
   };
 
@@ -223,7 +223,7 @@ export default function ComprehensiveStrikeTestPage() {
       }
     };
 
-    const result = await makeStrikeAPICall('/api/perpetuals/openPosition', 'POST', requestData);
+    const result = await makeStrikeAPICall('/perpetuals/openPosition', 'POST', requestData);
     addTestResult(result);
   };
 
@@ -249,7 +249,7 @@ export default function ComprehensiveStrikeTestPage() {
       }
     };
 
-    const result = await makeStrikeAPICall('/api/perpetuals/closePosition', 'POST', requestData);
+    const result = await makeStrikeAPICall('/perpetuals/closePosition', 'POST', requestData);
     addTestResult(result);
   };
 
@@ -276,7 +276,7 @@ export default function ComprehensiveStrikeTestPage() {
       }
     };
 
-    const result = await makeStrikeAPICall('/api/perpetuals/updatePosition', 'POST', requestData);
+    const result = await makeStrikeAPICall('/perpetuals/updatePosition', 'POST', requestData);
     addTestResult(result);
   };
 
@@ -297,7 +297,7 @@ export default function ComprehensiveStrikeTestPage() {
       }
     };
 
-    const result = await makeStrikeAPICall('/api/perpetuals/provideLiquidity', 'POST', requestData);
+    const result = await makeStrikeAPICall('/perpetuals/provideLiquidity', 'POST', requestData);
     addTestResult(result);
   };
 
@@ -318,7 +318,7 @@ export default function ComprehensiveStrikeTestPage() {
       }
     };
 
-    const result = await makeStrikeAPICall('/api/perpetuals/withdrawLiquidity', 'POST', requestData);
+    const result = await makeStrikeAPICall('/perpetuals/withdrawLiquidity', 'POST', requestData);
     addTestResult(result);
   };
 
