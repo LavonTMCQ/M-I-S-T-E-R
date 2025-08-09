@@ -74,13 +74,13 @@ export default function ComprehensiveStrikeTestPage() {
     };
 
     try {
-      const url = `https://app.strikefinance.org${endpoint}`;
+      // Use our Railway proxy instead of direct Strike Finance calls
+      const url = `https://friendly-reprieve-production.up.railway.app/api/strike${endpoint}`;
       const options: RequestInit = {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          'Accept': 'application/json'
         }
       };
 
