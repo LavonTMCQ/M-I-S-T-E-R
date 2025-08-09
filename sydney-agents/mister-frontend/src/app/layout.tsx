@@ -7,6 +7,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WalletProvider } from "@/contexts/WalletContext";
+import { PositionsProvider } from "@/contexts/PositionsContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -54,14 +55,16 @@ export default function RootLayout({
       >
         <ErrorBoundary>
           <WalletProvider>
-            <AuthProvider>
-              <Navigation />
-              <WalletHeader />
-              {children}
-              <div className="container mx-auto px-6 pb-8">
-                <Breadcrumbs />
-              </div>
-            </AuthProvider>
+            <PositionsProvider>
+              <AuthProvider>
+                <Navigation />
+                <WalletHeader />
+                {children}
+                <div className="container mx-auto px-6 pb-8">
+                  <Breadcrumbs />
+                </div>
+              </AuthProvider>
+            </PositionsProvider>
           </WalletProvider>
         </ErrorBoundary>
       </body>

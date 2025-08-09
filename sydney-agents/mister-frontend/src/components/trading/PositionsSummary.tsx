@@ -1,159 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { TrendingUp, TrendingDown, X, Settings, DollarSign } from 'lucide-react';
-import { useWallet } from '@/contexts/WalletContext';
-
-interface Position {
-  id: string;
-  side: 'Long' | 'Short';
-  pair: string;
-  size: number;
-  entryPrice: number;
-  currentPrice: number;
-  leverage: number;
-  pnl: number;
-  pnlPercent: number;
-  liquidationPrice: number;
-  stopLoss?: number;
-  takeProfit?: number;
-  timestamp: Date;
-}
+import { usePositions } from '@/contexts/PositionsContext';
 
 export function PositionsSummary() {
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentPrice, setCurrentPrice] = useState<number>(0.5883); // Default fallback
-  const { mainWallet } = useWallet();
-
-  // Fetch current market price
-  const fetchMarketData = async () => {
-    try {
-      const response = await fetch('/api/market-data');
-      const result = await response.json();
-      if (result.success && result.data) {
-        setCurrentPrice(result.data.price);
-        console.log('📊 Updated current ADA price:', result.data.price);
-      }
-    } catch (error) {
-      console.error('❌ Failed to fetch market data:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (mainWallet?.address) {
-      fetchPositions();
-      fetchMarketData(); // Fetch market data immediately
-      const positionsInterval = setInterval(fetchPositions, 300000); // Update positions every 5 minutes
-      const priceInterval = setInterval(fetchMarketData, 60000); // Update price every 1 minute
-      return () => {
-        clearInterval(positionsInterval);
-        clearInterval(priceInterval);
-      };
-    }
-  }, [mainWallet?.address]);
-
-  // Note: Removed price-triggered position fetching to reduce API calls
-  // P&L will be recalculated with the updated price on the next scheduled fetch
-
-  const fetchPositions = async () => {
-    try {
-      if (!mainWallet?.address) {
-        console.log('⚠️ No wallet address available for fetching positions');
-        setIsLoading(false);
-        return;
-      }
-
-      // Fetch real positions from Strike Finance via local Next.js API route (avoids CORS)
-      const response = await fetch(`/api/strike/positions?address=${encodeURIComponent(mainWallet.address)}`);
-      const data = await response.json();
-
-      if (data.success && data.data && data.data.length > 0) {
-        console.log('📊 Raw Strike Finance position data:', data.data);
-
-        // Convert Strike Finance positions to our format
-        const strikePositions: Position[] = data.data.map((pos: any, index: number) => {
-          // Strike Finance position structure based on API docs
-          const positionId = pos.outRef ? `${pos.outRef.txHash}_${pos.outRef.outputIndex}` : `pos_${Date.now()}_${index}`;
-          const collateralAmount = pos.collateral?.amount || 0;
-          const leverage = pos.leverage || 1;
-          const entryPrice = pos.entryPrice || 0;
-
-          // Use real-time current price from market data
-          const realCurrentPrice = currentPrice; // Use state value from market data API
-
-          // FIXED P&L calculation - use Strike Finance API position size directly
-          const positionSize = pos.positionSize || (collateralAmount * leverage);
-
-          // Calculate price difference correctly
-          const priceDiff = pos.position === 'Long'
-            ? (realCurrentPrice - entryPrice)
-            : (entryPrice - realCurrentPrice);
-
-          // Calculate P&L - this should be the profit/loss in USD
-          const pnlRaw = priceDiff * positionSize;
-
-          // Calculate percentage based on collateral invested
-          const collateralValueUSD = collateralAmount * entryPrice;
-          const pnlPercent = collateralValueUSD > 0 ? (pnlRaw / collateralValueUSD) * 100 : 0;
-
-          // Enhanced debugging for P&L calculation
-          console.log(`🔍 P&L Debug - Position ${index + 1}:`, {
-            positionId,
-            side: pos.position,
-            collateralAmount,
-            leverage,
-            positionSize,
-            entryPrice,
-            currentPrice: realCurrentPrice,
-            priceDiff,
-            pnlRaw,
-            pnlPercent,
-            collateralValueUSD,
-            calculation: {
-              formula: pos.position === 'Long' ? '(current - entry) * size' : '(entry - current) * size',
-              step1: `(${pos.position === 'Long' ? realCurrentPrice : entryPrice} - ${pos.position === 'Long' ? entryPrice : realCurrentPrice})`,
-              step2: `${priceDiff} * ${positionSize}`,
-              result: `$${pnlRaw.toFixed(2)}`
-            },
-            timestamp: new Date().toISOString()
-          });
-
-          return {
-            id: positionId,
-            side: pos.position || 'Long', // Strike Finance uses 'position' field
-            pair: 'ADA/USD',
-            size: positionSize, // Use correct position size from API
-            entryPrice: entryPrice,
-            currentPrice: realCurrentPrice, // Use real-time price
-            leverage: leverage,
-            pnl: pnlRaw,
-            pnlPercent: pnlPercent,
-            liquidationPrice: pos.liquidationPrice || 0,
-            stopLoss: pos.stopLoss,
-            takeProfit: pos.takeProfit,
-            timestamp: new Date(pos.enteredPositionTime || Date.now())
-          };
-        });
-
-        console.log('✅ Converted positions:', strikePositions);
-        setPositions(strikePositions);
-      } else {
-        console.log('📭 No positions found or empty data');
-        setPositions([]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch positions:', error);
-      // Show empty state on error
-      setPositions([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { positions, isLoading, refreshPositions } = usePositions();
 
   const handleClosePosition = async (positionId: string) => {
     try {
@@ -274,11 +130,11 @@ export function PositionsSummary() {
         console.log('✅ Close position transaction submitted server-side! Hash:', submissionResult.txHash);
 
         // Step 6: Refresh positions to show updated state
-        fetchPositions();
+        refreshPositions();
 
       } else {
         console.log('✅ Position closed successfully (no signing required):', result.data);
-        fetchPositions();
+        refreshPositions();
       }
     } catch (error) {
       console.error('❌ Failed to close position:', error);
