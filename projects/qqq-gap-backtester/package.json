@@ -1,0 +1,24 @@
+{
+  "name": "qqq-gap-backtester",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "QQQ Options Gap Fill Strategy Backtester",
+  "main": "src/index.js",
+  "scripts": {
+    "scan": "node src/index.js scan",
+    "monitor": "node src/index.js monitor",
+    "backtest": "node src/index.js backtest",
+    "free": "node src/index.js free",
+    "schedule": "node src/index.js schedule",
+    "test": "node src/index.js test"
+  },
+  "dependencies": {
+    "@mastra/core": "latest",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "node-cron": "^3.0.3",
+    "ws": "^8.16.0",
+    "csv-parser": "^3.0.0",
+    "moment": "^2.30.1"
+  }
+}

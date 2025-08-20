@@ -1,0 +1,289 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 142 76% 36%;
+    --primary-foreground: 355 100% 100%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 142 76% 36%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 142 70% 45%;
+    --primary-foreground: 144 100% 100%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 142 70% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Professional Trading Interface Styling */
+  .trading-font {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .profit-positive {
+    @apply text-green-500 dark:text-green-400;
+  }
+  
+  .profit-negative {
+    @apply text-red-500 dark:text-red-400;
+  }
+  
+  .profit-neutral {
+    @apply text-muted-foreground;
+  }
+  
+  /* Enhanced connection status */
+  .status-connected {
+    @apply text-green-500 bg-green-500/10 border-green-500/20;
+  }
+  
+  .status-disconnected {
+    @apply text-red-500 bg-red-500/10 border-red-500/20;
+  }
+  
+  .status-warning {
+    @apply text-yellow-500 bg-yellow-500/10 border-yellow-500/20;
+  }
+  
+  /* Market status styling */
+  .market-open {
+    @apply text-green-500 bg-green-500/10;
+  }
+  
+  .market-closed {
+    @apply text-slate-500 bg-slate-500/10;
+  }
+  
+  .market-pre {
+    @apply text-blue-500 bg-blue-500/10;
+  }
+  
+  .market-after {
+    @apply text-orange-500 bg-orange-500/10;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+  
+  /* Trading-specific animations */
+  @keyframes pulse-green {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  
+  @keyframes pulse-red {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  
+  .pulse-profit {
+    animation: pulse-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .pulse-loss {
+    animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  /* Status indicators with better visibility */
+  .status-dot {
+    @apply relative inline-flex h-3 w-3;
+  }
+  
+  .status-dot span {
+    @apply animate-ping absolute inline-flex h-full w-full rounded-full opacity-75;
+  }
+  
+  .status-dot.green span {
+    @apply bg-green-400;
+  }
+  
+  .status-dot.red span {
+    @apply bg-red-400;
+  }
+  
+  .status-dot::after {
+    @apply relative inline-flex rounded-full h-3 w-3;
+    content: '';
+  }
+  
+  .status-dot.green::after {
+    @apply bg-green-500;
+  }
+  
+  .status-dot.red::after {
+    @apply bg-red-500;
+  }
+  
+  .status-dot.yellow::after {
+    @apply bg-yellow-500;
+  }
+  
+  /* Enhanced card hover effects */
+  .trading-card {
+    @apply transition-all duration-200;
+  }
+  
+  .trading-card:hover {
+    @apply shadow-lg dark:shadow-primary/5;
+    transform: translateY(-2px);
+  }
+  
+  /* Message styling */
+  .message-user {
+    @apply bg-primary text-primary-foreground;
+  }
+  
+  .message-agent {
+    @apply bg-muted;
+  }
+  
+  .message-error {
+    @apply bg-destructive/10 border border-destructive/20 text-destructive-foreground;
+  }
+  
+  /* Enhanced buttons */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors;
+  }
+  
+  /* Quick action buttons */
+  .quick-action-btn {
+    @apply flex flex-col items-center justify-center p-3 rounded-lg border bg-card hover:bg-accent hover:text-accent-foreground transition-all duration-200 cursor-pointer;
+  }
+  
+  .quick-action-btn:hover {
+    @apply shadow-md;
+    transform: translateY(-1px);
+  }
+  
+  .quick-action-btn:active {
+    transform: translateY(0);
+  }
+  
+  .quick-action-btn:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+  
+  .quick-action-btn:disabled:hover {
+    @apply bg-card shadow-none;
+    transform: none;
+  }
+  
+  /* Input focus styles */
+  input:focus,
+  textarea:focus {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+  
+  /* Table styles for portfolio data */
+  .trading-table {
+    @apply w-full text-sm;
+  }
+  
+  .trading-table thead {
+    @apply bg-muted/50 border-b;
+  }
+  
+  .trading-table th {
+    @apply px-3 py-2 text-left font-medium text-muted-foreground;
+  }
+  
+  .trading-table tbody tr {
+    @apply border-b transition-colors hover:bg-muted/50;
+  }
+  
+  .trading-table td {
+    @apply px-3 py-2;
+  }
+  
+  /* Loading states */
+  .loading-skeleton {
+    @apply animate-pulse bg-muted rounded;
+  }
+  
+  /* Voice indicator animation */
+  @keyframes voice-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.1);
+      opacity: 0.8;
+    }
+  }
+  
+  .voice-active {
+    animation: voice-pulse 1.5s ease-in-out infinite;
+  }
+}

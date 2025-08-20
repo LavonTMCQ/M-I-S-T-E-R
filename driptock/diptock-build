@@ -1,0 +1,273 @@
+                                          │
+│ Here is Claude's plan:                   │
+│ ╭──────────────────────────────────────╮ │
+│ │ DripTock Presentation Deck - Canva   │ │
+│ │ MCP Implementation Plan              │ │
+│ │                                      │ │
+│ │ Overview                             │ │
+│ │                                      │ │
+│ │ Create a professional 4-slide        │ │
+│ │ presentation deck using Canva MCP    │ │
+│ │ server to showcase DripTock's        │ │
+│ │ transformation vision to your        │ │
+│ │ client.                              │ │
+│ │                                      │ │
+│ │ Project Setup                        │ │
+│ │                                      │ │
+│ │ /Users/sbg/SYDNEY/driptock-presentat │ │
+│ │ ion/                                 │ │
+│ │ ├── canva-designs/         #         │ │
+│ │ Exported Canva designs               │ │
+│ │ ├── assets/               # Images   │ │
+│ │ and mockups for Canva                │ │
+│ │ │   ├── mockups/         # App UI    │ │
+│ │ mockups                              │ │
+│ │ │   ├── fashion-photos/  # Sample    │ │
+│ │ outfit images                        │ │
+│ │ │   └── icons/           # Custom    │ │
+│ │ icons                                │ │
+│ │ └── final/               # Final     │ │
+│ │ deliverables                         │ │
+│ │     ├── DripTock-Deck.pdf            │ │
+│ │     └── slide-images/                │ │
+│ │                                      │ │
+│ │ Canva Design Strategy                │ │
+│ │                                      │ │
+│ │ Step 1: Create Canva Presentation    │ │
+│ │                                      │ │
+│ │ Using Canva MCP, create a            │ │
+│ │ presentation with these              │ │
+│ │ specifications:                      │ │
+│ │ - Format: 16:9 presentation          │ │
+│ │ - Style: Modern, minimalist,         │ │
+│ │ fashion-forward                      │ │
+│ │ - Brand Colors: Black, white, accent │ │
+│ │  color (pink or blue)                │ │
+│ │                                      │ │
+│ │ Step 2: Design Individual Slides     │ │
+│ │                                      │ │
+│ │ Slide 1: The Vision - Modern         │ │
+│ │ Foundation                           │ │
+│ │                                      │ │
+│ │ Canva Elements to Use:               │ │
+│ │ - Split layout template              │ │
+│ │ - iPhone mockup frames               │ │
+│ │ - Comparison arrows/indicators       │ │
+│ │ - Modern typography                  │ │
+│ │                                      │ │
+│ │ Content Structure:                   │ │
+│ │ Left Panel (Before):                 │ │
+│ │ - "Current DripTock" header          │ │
+│ │ - Phone mockup with issues           │ │
+│ │ - Red callout bubbles:               │ │
+│ │   • "Distorted Media"                │ │
+│ │   • "2-second Audio"                 │ │
+│ │   • "Outdated Design"                │ │
+│ │                                      │ │
+│ │ Right Panel (After):                 │ │
+│ │ - "DripTock 2.0" header              │ │
+│ │ - Sleek phone mockup                 │ │
+│ │ - Green checkmarks:                  │ │
+│ │   • "Crystal Clear Media"            │ │
+│ │   • "Full Audio Support"             │ │
+│ │   • "Premium UI/UX"                  │ │
+│ │                                      │ │
+│ │ Slide 2: The Magic - Core Features   │ │
+│ │                                      │ │
+│ │ Canva Elements:                      │ │
+│ │ - Two-column layout                  │ │
+│ │ - Feature cards with shadows         │ │
+│ │ - Icon library (DNA, emergency)      │ │
+│ │ - Gradient overlays                  │ │
+│ │                                      │ │
+│ │ Content Structure:                   │ │
+│ │ Outfit DNA™ (Left):                  │ │
+│ │ - Phone showing outfit post          │ │
+│ │ - Overlay card showing:              │ │
+│ │   • Items breakdown                  │ │
+│ │   • Color palette                    │ │
+│ │   • Shopping links ($, $$, $$$)      │ │
+│ │   • "Share DNA" button               │ │
+│ │                                      │ │
+│ │ Fashion 911 (Right):                 │ │
+│ │ - Chat interface mockup              │ │
+│ │ - Emergency scenario                 │ │
+│ │ - AI-generated outfits               │ │
+│ │ - Quick-select buttons               │ │
+│ │                                      │ │
+│ │ Slide 3: The Future - VTON & Roadmap │ │
+│ │                                      │ │
+│ │ Canva Elements:                      │ │
+│ │ - Step-by-step infographic           │ │
+│ │ - Timeline template                  │ │
+│ │ - Future/tech themed graphics        │ │
+│ │ - Progress indicators                │ │
+│ │                                      │ │
+│ │ Content Structure:                   │ │
+│ │ VTON Preview (Top 60%):              │ │
+│ │ Step 1: User Photo → Step 2: Outfit  │ │
+│ │ Selection → Step 3: AI Result        │ │
+│ │                                      │ │
+│ │ Roadmap (Bottom 40%):                │ │
+│ │ Phase 1: Foundation (Week 1)         │ │
+│ │ Phase 2: Core Features (Week 2-3)    │ │
+│ │ Phase 3: VTON Launch (Month 2)       │ │
+│ │                                      │ │
+│ │ Slide 4: Next Steps - Call to Action │ │
+│ │                                      │ │
+│ │ Canva Elements:                      │ │
+│ │ - Professional CTA template          │ │
+│ │ - Contact card design                │ │
+│ │ - Checklist graphics                 │ │
+│ │ - Clean backgrounds                  │ │
+│ │                                      │ │
+│ │ Content Structure:                   │ │
+│ │ Header: "Let's Build the Future of   │ │
+│ │ DripTock"                            │ │
+│ │                                      │ │
+│ │ Strategy Session Includes:           │ │
+│ │ ✓ 10-Feature Roadmap                 │ │
+│ │ ✓ VTON Technical Blueprint           │ │
+│ │ ✓ Implementation Timeline            │ │
+│ │ ✓ Investment Proposal                │ │
+│ │                                      │ │
+│ │ Contact:                             │ │
+│ │ [Your details in professional card   │ │
+│ │ format]                              │ │
+│ │                                      │ │
+│ │ Asset Preparation for Canva          │ │
+│ │                                      │ │
+│ │ Mock UI Screenshots to Create        │ │
+│ │                                      │ │
+│ │ 1. Current App Issues (can be        │ │
+│ │ sketched/simulated):                 │ │
+│ │   - Distorted video frame            │ │
+│ │   - Basic UI elements                │ │
+│ │   - Old-style navigation             │ │
+│ │ 2. Modern UI Mockups:                │ │
+│ │   - Clean feed with 3-4 posts        │ │
+│ │   - Outfit DNA button on posts       │ │
+│ │   - Modern bottom navigation         │ │
+│ │   - Profile section glimpse          │ │
+│ │ 3. Feature Demonstrations:           │ │
+│ │   - DNA card full design             │ │
+│ │   - Fashion 911 interface            │ │
+│ │   - VTON 3-step process              │ │
+│ │                                      │ │
+│ │ Stock Photos Needed                  │ │
+│ │                                      │ │
+│ │ - 5-6 diverse outfit photos          │ │
+│ │ - Model shots for VTON demo          │ │
+│ │ - Fashion accessories                │ │
+│ │ - Lifestyle/fashion backgrounds      │ │
+│ │                                      │ │
+│ │ Canva MCP Workflow                   │ │
+│ │                                      │ │
+│ │ Day 1: Setup & Design                │ │
+│ │                                      │ │
+│ │ 1. Initialize Canva presentation via │ │
+│ │  MCP                                 │ │
+│ │ 2. Set brand colors: Black, white,   │ │
+│ │ accent                               │ │
+│ │ 3. Upload custom assets to Canva     │ │
+│ │ 4. Design Slide 1: Before/After      │ │
+│ │ comparison                           │ │
+│ │ 5. Design Slide 2: Feature showcase  │ │
+│ │                                      │ │
+│ │ Day 2: Completion & Export           │ │
+│ │                                      │ │
+│ │ 1. Design Slide 3: VTON future       │ │
+│ │ vision                               │ │
+│ │ 2. Design Slide 4: Call to action    │ │
+│ │ 3. Add transitions between slides    │ │
+│ │ 4. Export versions:                  │ │
+│ │   - PDF for email                    │ │
+│ │   - PNG images for backup            │ │
+│ │   - Shareable Canva link             │ │
+│ │                                      │ │
+│ │ Canva Design Tips                    │ │
+│ │                                      │ │
+│ │ Typography Hierarchy                 │ │
+│ │                                      │ │
+│ │ - Headlines: 48-60pt, bold           │ │
+│ │ - Subheadings: 32-36pt, medium       │ │
+│ │ - Body text: 18-24pt, regular        │ │
+│ │ - Captions: 14-16pt, light           │ │
+│ │                                      │ │
+│ │ Visual Consistency                   │ │
+│ │                                      │ │
+│ │ - Same phone mockup style throughout │ │
+│ │ - Consistent shadow depths           │ │
+│ │ - Aligned spacing (use Canva grids)  │ │
+│ │ - Repeated color scheme              │ │
+│ │                                      │ │
+│ │ Animation (if presenting live)       │ │
+│ │                                      │ │
+│ │ - Subtle fade-ins for features       │ │
+│ │ - Slide transitions: smooth dissolve │ │
+│ │ - Element animations: minimal,       │ │
+│ │ professional                         │ │
+│ │                                      │ │
+│ │ Content Copy for Slides              │ │
+│ │                                      │ │
+│ │ Slide 1                              │ │
+│ │                                      │ │
+│ │ Headline: "From Good App to Premium  │ │
+│ │ Experience"                          │ │
+│ │ Tagline: "Transforming DripTock into │ │
+│ │  Fashion's Essential Platform"       │ │
+│ │                                      │ │
+│ │ Slide 2                              │ │
+│ │                                      │ │
+│ │ Headline: "Features That Create      │ │
+│ │ Daily Habits"                        │ │
+│ │ Feature 1: "Outfit DNA™ - Every      │ │
+│ │ Look Becomes Shoppable"              │ │
+│ │ Feature 2: "Fashion 911 - AI Styling │ │
+│ │  in Seconds"                         │ │
+│ │                                      │ │
+│ │ Slide 3                              │ │
+│ │                                      │ │
+│ │ Headline: "The Roadmap to Market     │ │
+│ │ Leadership"                          │ │
+│ │ VTON Label: "Virtual Try-On: The     │ │
+│ │ Game Changer"                        │ │
+│ │ Timeline Title: "3-Phase             │ │
+│ │ Transformation"                      │ │
+│ │                                      │ │
+│ │ Slide 4                              │ │
+│ │                                      │ │
+│ │ Headline: "Let's Build the Future    │ │
+│ │ Together"                            │ │
+│ │ CTA: "Schedule Your Confidential     │ │
+│ │ Strategy Session"                    │ │
+│ │                                      │ │
+│ │ Export Specifications                │ │
+│ │                                      │ │
+│ │ - PDF: High quality, compressed for  │ │
+│ │ email                                │ │
+│ │ - PNG: 1920x1080 per slide           │ │
+│ │ - Canva Link: View-only sharing      │ │
+│ │ - PowerPoint: If needed for editing  │ │
+│ │                                      │ │
+│ │ Success Metrics                      │ │
+│ │                                      │ │
+│ │ - Clean, professional appearance     │ │
+│ │ - Clear value proposition per slide  │ │
+│ │ - Visual storytelling flow           │ │
+│ │ - Mobile-friendly if viewed on phone │ │
+│ │ - Under 10MB for email attachment    │ │
+│ │                                      │ │
+│ │ Follow-up Materials                  │ │
+│ │                                      │ │
+│ │ 1. Email template with deck attached │ │
+│ │ 2. One-pager summary (created in     │ │
+│ │ Canva)                               │ │
+│ │ 3. NDA template (if proceeding)      │ │
+│ │ 4. Meeting scheduler link            │ │
+│ │                                      │ │
+│ │ This plan leverages Canva MCP for    │ │
+│ │ efficient, professional presentation │ │
+│ │  creation without any coding         │ │
+│ │ required.                            │ │
+│ ╰─────────────

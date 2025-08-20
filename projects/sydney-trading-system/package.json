@@ -1,0 +1,49 @@
+{
+  "name": "sydney-agents",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "mastra dev",
+    "build": "mastra build",
+    "start": "mastra start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "type": "module",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^1.2.19",
+    "@ai-sdk/openai": "^2.0.11",
+    "@mastra/core": "^0.13.1",
+    "@mastra/evals": "latest",
+    "@mastra/fastembed": "latest",
+    "@mastra/libsql": "latest",
+    "@mastra/loggers": "latest",
+    "@mastra/mcp": "latest",
+    "@mastra/memory": "latest",
+    "@mastra/node-audio": "latest",
+    "@mastra/voice-elevenlabs": "latest",
+    "@mastra/voice-google": "latest",
+    "@mastra/voice-openai": "latest",
+    "@mastra/voice-openai-realtime": "latest",
+    "@modelcontextprotocol/sdk": "^1.12.3",
+    "@types/express": "^5.0.3",
+    "@types/ws": "^8.18.1",
+    "axios": "^1.10.0",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2",
+    "playwright": "^1.53.1",
+    "ws": "^8.18.3",
+    "zod": "^3.25.65"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.3",
+    "mastra": "latest",
+    "typescript": "^5.8.3"
+  }
+}
