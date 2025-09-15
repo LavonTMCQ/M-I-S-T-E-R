@@ -243,7 +243,7 @@ const API_CONFIG = {
   },
   production: {
     CNT_API_URL: 'https://cnt-trading-api-production.up.railway.app',
-    STRIKE_API_URL: 'https://strike-bridge-server-production.up.railway.app',
+    STRIKE_API_URL: 'https://bridge-server-cjs-production.up.railway.app',
     MISTER_API_URL: 'https://mister-bot-production.up.railway.app',
   }
 };
@@ -270,7 +270,7 @@ import API_CONFIG from '@/lib/api-config';
 ```bash
 # Test all services are healthy
 curl https://cnt-trading-api-production.up.railway.app/health
-curl https://strike-bridge-server-production.up.railway.app/health
+curl https://bridge-server-cjs-production.up.railway.app/health
 curl https://mister-bot-production.up.railway.app/health
 ```
 

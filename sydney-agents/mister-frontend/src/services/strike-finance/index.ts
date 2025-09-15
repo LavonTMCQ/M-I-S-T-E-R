@@ -3,6 +3,7 @@
  */
 
 import { OneClickExecutionRequest, OneClickExecutionResponse, TransactionRecord } from '@/types/signals';
+import { OneClickExecutionService, initializeOneClickExecutionService as initOneClick, getOneClickExecutionService as getRealOneClick } from './OneClickExecutionService';
 
 class MockStrikeFinanceService {
   private executionHistory: OneClickExecutionResponse[] = [];
@@ -72,19 +73,22 @@ class MockTransactionTracker {
 }
 
 export async function initializeStrikeFinanceIntegration(config?: any) {
+  const executionService = initOneClick(config);
+  const transactionTracker = new MockTransactionTracker();
   return {
-    executionService: new MockStrikeFinanceService(),
-    transactionTracker: new MockTransactionTracker(),
+    executionService,
+    transactionTracker,
     integrationManager: {
       executeSignal: async (signal: any, address: string, options: any) => {
-        return new MockStrikeFinanceService().executeSignal({ signal, wallet_address: address, user_confirmed: true });
+        const request: OneClickExecutionRequest = { signal, wallet_address: address, user_confirmed: true } as any;
+        return executionService.executeSignal(request);
       }
     }
   };
 }
 
 export function getOneClickExecutionService() {
-  return new MockStrikeFinanceService();
+  return getRealOneClick();
 }
 
 export function getTransactionTracker() {
