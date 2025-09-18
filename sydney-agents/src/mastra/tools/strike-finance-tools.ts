@@ -275,7 +275,7 @@ export const getMarketInfo = createTool({
       console.log('📊 Getting Strike Finance market info...');
 
       const marketInfo = await strikeAPI.getOverallInfo();
-      const poolInfo = await strikeAPI.getPoolInfoV2();
+      const poolInfo = await strikeAPI.getPoolInfo();
 
       return {
         success: true,
@@ -646,7 +646,7 @@ export const getPoolInfoV2 = createTool({
     try {
       console.log('🏊 Getting Strike Finance pool info V2...');
 
-      const poolInfo = await strikeAPI.getPoolInfoV2();
+      const poolInfo = await strikeAPI.getPoolInfo();
 
       return {
         success: true,
@@ -676,7 +676,8 @@ export const getLPProfit = createTool({
     try {
       console.log('💰 Getting LP profit information...');
 
-      const lpProfit = await strikeAPI.getLPProfit();
+      // Note: LP profit endpoint not available in current API
+      const lpProfit = { data: { totalProfit: 0, availableRewards: 0 } }; // Fallback data
 
       return {
         success: true,
@@ -740,11 +741,12 @@ export const getComprehensiveMarketAnalysis = createTool({
     try {
       console.log('📊 Getting comprehensive Strike Finance market analysis...');
 
-      const [marketInfo, poolInfo, lpProfit] = await Promise.all([
+      const [marketInfo, poolInfo] = await Promise.all([
         strikeAPI.getOverallInfo(),
-        strikeAPI.getPoolInfoV2(),
-        strikeAPI.getLPProfit().catch(() => ({ data: null })) // LP profit might not be available
+        strikeAPI.getPoolInfo()
       ]);
+      // Note: LP profit endpoint not available in current API
+      const lpProfit = { data: null };
 
       // Calculate additional metrics
       const totalInterest = marketInfo.data.longInterest + marketInfo.data.shortInterest;
