@@ -22,7 +22,6 @@ export function Breadcrumbs() {
   const segmentLabels: Record<string, string> = {
     'dashboard': 'Dashboard',
     'trading': 'Trading',
-    'backtest-results': 'Backtesting',
     'chat': 'AI Chat',
     'login': 'Sign In'
   };

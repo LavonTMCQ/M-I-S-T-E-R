@@ -1,0 +1,8 @@
+{
+  "network": "HyperEVM Testnet",
+  "chainId": 998,
+  "address": "0xbDEC30120083Fa70451195948477956DCCA33D73",
+  "createdAt": "2025-08-23T22:41:12.435Z",
+  "purpose": "Contract deployment and testing",
+  "warning": "TESTNET ONLY - Do not use on mainnet"
+}

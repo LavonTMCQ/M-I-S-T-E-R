@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Home, BarChart3, TrendingUp, Loader2, LineChart, MessageCircle, Shield } from "lucide-react";
+import { Home, BarChart3, TrendingUp, Loader2, MessageCircle, Shield } from "lucide-react";
 
 export function Navigation() {
   const pathname = usePathname();
@@ -24,7 +24,6 @@ export function Navigation() {
     { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
     { href: "/trading", label: "Trading", icon: TrendingUp },
     { href: "/agent-vault-v2", label: "Agent Vault V2", icon: Shield },
-    { href: "/backtest-results", label: "Backtesting", icon: LineChart },
     { href: "/chat", label: "Chat", icon: MessageCircle },
   ];
 

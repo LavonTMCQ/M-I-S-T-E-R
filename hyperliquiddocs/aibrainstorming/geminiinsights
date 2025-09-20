@@ -1,0 +1,162 @@
+Of course. Based on my research and the detailed strategic roadmap you've provided, let's dive deeper into the specifics of developing on Hyperliquid.
+
+This guide will expand upon the tasks in your roadmap, providing the conceptual understanding and practical steps necessary to build your MISTER Trading System on Hyperliquid.
+
+### Part 1: Core Concepts for Developers
+
+To develop effectively on Hyperliquid, it's crucial to understand its unique two-part architecture:
+
+1.  **The L1 Order Book Chain:** This is the core of Hyperliquid. It's a purpose-built, high-performance blockchain (based on Tendermint) designed to do one thing exceptionally well: host a fully on-chain, central limit order book (CLOB). All trading actions—placing, canceling, and matching orders—happen here. This is what provides the CEX-like speed and transparency. You interact with this L1 primarily through the **API and SDK**.
+
+2.  **HyperEVM:** This is a separate, EVM-compatible smart contract chain. It functions like a parallel universe to the L1 order book. Its purpose is to allow developers to build any kind of DeFi application using standard Ethereum tools (like Solidity, Hardhat, and Ethers.js). Your ambitious plans for an **AI Agent Marketplace** and other on-chain products would be built here.
+
+**The Bridge Between Worlds: Collateral & State**
+
+  * **Collateral:** As your roadmap notes, user funds (collateral) are not held on the L1 order book chain. Instead, they are held in a smart contract on **Arbitrum**. When you deposit funds, you are sending USDC to this contract, which then communicates your updated margin balance to the L1. This separation is a key security feature.
+  * **State:** The L1 chain is the "source of truth" for all trading state (open orders, positions, balances). The HyperEVM can *read* this state, allowing a smart contract to know a user's current trading position, but it cannot directly place trades on the order book. An external service (a "keeper bot") is needed to execute a trade on the L1 based on logic from a HyperEVM smart contract.
+
+### Part 2: Developing Your Trading System (Interacting with the L1)
+
+This section provides the technical details for executing **Phase 1 & 2** of your roadmap, focusing on building your core trading bot.
+
+#### **The Developer's Toolkit**
+
+  * **API (REST & WebSocket):** The foundational layer. You can use this for any language, but the SDK is recommended.
+  * **Python SDK (`hyperliquid-python-sdk`):** This will be your primary tool. It's a wrapper around the API that simplifies authentication and data formatting.
+  * **Typescript SDK:** An alternative if your team prefers a Node.js environment.
+
+#### **Step-by-Step Development Guide**
+
+**Step 1: Setup & Environment**
+
+First, install the SDK in your Python environment:
+
+```bash
+pip install hyperliquid-python-sdk
+```
+
+**Step 2: Connecting and Querying Information (`Info` API)**
+
+This corresponds to **Task 1.2** in your plan. The `Info` class does not require authentication and is used to get public market data.
+
+```python
+from hyperliquid.info import Info
+
+# The mainnet URL. For the testnet, use "https://api.hyperliquid-testnet.xyz"
+info = Info("https://api.hyperliquid.com")
+
+# Get metadata for all assets
+all_meta = info.meta()
+print("All available assets:", all_meta)
+
+# CRITICAL: Verify the ADA-PERP market exists and get its details
+# Your first step should be to run this and find 'ADA' in the output.
+asset_contexts = info.meta_and_asset_ctxs()
+ada_context = next((ctx for ctx in asset_contexts if ctx["name"] == "ADA"), None)
+
+if ada_context:
+    print("\n--- ADA Asset Context ---")
+    print(ada_context)
+else:
+    print("\nCRITICAL WARNING: ADA asset not found in metadata.")
+    # Your system must handle this case gracefully.
+```
+
+**Step 3: Authentication & Account Management**
+
+To trade, you need to prove ownership of a wallet. You do this by signing a payload with your wallet's private key. The SDK handles the complex parts.
+
+```python
+from hyperliquid.utils import wallet
+
+# IMPORTANT: NEVER hardcode your private key.
+# Use environment variables or a secure secret management system.
+# This creates an account object from a private key.
+# The address is the public key associated with it.
+account = wallet.Wallet("0x" + "YOUR_PRIVATE_KEY_HERE")
+
+print("Using address:", account.address)
+```
+
+**Step 4: Placing and Managing Orders (`Exchange` API)**
+
+This corresponds to **Task 1.3**. The `Exchange` class is for authenticated actions like trading and managing your account.
+
+```python
+from hyperliquid.exchange import Exchange
+
+# Initialize the Exchange with your account and the mainnet/testnet URL
+exchange = Exchange(account, "https://api.hyperliquid-testnet.xyz") # Using testnet for this example
+
+# --- Querying User State ---
+user_state = exchange.user_state(account.address)
+print("\nUser State:", user_state)
+
+# --- Placing an Order ---
+# Assuming you have verified 'ADA' exists and is a valid asset
+asset = "ADA"
+is_buy = True
+size_in_usd = 100 # Example: order for $100 worth of ADA
+# Get a reasonable price from the order book
+order_book = info.l2_snapshot(asset)
+limit_price = float(order_book["levels"][0][0]["px"]) if is_buy else float(order_book["levels"][1][0]["px"])
+
+# The order function takes asset, buy/sell, size (in units of the asset), limit price
+# Note: You need to convert your desired USD size to the asset size
+asset_size = size_in_usd / limit_price
+
+# Slippage protection can be added to the limit price
+order_result = exchange.order(asset, is_buy, asset_size, limit_price, {"limit": {"tif": "Gtc"}})
+print("\nOrder Result:", order_result)
+
+# --- Canceling an Order ---
+if order_result["status"] == "ok":
+    order_id = order_result["response"]["data"]["statuses"][0]["order"]["oid"]
+    cancel_result = exchange.cancel(asset, order_id)
+    print("\nCancel Result:", cancel_result)
+```
+
+### Part 3: Advanced Development on HyperEVM (Realizing Your "Platform" Vision)
+
+This section addresses **Phase 3** and your long-term strategic goals (AI Agents, Data Monetization).
+
+#### **The HyperEVM Toolkit**
+
+Because HyperEVM is EVM-compatible, you use the standard Ethereum development stack:
+
+  * **Language:** Solidity
+  * **Frameworks:** Hardhat (Javascript/Typescript) or Foundry (Solidity)
+  * **Libraries:** Ethers.js or Web3.py to interact with your deployed contracts.
+
+#### **What You Can Build on HyperEVM**
+
+1.  **AI Agent Vaults (Task 2B):**
+
+      * **Concept:** You can't run a Python AI model directly on-chain. Instead, you build a **vault smart contract** in Solidity.
+      * **Workflow:**
+        1.  Users deposit USDC into your Solidity vault contract on HyperEVM.
+        2.  Your off-chain AI trading system (the Python bot you built in Part 2) monitors market conditions.
+        3.  When the AI decides to trade, it calls a function on your vault contract to *authorize* a trade.
+        4.  A separate, secure "keeper bot" (also written in Python) listens for this authorization event from the smart contract.
+        5.  The keeper bot then uses its own API keys to execute the trade on the L1 order book on behalf of the vault.
+      * **Why this model?** It provides trustless, on-chain accounting. Users can always verify the vault's holdings and performance on-chain, while your proprietary AI logic remains off-chain.
+
+2.  **Data & Analytics Products (Task 2C):**
+
+      * **On-Chain Verifiable Track Records:** A vault contract can record its own performance (PNL, NAV) as public state variables. This creates a tamper-proof, on-chain track record you can showcase to potential investors or clients, which is far more powerful than a spreadsheet.
+
+3.  **Infrastructure as a Service (Task 2A):**
+
+      * The "keeper bot" architecture described above is a piece of infrastructure. You could offer a "Keeper as a Service" for other funds who want to build on HyperEVM but don't want to manage the off-chain infrastructure.
+
+### Where to Find Help and Resources
+
+  * **Official Documentation:** [https://hyperliquid.gitbook.io/hyperliquid-docs](https://hyperliquid.gitbook.io/hyperliquid-docs) - **This is your bible.** It contains API specifications, SDK examples, and details on the L1 architecture.
+  * **Python SDK Repository:** [https://github.com/hyperliquid-dex/hyperliquid-python-sdk](https://github.com/hyperliquid-dex/hyperliquid-python-sdk) - Check here for the latest updates and examples.
+  * **Discord:** The Hyperliquid Discord server is the most active place to ask technical questions and interact directly with the team and other developers. This should be your first stop when you get stuck.
+  * **Testnet URLs:**
+      * **API:** `https://api.hyperliquid-testnet.xyz`
+      * **Explorer:** `https://explorer.hyperliquid-testnet.xyz`
+      * **UI:** `https://app.hyperliquid-testnet.xyz`
+
+By following this guide, your team can systematically execute the proposed roadmap, moving from a simple trading bot to a sophisticated, multi-faceted financial platform on top of Hyperliquid.

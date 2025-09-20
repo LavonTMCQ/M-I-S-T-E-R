@@ -346,3 +346,306 @@ export async function dropAgentWalletTables(): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * Multi-Provider Support Migration
+ * 
+ * Adds support for multiple trading providers (Strike Finance, Hyperliquid, etc.)
+ * This migration is designed to be NON-BREAKING and additive only.
+ */
+export async function runMultiProviderMigration(): Promise<void> {
+  const db = getRailwayDB();
+  
+  console.log('🚀 Starting Multi-Provider migration...');
+
+  try {
+    // Add provider column to agent_positions table (NON-BREAKING)
+    console.log('📈 Adding provider column to agent_positions...');
+    
+    // Check if provider column already exists
+    const providerColumnExists = await db.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'agent_positions' 
+      AND column_name = 'provider'
+    `);
+
+    if (providerColumnExists.rows.length === 0) {
+      // Add provider column with default value 'strike' for backward compatibility
+      await db.query(`
+        ALTER TABLE agent_positions 
+        ADD COLUMN provider VARCHAR(50) DEFAULT 'strike' 
+        CHECK (provider IN ('strike', 'hyperliquid', 'mock'))
+      `);
+      
+      // Create index for the new column
+      await db.query('CREATE INDEX IF NOT EXISTS idx_positions_provider ON agent_positions(provider)');
+      
+      console.log('✅ Provider column added to agent_positions');
+    } else {
+      console.log('✅ Provider column already exists in agent_positions');
+    }
+
+    // Create provider_configurations table
+    console.log('⚙️ Creating provider_configurations table...');
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS provider_configurations (
+          id SERIAL PRIMARY KEY,
+          provider_name VARCHAR(50) UNIQUE NOT NULL,
+          display_name VARCHAR(100) NOT NULL,
+          is_active BOOLEAN DEFAULT TRUE,
+          chain_type VARCHAR(20) NOT NULL CHECK (chain_type IN ('cardano', 'evm')),
+          base_api_url VARCHAR(255),
+          min_position_size_usd DECIMAL(18, 8) DEFAULT 0,
+          max_position_size_usd DECIMAL(18, 8),
+          
+          -- Fee structure (stored as JSON for flexibility)
+          fee_structure JSONB DEFAULT '{}',
+          
+          -- Provider limits and features
+          limits_and_features JSONB DEFAULT '{}',
+          
+          -- Rate limiting configuration
+          rate_limit_config JSONB DEFAULT '{}',
+          
+          -- Provider-specific metadata
+          metadata JSONB DEFAULT '{}',
+          
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Create indexes for provider_configurations
+    await db.query('CREATE INDEX IF NOT EXISTS idx_provider_configs_name ON provider_configurations(provider_name)');
+    await db.query('CREATE INDEX IF NOT EXISTS idx_provider_configs_active ON provider_configurations(is_active)');
+    await db.query('CREATE INDEX IF NOT EXISTS idx_provider_configs_chain ON provider_configurations(chain_type)');
+
+    // Create provider_execution_metrics table
+    console.log('📊 Creating provider_execution_metrics table...');
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS provider_execution_metrics (
+          id BIGSERIAL PRIMARY KEY,
+          trade_id UUID,
+          provider_name VARCHAR(50) NOT NULL,
+          asset_symbol VARCHAR(20),
+          
+          -- Execution metrics
+          execution_latency_ms INTEGER,
+          predicted_slippage_pct DECIMAL(10, 8),
+          actual_slippage_pct DECIMAL(10, 8),
+          fee_usd DECIMAL(18, 8),
+          total_cost_usd DECIMAL(18, 8),
+          
+          -- Execution context
+          order_size_usd DECIMAL(18, 8),
+          order_type VARCHAR(20),
+          was_failover BOOLEAN DEFAULT FALSE,
+          routing_score DECIMAL(5, 4),
+          
+          -- Success tracking
+          execution_successful BOOLEAN,
+          error_type VARCHAR(50),
+          error_message TEXT,
+          
+          created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Create indexes for execution metrics
+    await db.query('CREATE INDEX IF NOT EXISTS idx_execution_metrics_provider ON provider_execution_metrics(provider_name)');
+    await db.query('CREATE INDEX IF NOT EXISTS idx_execution_metrics_asset ON provider_execution_metrics(asset_symbol)');
+    await db.query('CREATE INDEX IF NOT EXISTS idx_execution_metrics_created_at ON provider_execution_metrics(created_at)');
+    await db.query('CREATE INDEX IF NOT EXISTS idx_execution_metrics_success ON provider_execution_metrics(execution_successful)');
+
+    // Create shadow_mode_logs table for testing and validation
+    console.log('👤 Creating shadow_mode_logs table...');
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS shadow_mode_logs (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          log_id VARCHAR(100) UNIQUE NOT NULL,
+          
+          -- Original execution details
+          actual_provider VARCHAR(50) NOT NULL,
+          actual_cost_usd DECIMAL(18, 8),
+          actual_latency_ms INTEGER,
+          actual_success BOOLEAN,
+          
+          -- Order details
+          asset_symbol VARCHAR(20) NOT NULL,
+          order_type VARCHAR(20),
+          order_size_usd DECIMAL(18, 8),
+          order_side VARCHAR(10),
+          
+          -- Shadow execution results (stored as JSON for flexibility)
+          shadow_executions JSONB NOT NULL DEFAULT '[]',
+          
+          -- Analysis results
+          best_alternative VARCHAR(50),
+          potential_savings_usd DECIMAL(18, 8) DEFAULT 0,
+          potential_savings_pct DECIMAL(8, 4) DEFAULT 0,
+          recommendation_confidence DECIMAL(5, 4) DEFAULT 0,
+          risk_assessment VARCHAR(20) DEFAULT 'low',
+          
+          -- Metadata
+          session_id VARCHAR(100),
+          user_agent TEXT,
+          strategy_context VARCHAR(100),
+          
+          created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Create indexes for shadow mode logs
+    await db.query('CREATE INDEX IF NOT EXISTS idx_shadow_logs_provider ON shadow_mode_logs(actual_provider)');
+    await db.query('CREATE INDEX IF NOT EXISTS idx_shadow_logs_asset ON shadow_mode_logs(asset_symbol)');
+    await db.query('CREATE INDEX IF NOT EXISTS idx_shadow_logs_created_at ON shadow_mode_logs(created_at)');
+    await db.query('CREATE INDEX IF NOT EXISTS idx_shadow_logs_savings ON shadow_mode_logs(potential_savings_usd)');
+
+    // Insert default provider configurations
+    console.log('📝 Inserting default provider configurations...');
+    
+    // Strike Finance configuration
+    await db.query(`
+      INSERT INTO provider_configurations (
+        provider_name, display_name, is_active, chain_type, base_api_url,
+        min_position_size_usd, max_position_size_usd,
+        fee_structure, limits_and_features, rate_limit_config
+      ) VALUES (
+        'strike', 'Strike Finance', true, 'cardano',
+        'https://friendly-reprieve-production.up.railway.app',
+        40, 100000,
+        '{"makerRate": 0.001, "takerRate": 0.002, "withdrawalFee": 2}',
+        '{"maxLeverage": 10, "supportsStopLoss": true, "supportsTakeProfit": true}',
+        '{"requestsPerSecond": 5, "requestsPerMinute": 100, "burstLimit": 10}'
+      ) ON CONFLICT (provider_name) DO NOTHING
+    `);
+
+    // Hyperliquid configuration (disabled by default)
+    await db.query(`
+      INSERT INTO provider_configurations (
+        provider_name, display_name, is_active, chain_type, base_api_url,
+        min_position_size_usd, max_position_size_usd,
+        fee_structure, limits_and_features, rate_limit_config
+      ) VALUES (
+        'hyperliquid', 'Hyperliquid', false, 'evm',
+        'https://api.hyperliquid.xyz',
+        10, 1000000,
+        '{"makerRate": 0.0002, "takerRate": 0.0005, "withdrawalFee": 0}',
+        '{"maxLeverage": 20, "supportsStopLoss": true, "supportsTakeProfit": true, "supportsTrailingStop": true}',
+        '{"requestsPerSecond": 20, "requestsPerMinute": 1000, "burstLimit": 50}'
+      ) ON CONFLICT (provider_name) DO NOTHING
+    `);
+
+    // Mock provider configuration (development only)
+    await db.query(`
+      INSERT INTO provider_configurations (
+        provider_name, display_name, is_active, chain_type, base_api_url,
+        min_position_size_usd, max_position_size_usd,
+        fee_structure, limits_and_features, rate_limit_config
+      ) VALUES (
+        'mock', 'Mock Provider (Testing)', false, 'evm',
+        'mock://localhost',
+        1, 10000,
+        '{"makerRate": 0.001, "takerRate": 0.002, "withdrawalFee": 0}',
+        '{"maxLeverage": 10, "supportsStopLoss": true, "supportsTakeProfit": true, "supportsTrailingStop": true}',
+        '{"requestsPerSecond": 100, "requestsPerMinute": 5000, "burstLimit": 200}'
+      ) ON CONFLICT (provider_name) DO NOTHING
+    `);
+
+    // Create updated view that includes provider information
+    console.log('👁️ Updating reporting views with provider data...');
+    await db.query(`
+      CREATE OR REPLACE VIEW agent_position_summary AS
+      SELECT 
+          ap.id,
+          ap.agent_wallet_address,
+          ap.provider,
+          ap.position_type,
+          ap.collateral_ada,
+          ap.leverage,
+          ap.entry_price_usd,
+          ap.current_price_usd,
+          ap.current_pnl_ada,
+          ap.status,
+          ap.opened_at,
+          ap.closed_at,
+          ap.strategy,
+          
+          -- Provider details
+          pc.display_name as provider_display_name,
+          pc.chain_type as provider_chain_type,
+          
+          -- Risk metrics
+          CASE 
+              WHEN ap.current_price_usd > 0 AND ap.liquidation_price_usd > 0 THEN
+                  ABS(ap.current_price_usd - ap.liquidation_price_usd) / ap.current_price_usd
+              ELSE NULL
+          END as liquidation_distance_pct
+          
+      FROM agent_positions ap
+      LEFT JOIN provider_configurations pc ON ap.provider = pc.provider_name
+    `);
+
+    // Add trigger for updating timestamps
+    await db.query(`
+      CREATE OR REPLACE FUNCTION update_provider_configs_updated_at()
+      RETURNS TRIGGER AS $$
+      BEGIN
+          NEW.updated_at = NOW();
+          RETURN NEW;
+      END;
+      $$ language 'plpgsql'
+    `);
+
+    await db.query(`
+      DROP TRIGGER IF EXISTS update_provider_configurations_updated_at ON provider_configurations
+    `);
+
+    await db.query(`
+      CREATE TRIGGER update_provider_configurations_updated_at 
+          BEFORE UPDATE ON provider_configurations 
+          FOR EACH ROW 
+          EXECUTE FUNCTION update_provider_configs_updated_at()
+    `);
+
+    // Add table comments
+    await db.query(`COMMENT ON TABLE provider_configurations IS 'Configuration and metadata for trading providers'`);
+    await db.query(`COMMENT ON TABLE provider_execution_metrics IS 'Performance metrics and execution data for each provider'`);
+    await db.query(`COMMENT ON TABLE shadow_mode_logs IS 'Shadow mode testing logs for validation and cost comparison'`);
+
+    console.log('✅ Multi-Provider migration completed successfully!');
+
+    // Display summary
+    const newTables = await db.query(`
+      SELECT table_name, 
+             (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name) as column_count
+      FROM information_schema.tables t
+      WHERE table_schema = 'public' 
+      AND table_name IN ('provider_configurations', 'provider_execution_metrics', 'shadow_mode_logs')
+      ORDER BY table_name
+    `);
+
+    console.log('📊 Multi-Provider Migration Summary:');
+    console.log('  ✅ agent_positions: Added provider column');
+    newTables.rows.forEach(table => {
+      console.log(`  ✅ ${table.table_name}: ${table.column_count} columns`);
+    });
+
+    // Check that provider column was added successfully
+    const positionsColumns = await db.query(`
+      SELECT column_name, data_type, column_default
+      FROM information_schema.columns 
+      WHERE table_name = 'agent_positions' 
+      AND column_name = 'provider'
+    `);
+
+    if (positionsColumns.rows.length > 0) {
+      console.log(`  ✅ agent_positions.provider: ${positionsColumns.rows[0].data_type} (default: ${positionsColumns.rows[0].column_default})`);
+    }
+
+  } catch (error) {
+    console.error('❌ Multi-Provider migration failed:', error);
+    throw error;
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "network": "hyperevm_mainnet",
+  "chainId": 999,
+  "timestamp": "2025-08-23T23:34:55.229Z",
+  "deployer": "0x8B25b3c7CDB6d38C82BC0460cc7902168B705A74",
+  "contracts": {
+    "L1Read": "0x37FC9A058E18dcFbC2c0b327fd0CFbbc8C0e38CD",
+    "AIAgentVault": "0xcb5a521d5F8729c14Bc4fAe7908DF3a357fB5967"
+  },
+  "gasUsed": {
+    "L1Read": "901526",
+    "AIAgentVault": "1752422"
+  },
+  "transactionHashes": {
+    "L1Read": "0x3475b8594930db435f7df44a03e1c4a583857ddd42ffe4ee74aa26421d64bee9",
+    "AIAgentVault": "0xc2f28e13d9b9cd3774f4f3bec1fd9a36ebb55327c57d20506afde86a63bb6fcf"
+  },
+  "blockNumbers": {
+    "L1Read": 11935348,
+    "AIAgentVault": 11935366
+  },
+  "totalGasUsed": "0",
+  "totalCostHYPE": "0",
+  "status": "pending",
+  "errors": [],
+  "logs": [
+    {
+      "timestamp": "2025-08-23T23:34:55.231Z",
+      "message": "\n============================================================",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:55.231Z",
+      "message": "🚀 HYPEREVM MAINNET DEPLOYMENT - OPTIMIZED",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:55.231Z",
+      "message": "============================================================\n",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:55.289Z",
+      "message": "📍 Deployer: 0x8B25b3c7CDB6d38C82BC0460cc7902168B705A74",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:56.495Z",
+      "message": "💰 Balance: 0.4396018574 HYPE",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:57.330Z",
+      "message": "🌐 Network: Chain ID 999",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.676Z",
+      "message": "📦 Current Block: 11935333",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.676Z",
+      "message": "⛽ Block Gas Limit: 0.002 Gwei",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.676Z",
+      "message": "💸 Gas Price: 0.1 Gwei",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.676Z",
+      "message": "\n🔧 Configuration:",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.677Z",
+      "message": "   USDC: 0x0000000000000000000000000000000000000000",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.677Z",
+      "message": "   Keeper: 0x8B25b3c7CDB6d38C82BC0460cc7902168B705A74",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.677Z",
+      "message": "   AI Agent: 0x8B25b3c7CDB6d38C82BC0460cc7902168B705A74",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.677Z",
+      "message": "\n============================================================",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.677Z",
+      "message": "📦 STARTING OPTIMIZED DEPLOYMENT",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.677Z",
+      "message": "============================================================",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.677Z",
+      "message": "\n1️⃣ Deploying L1Read Oracle Contract...",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.682Z",
+      "message": "\n📦 Deploying L1Read (Attempt 1/3)...",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:34:58.684Z",
+      "message": "⚠️ Gas estimation failed: Cannot read properties of undefined (reading 'estimateGas')",
+      "type": "warning"
+    },
+    {
+      "timestamp": "2025-08-23T23:35:15.048Z",
+      "message": "   ✅ L1Read deployed to: 0x37FC9A058E18dcFbC2c0b327fd0CFbbc8C0e38CD",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:35:15.048Z",
+      "message": "   📝 TX Hash: 0x3475b8594930db435f7df44a03e1c4a583857ddd42ffe4ee74aa26421d64bee9",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:35:15.370Z",
+      "message": "   ⛽ Gas used: 901526",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:35:15.370Z",
+      "message": "\n⏳ Waiting 3 seconds before next deployment...",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:35:18.371Z",
+      "message": "\n2️⃣ Deploying AIAgentVault Contract...",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:35:18.376Z",
+      "message": "\n📦 Deploying AIAgentVault (Attempt 1/3)...",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:35:18.379Z",
+      "message": "⚠️ Gas estimation failed: Cannot read properties of undefined (reading 'estimateGas')",
+      "type": "warning"
+    },
+    {
+      "timestamp": "2025-08-23T23:35:30.432Z",
+      "message": "   ✅ AIAgentVault deployed to: 0xcb5a521d5F8729c14Bc4fAe7908DF3a357fB5967",
+      "type": "info"
+    },
+    {
+      "timestamp": "2025-08-23T23:35:30.432Z",
+      "message": "   📝 TX Hash: 0xc2f28e13d9b9cd3774f4f3bec1fd9a36ebb55327c57d20506afde86a63bb6fcf",
+      "type": "info"
+    }
+  ],
+  "gasPrice": "100000000",
+  "blockGasLimit": "2000000"
+}

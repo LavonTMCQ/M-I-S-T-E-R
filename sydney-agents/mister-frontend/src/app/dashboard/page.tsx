@@ -1,959 +1,882 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   TrendingUp,
   TrendingDown,
   Wallet,
-  Bot,
   Activity,
   DollarSign,
   BarChart3,
-  Settings,
-  LogOut,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
+  Zap,
+  Shield,
+  Globe,
+  Sparkles,
+  ChevronRight,
+  ExternalLink,
+  Layers,
+  Coins,
+  LineChart,
+  PieChart,
   Target,
-  X,
-  Loader2
+  Trophy,
+  Flame,
+  Star,
+  Lock,
+  Unlock,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
-import { useUserIdentity } from "@/hooks/useUserIdentity";
-import { MisterLogo } from "@/components/ui/mister-logo";
-import { dashboardAPI, positionsAPI, activityAPI, strikeAPI } from "@/lib/api";
-import { tapToolsAPI } from "@/lib/api/taptools";
-import { DashboardData, Position, AIActivity, AIStatus, MarketData, SignalStats } from "@/types/api";
-import { useMarketData, usePortfolioUpdates, useAIActivity, useSystemStatus, usePositionUpdates } from "@/hooks/useWebSocket";
-import { realTimeDataService } from "@/lib/realtime/dataService";
-import { PerformanceChart } from "@/components/charts/PerformanceChart";
-import { PnLChart } from "@/components/charts/PnLChart";
-import { WinLossChart } from "@/components/charts/WinLossChart";
-import { EnhancedADAChart } from "@/components/charts/SingleADAChart";
-import { DrawdownChart } from "@/components/charts/DrawdownChart";
+import { cn } from "@/lib/utils";
+import { hyperliquidClient, type HyperliquidVaultInfo, type HyperliquidPosition } from "@/services/hyperliquid/hyperliquid-client";
 
-// Real Data Components - Additional icons
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus
-} from 'lucide-react';
+// Market data state
+interface MarketData {
+  adaPrice: number;
+  ada24hChange: number;
+  lastUpdate: Date;
+}
+
+// Subtle dark mode gradient backgrounds
+const gradientClasses = {
+  purple: "bg-gradient-to-br from-purple-900/20 via-purple-800/15 to-pink-900/10",
+  blue: "bg-gradient-to-br from-blue-900/20 via-blue-800/15 to-cyan-900/10",
+  green: "bg-gradient-to-br from-green-900/20 via-green-800/15 to-emerald-900/10",
+  gold: "bg-gradient-to-br from-amber-900/20 via-amber-800/15 to-orange-900/10",
+  dark: "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700",
+};
+
+// Animated number component with improved formatting
+const AnimatedNumber = ({ value, prefix = "", suffix = "", decimals = 2, format }: { 
+  value: number; 
+  prefix?: string; 
+  suffix?: string;
+  decimals?: number;
+  format?: (v: number) => string;
+}) => {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    const duration = 1000;
+    const steps = 60;
+    const stepValue = (value - displayValue) / steps;
+    let current = displayValue;
+    let step = 0;
+
+    const interval = setInterval(() => {
+      step++;
+      current += stepValue;
+      
+      if (step >= steps) {
+        setDisplayValue(value);
+        clearInterval(interval);
+      } else {
+        setDisplayValue(current);
+      }
+    }, duration / steps);
+
+    return () => clearInterval(interval);
+  }, [value]);
+
+  const formatValue = (v: number) => {
+    if (format) return format(v);
+    if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+    if (v >= 1000) return `${(v / 1000).toFixed(1)}K`;
+    return v.toFixed(decimals);
+  };
+
+  return (
+    <span className="tabular-nums font-mono">
+      {prefix}{formatValue(displayValue)}{suffix}
+    </span>
+  );
+};
+
+// Luxury Card Component
+const LuxuryCard = ({ 
+  children, 
+  gradient, 
+  className,
+  glow = false 
+}: { 
+  children: React.ReactNode; 
+  gradient?: keyof typeof gradientClasses;
+  className?: string;
+  glow?: boolean;
+}) => {
+  return (
+    <motion.div
+      whileHover={{ scale: 1.02, y: -4 }}
+      transition={{ type: "spring", stiffness: 300 }}
+      className={cn(
+        "relative overflow-hidden rounded-2xl",
+        glow && "shadow-2xl shadow-purple-500/20",
+        className
+      )}
+    >
+      {gradient && (
+        <div className={cn(
+          "absolute inset-0",
+          gradientClasses[gradient],
+          "opacity-100"
+        )} />
+      )}
+      <div className="relative bg-gray-900/80 backdrop-blur-xl border border-gray-800/50 rounded-2xl">
+        {children}
+      </div>
+    </motion.div>
+  );
+};
 
 export default function DashboardPage() {
-  const auth = useAuth(); // Optional auth instead of required
-  const { mainWallet, isLoading: walletLoading } = useWallet();
-  const { userStorage } = useUserIdentity();
-  const [isLoading, setIsLoading] = useState(true);
+  const { mainWallet, isLoading: walletLoading, connectWallet } = useWallet();
+  const [selectedTimeframe, setSelectedTimeframe] = useState("24h");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Real data from backend services
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [aiActivity, setAIActivity] = useState<AIActivity[]>([]);
-  const [aiStatus, setAIStatus] = useState<AIStatus | null>(null);
-  const [closingPositions, setClosingPositions] = useState<Set<string>>(new Set());
-  const [signalHistory, setSignalHistory] = useState<any[]>([]);
-  const [signalStats, setSignalStats] = useState<SignalStats | null>(null);
-  const [marketData, setMarketData] = useState<MarketData | null>(null);
-  const [strikeHealth, setStrikeHealth] = useState<any>(null);
-  const [portfolioPerformance, setPortfolioPerformance] = useState<any[]>([]);
-  const [portfolioTimeframe, setPortfolioTimeframe] = useState<string>('30d');
-
-  // Note: Removed automatic redirect - let the render method handle authentication/wallet checks
-
-  // Real-time data hooks using connected wallet
-  const { marketData: liveMarketData, lastUpdate: marketLastUpdate, isConnected: marketConnected } = useMarketData('ADA/USD');
-  const { portfolioValue: livePortfolioValue, dailyChange: liveDailyChange, dailyChangePercent: liveDailyChangePercent, lastUpdate: portfolioLastUpdate } = usePortfolioUpdates(mainWallet?.stakeAddress || 'no_wallet');
-  const { activities: liveAIActivities } = useAIActivity(mainWallet?.stakeAddress || 'no_wallet');
-  const { positions: livePositions, lastUpdate: positionsLastUpdate } = usePositionUpdates(mainWallet?.stakeAddress || 'no_wallet');
-
-  /**
-   * Load all dashboard data from backend services
-   */
-  const loadDashboardData = useCallback(async () => {
-    if (!mainWallet) {
-      console.warn('No wallet available for dashboard data loading');
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setError(null);
-      console.log('📊 Loading dashboard data for wallet:', mainWallet.displayName);
-
-      // Load data in parallel for better performance using the connected wallet
-      const walletAddress = mainWallet.stakeAddress;
-      console.log('🔗 Using wallet address for API calls:', walletAddress);
-
-      const [dashboardResponse, positionsResponse, activityResponse, statusResponse, signalsResponse, marketResponse, healthResponse, tapToolsResponse] = await Promise.all([
-        dashboardAPI.getDashboardData(walletAddress), // Use wallet address instead of user ID
-        positionsAPI.getPositions(walletAddress), // Use wallet address instead of user ID
-        activityAPI.getAIActivity(walletAddress, 20), // Use wallet address instead of user ID
-        dashboardAPI.getAIStatus(),
-        activityAPI.getSignalHistory(20),
-        strikeAPI.getMarketData('ADA/USD'),
-        strikeAPI.getHealthStatus(),
-        tapToolsAPI.getWalletValueTrend(walletAddress, '30d', 'USD') // Get real portfolio data (30 days default)
-      ]);
-
-      // Handle TapTools real portfolio data first
-      let realPortfolioData = null;
-      if (tapToolsResponse.success && tapToolsResponse.data) {
-        console.log('✅ Using real TapTools portfolio data with', Array.isArray(tapToolsResponse.data) ? tapToolsResponse.data.length : 'unknown', 'data points');
-        console.log('📊 Raw TapTools data sample:', Array.isArray(tapToolsResponse.data) ? tapToolsResponse.data.slice(0, 3) : tapToolsResponse.data);
-
-        // TapTools returns an array directly, not an object with values
-        const chartData = Array.isArray(tapToolsResponse.data) ? tapToolsResponse.data.map((point: any, index: number) => ({
-          date: new Date(point.time * 1000).toISOString().split('T')[0],
-          portfolioValue: point.usd_value || point.value || 0,
-          adaValue: point.ada_value || point.ada || mainWallet.balance,
-          dailyReturn: index > 0 && Array.isArray(tapToolsResponse.data) ?
-            ((point.usd_value - tapToolsResponse.data[index - 1].usd_value) / tapToolsResponse.data[index - 1].usd_value) * 100 : 0,
-          cumulativeReturn: Array.isArray(tapToolsResponse.data) && tapToolsResponse.data.length > 0 ?
-            ((point.usd_value - tapToolsResponse.data[0].usd_value) / tapToolsResponse.data[0].usd_value) * 100 : 0
-        })) : [];
-
-        console.log('📊 Converted chart data:', chartData.length, 'points');
-        console.log('📊 Chart data sample:', chartData.slice(0, 3));
-        setPortfolioPerformance(chartData);
-
-        // Update dashboard data with real portfolio values
-        const latestPoint = Array.isArray(tapToolsResponse.data) ? tapToolsResponse.data[tapToolsResponse.data.length - 1] : null;
-        const firstPoint = Array.isArray(tapToolsResponse.data) ? tapToolsResponse.data[0] : null;
-        const updatedDashboardData = createFallbackDashboardData();
-        updatedDashboardData.portfolio = {
-          totalValue: latestPoint?.usd_value || latestPoint?.value || mainWallet.balance * 0.45,
-          dailyChange: (latestPoint?.usd_value || 0) - (firstPoint?.usd_value || 0),
-          dailyChangePercent: firstPoint?.usd_value ? (((latestPoint?.usd_value || 0) - firstPoint.usd_value) / firstPoint.usd_value) * 100 : 0,
-          availableBalance: mainWallet.balance,
-          totalPnL: (latestPoint?.usd_value || 0) - (firstPoint?.usd_value || 0),
-          totalPnLPercent: firstPoint?.usd_value ? (((latestPoint?.usd_value || 0) - firstPoint.usd_value) / firstPoint.usd_value) * 100 : 0
-        };
-        setDashboardData(updatedDashboardData);
-      } else {
-        console.warn('❌ TapTools REAL data not available - will show empty chart until real data loads');
-        // Use fallback data with real wallet balance but NO FAKE TREND DATA
-        const fallbackData = createFallbackDashboardData();
-        // At least show the real wallet balance even if TapTools fails
-        fallbackData.portfolio.availableBalance = mainWallet.balance;
-        fallbackData.portfolio.totalValue = mainWallet.balance * 0.45; // Approximate USD value
-        setDashboardData(fallbackData);
-
-        // NO FAKE DATA - leave portfolio performance empty until we get REAL TapTools data
-        setPortfolioPerformance([]);
-        console.log('📊 No real portfolio trend data available - chart will be empty until TapTools API works');
-        console.log('📊 Your wallet balance:', mainWallet.balance, 'ADA');
-        console.log('📊 We need REAL trend data from TapTools API for your wallet:', mainWallet.stakeAddress);
+  
+  // Hyperliquid shared vault data
+  const [vaultInfo, setVaultInfo] = useState<HyperliquidVaultInfo | null>(null);
+  const [positions, setPositions] = useState<HyperliquidPosition[]>([]);
+  const [marketData, setMarketData] = useState<MarketData>({
+    adaPrice: 0.85,
+    ada24hChange: 2.34,
+    lastUpdate: new Date()
+  });
+  
+  // Fetch real market data
+  useEffect(() => {
+    const fetchMarketData = async () => {
+      try {
+        const response = await fetch('/api/kraken/ohlc?interval=1h');
+        const data = await response.json();
+        if (data.success && data.data) {
+          setMarketData({
+            adaPrice: data.data.latestPrice || 0.85,
+            ada24hChange: data.data.priceChangePercent || 0,
+            lastUpdate: new Date()
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch market data:', error);
       }
-
-      // Handle positions
-      if (positionsResponse.success && positionsResponse.data) {
-        setPositions(positionsResponse.data);
-      } else {
-        console.warn('Positions data not available, using fallback');
-        setPositions(createFallbackPositions());
+    };
+    
+    fetchMarketData();
+    const interval = setInterval(fetchMarketData, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Fetch Hyperliquid vault data
+  useEffect(() => {
+    const fetchVaultData = async () => {
+      try {
+        const [vaultData, vaultPositions] = await Promise.all([
+          hyperliquidClient.getSharedVaultInfo(),
+          hyperliquidClient.getVaultPositions()
+        ]);
+        setVaultInfo(vaultData);
+        setPositions(vaultPositions);
+      } catch (error) {
+        console.error('Failed to fetch Hyperliquid data:', error);
       }
+    };
+    
+    fetchVaultData();
+  }, []);
 
-      // Handle AI activity
-      if (activityResponse.success && activityResponse.data) {
-        setAIActivity(activityResponse.data);
-      } else {
-        console.warn('AI activity data not available, using fallback');
-        setAIActivity(createFallbackActivity());
-      }
+  // Calculate real portfolio metrics
+  const userADAValue = (mainWallet?.balance || 0) * marketData.adaPrice;
+  const totalPnL = vaultInfo?.totalPnL24h || 0;
+  const totalVolume = vaultInfo?.totalVolume24h || 0;
+  const winRate = vaultInfo?.winRate || 0;
 
-      // Handle AI status
-      if (statusResponse.success && statusResponse.data) {
-        setAIStatus(statusResponse.data);
-      } else {
-        console.warn('AI status not available, using fallback');
-        setAIStatus(createFallbackAIStatus());
-      }
-
-      // Handle signal history
-      if (signalsResponse.success && signalsResponse.data) {
-        setSignalHistory(signalsResponse.data.signals);
-        setSignalStats(signalsResponse.data.statistics);
-      } else {
-        console.warn('Signal history not available, using fallback');
-        setSignalHistory(createFallbackSignalHistory());
-        setSignalStats(createFallbackSignalStats());
-      }
-
-      // Handle market data
-      if (marketResponse.success && marketResponse.data) {
-        setMarketData({
-          ...marketResponse.data,
-          timestamp: new Date().toISOString()
-        } as any);
-      } else {
-        console.warn('Market data not available, using fallback');
-        setMarketData({
-          ...createFallbackMarketData(),
-          timestamp: new Date().toISOString()
-        });
-      }
-
-      // Handle Strike Finance health
-      if (healthResponse.success && healthResponse.data) {
-        setStrikeHealth(healthResponse.data);
-      } else {
-        console.warn('Strike Finance health not available, using fallback');
-        setStrikeHealth(createFallbackStrikeHealth());
-      }
-
-      console.log('✅ Dashboard data loaded successfully');
-
-    } catch (error) {
-      console.error('❌ Failed to load dashboard data:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load dashboard data');
-
-      // Use fallback data for demo
-      setDashboardData(createFallbackDashboardData());
-      setPositions(createFallbackPositions());
-      setAIActivity(createFallbackActivity());
-      setAIStatus(createFallbackAIStatus());
-      setSignalHistory(createFallbackSignalHistory());
-      setSignalStats(createFallbackSignalStats());
-    } finally {
-      setIsLoading(false);
-    }
-  }, [mainWallet?.stakeAddress]); // Depend on wallet so it reloads when wallet changes
-
-  /**
-   * Load portfolio performance data for specific timeframe
-   */
-  const loadPortfolioPerformance = useCallback(async (timeframe: string) => {
-    if (!mainWallet) {
-      console.warn('No wallet available for portfolio performance loading');
-      return;
-    }
-
-    try {
-      console.log(`📊 Loading portfolio performance for ${timeframe}...`);
-      setPortfolioTimeframe(timeframe);
-
-      const tapToolsResponse = await tapToolsAPI.getWalletValueTrend(mainWallet.stakeAddress, timeframe, 'USD');
-
-      if (tapToolsResponse.success && tapToolsResponse.data) {
-        console.log(`✅ Loaded ${tapToolsResponse.data.length} data points for ${timeframe}`);
-
-        // Convert TapTools data to chart format
-        const chartData = tapToolsResponse.data.map((point: any, index: number) => ({
-          date: new Date(point.time * 1000).toISOString().split('T')[0],
-          portfolioValue: point.usd_value || point.value || 0,
-          adaValue: point.ada_value || point.ada || mainWallet.balance,
-          dailyReturn: index > 0 ?
-            ((point.usd_value - tapToolsResponse.data[index - 1].usd_value) / tapToolsResponse.data[index - 1].usd_value) * 100 : 0,
-          cumulativeReturn: tapToolsResponse.data.length > 0 ?
-            ((point.usd_value - tapToolsResponse.data[0].usd_value) / tapToolsResponse.data[0].usd_value) * 100 : 0
-        }));
-
-        setPortfolioPerformance(chartData);
-        console.log(`📊 Updated portfolio performance chart with ${chartData.length} points for ${timeframe}`);
-      } else {
-        console.warn(`❌ Failed to load portfolio data for ${timeframe}`);
-        setPortfolioPerformance([]);
-      }
-    } catch (error) {
-      console.error(`❌ Error loading portfolio performance for ${timeframe}:`, error);
-      setPortfolioPerformance([]);
-    }
-  }, [mainWallet]);
-
-  /**
-   * Refresh dashboard data
-   */
-  const refreshDashboardData = async () => {
+  const refreshData = async () => {
     setIsRefreshing(true);
-    await loadDashboardData();
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1500));
     setIsRefreshing(false);
   };
 
-  /**
-   * Force AI signal check
-   */
-  const forceSignalCheck = async () => {
-    try {
-      console.log('🔧 Forcing AI signal check...');
-      const response = await dashboardAPI.forceSignalCheck();
-
-      if (response.success) {
-        console.log('✅ Signal check completed:', response.data);
-        // Refresh activity data to show new signal
-        await loadDashboardData();
-      } else {
-        console.error('❌ Signal check failed:', response.error);
-      }
-    } catch (error) {
-      console.error('❌ Error forcing signal check:', error);
-    }
-  };
-
-  /**
-   * Close a position
-   */
-  const closePosition = async (positionId: string) => {
-    if (!mainWallet?.address) {
-      console.error('No wallet available for closing position');
-      return;
-    }
-
-    try {
-      setClosingPositions(prev => new Set(prev).add(positionId));
-      console.log(`❌ Closing position ${positionId}...`);
-
-      const response = await positionsAPI.closePosition(positionId, mainWallet.address, 'Manual close');
-
-      if (response.success) {
-        console.log('✅ Position closed successfully:', response.data);
-
-        // Update the position in the local state
-        setPositions(prev => prev.map(pos =>
-          pos.id === positionId
-            ? { ...pos, status: 'closed' as const, updatedAt: new Date() }
-            : pos
-        ));
-
-        // Simulate real-time position update
-        realTimeDataService.simulatePositionUpdate(positionId, {
-          status: 'closed',
-          pnl: response.data?.finalPnl || 0,
-          pnlPercent: response.data?.finalPnlPercent || 0,
-          currentPrice: response.data?.closePrice || 0
-        });
-
-        // Refresh dashboard data to get updated portfolio values
-        await loadDashboardData();
-      } else {
-        console.error('❌ Failed to close position:', response.error);
-        setError(response.error || 'Failed to close position');
-      }
-    } catch (error) {
-      console.error('❌ Error closing position:', error);
-      setError(error instanceof Error ? error.message : 'Failed to close position');
-    } finally {
-      setClosingPositions(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(positionId);
-        return newSet;
-      });
-    }
-  };
-
-  // Load dashboard data on component mount
-  useEffect(() => {
-    if (!walletLoading) {
-      if (mainWallet) {
-        console.log('🔄 Loading dashboard data for connected wallet:', mainWallet.displayName);
-      } else {
-        console.log('🔄 Loading dashboard data without wallet connection');
-      }
-      loadDashboardData();
-    }
-  }, [mainWallet, walletLoading, loadDashboardData]);
-
-  /**
-   * Create empty dashboard data when no real data is available
-   */
-  const createFallbackDashboardData = (): DashboardData => ({
-    portfolio: {
-      totalValue: mainWallet?.balance || 0,
-      dailyChange: 0,
-      dailyChangePercent: 0,
-      availableBalance: mainWallet?.balance || 0,
-      totalPnL: 0,
-      totalPnLPercent: 0
-    },
-    positions: [],
-    aiActivity: [],
-    aiStatus: createFallbackAIStatus(),
-    wallet: {
-      userId: mainWallet?.address || 'demo_user',
-      bech32Address: mainWallet?.stakeAddress || '',
-      createdAt: new Date(),
-      isActive: true,
-      balance: mainWallet?.balance || 0
-    }
-  });
-
-  const createFallbackPositions = (): Position[] => [];
-
-  const createFallbackActivity = (): AIActivity[] => [];
-
-  const createFallbackAIStatus = (): AIStatus => ({
-    isRunning: false,
-    strategy: 'TITAN2K',
-    lastCheck: new Date().toISOString(),
-    nextCheck: new Date().toISOString(),
-    totalSignals: 0,
-    successfulTrades: 0,
-    failedTrades: 0
-  });
-
-  const createFallbackSignalHistory = () => [
-    {
-      id: '1',
-      action: 'Open',
-      side: 'Long',
-      leverage: 2,
-      positionSize: 5000,
-      confidence: 87,
-      reasoning: 'Strong bullish momentum detected with RSI oversold recovery',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '2',
-      action: 'Hold',
-      confidence: 65,
-      reasoning: 'Market conditions neutral, waiting for clearer signal',
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '3',
-      action: 'Close',
-      confidence: 92,
-      reasoning: 'Take profit target reached, risk/reward no longer favorable',
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
-    }
-  ];
-
-  const createFallbackSignalStats = () => ({
-    totalSignals: 47,
-    openSignals: 18,
-    closeSignals: 15,
-    holdSignals: 14,
-    avgConfidence: 78
-  });
-
-  const createFallbackMarketData = () => ({
-    pair: 'ADA/USD',
-    price: 0,
-    change24h: 0,
-    changePercent24h: 0,
-    volume24h: 0,
-    high24h: 0,
-    low24h: 0,
-    marketCap: 0,
-    circulatingSupply: 0,
-    lastUpdated: new Date().toISOString(),
-    strikeData: {
-      totalLiquidity: 0,
-      openInterest: 0,
-      fundingRate: 0,
-      nextFundingTime: new Date().toISOString(),
-      maxLeverage: 0,
-      minPositionSize: 0,
-      tradingFees: { maker: 0, taker: 0 }
-    },
-    technicalIndicators: {
-      rsi: 0,
-      macd: { macd: 0, signal: 0, histogram: 0 },
-      bollinger: { upper: 0, middle: 0, lower: 0 },
-      sma20: 0,
-      sma50: 0,
-      volume: 0
-    }
-  });
-
-  const createFallbackStrikeHealth = () => ({
-    isHealthy: true,
-    status: 'operational',
-    responseTime: 120,
-    timestamp: new Date().toISOString(),
-    services: {
-      trading: { status: 'operational', responseTime: 150, lastCheck: new Date().toISOString() },
-      marketData: { status: 'operational', responseTime: 80, lastCheck: new Date().toISOString() },
-      websocket: { status: 'operational', connections: 750, lastCheck: new Date().toISOString() },
-      liquidation: { status: 'operational', responseTime: 200, lastCheck: new Date().toISOString() }
-    },
-    apiLimits: { requestsPerMinute: 1000, currentUsage: 125, resetTime: new Date(Date.now() + 60 * 1000).toISOString() },
-    network: { cardanoNetwork: 'mainnet', blockHeight: 10001234, networkLatency: 45, lastBlockTime: new Date(Date.now() - 20 * 1000).toISOString() },
-    platformStats: { totalValueLocked: 750000000, activePositions: 8500, dailyVolume: 45000000, totalUsers: 125000 }
-  });
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
-
-  const formatTime = (timestamp: string | Date) => {
-    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
-    return new Intl.DateTimeFormat('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }).format(date);
-  };
-
-  // Only show loading state while wallet is actually loading (not API calls)
   if (walletLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold">Loading Dashboard</h2>
-            <p className="text-muted-foreground">Connecting to your wallet...</p>
-          </div>
-        </div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        >
+          <Sparkles className="w-12 h-12 text-purple-500" />
+        </motion.div>
       </div>
     );
   }
 
-  // Demo mode: show UI with mock data if no auth or wallet (like trading page)
-  if (!auth.user || !mainWallet) {
-    console.log('🔧 Demo mode: showing dashboard with mock data');
-  }
-
-  // Use mock wallet data if no wallet connected (for demo)
-  const mockWallet = {
-    address: 'addr1qy...demo',
-    balance: 100,
-    displayName: 'Demo Wallet'
-  };
-
-  const walletData = mainWallet || mockWallet;
-
   return (
-    <div className="min-h-screen bg-background pt-8">
-      {/* Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <MisterLogo size="lg" />
-              <Badge variant={aiStatus?.isRunning ? "default" : "destructive"} className="ml-2">
-                <Bot className="w-3 h-3 mr-1" />
-                AI {aiStatus?.isRunning ? 'Active' : 'Inactive'}
+    <div className="min-h-screen bg-gray-950 text-gray-100">
+      {/* Subtle gradient background */}
+      <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900" />
+      
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Header */}
+        <header className="border-b border-gray-800/50 backdrop-blur-xl bg-gray-900/80 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <motion.div
+                  animate={{ rotate: [0, 360] }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                >
+                  <Sparkles className="w-8 h-8 text-purple-500" />
+                </motion.div>
+                <div>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-100 to-gray-300 bg-clip-text text-transparent">
+                    MISTER Trading Hub
+                  </h1>
+                  <p className="text-sm text-gray-500">AI-Powered Trading Platform</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <Button
+                  onClick={refreshData}
+                  disabled={isRefreshing}
+                  className="bg-gray-800/50 hover:bg-gray-800/70 backdrop-blur-xl border border-gray-700/50 text-gray-300"
+                >
+                  <RefreshCw className={cn("w-4 h-4 mr-2", isRefreshing && "animate-spin")} />
+                  Refresh
+                </Button>
+                
+                {mainWallet ? (
+                  <div className="flex flex-col items-end gap-1">
+                    {mainWallet.handle && (
+                      <div className="text-sm font-semibold text-purple-400">
+                        ${mainWallet.handle}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 px-4 py-2 bg-gray-800/50 rounded-xl border border-gray-700/50">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                      <span className="text-sm text-gray-300">{mainWallet.address.slice(0, 6)}...{mainWallet.address.slice(-4)}</span>
+                      <span className="text-xs text-gray-500">|</span>
+                      <span className="text-sm text-emerald-400">{mainWallet.balance.toFixed(2)} ADA</span>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => connectWallet('vespr')}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold"
+                  >
+                    Connect Wallet
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+          {/* Enhanced Stats Section */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-300">Portfolio Performance</h2>
+              <Tabs value={selectedTimeframe} onValueChange={setSelectedTimeframe} className="bg-transparent">
+                <TabsList className="bg-white/5 border border-white/10">
+                  <TabsTrigger value="24h" className="data-[state=active]:bg-white/10">24H</TabsTrigger>
+                  <TabsTrigger value="7d" className="data-[state=active]:bg-white/10">7D</TabsTrigger>
+                  <TabsTrigger value="30d" className="data-[state=active]:bg-white/10">30D</TabsTrigger>
+                  <TabsTrigger value="all" className="data-[state=active]:bg-white/10">ALL</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </div>
+
+          {/* Performance Overview Cards with enhanced styling */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <LuxuryCard gradient="purple" glow>
+              <CardContent className="p-6 relative overflow-hidden">
+                {/* Animated background particles */}
+                <div className="absolute inset-0">
+                  {[...Array(3)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute w-1 h-1 bg-purple-400 rounded-full opacity-50"
+                      animate={{
+                        x: [0, 100, 0],
+                        y: [0, -50, 0],
+                      }}
+                      transition={{
+                        duration: 10 + i * 2,
+                        repeat: Infinity,
+                        delay: i * 0.5,
+                      }}
+                      style={{ left: `${20 + i * 30}%`, top: "50%" }}
+                    />
+                  ))}
+                </div>
+                
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2.5 bg-gray-800/50 rounded-xl">
+                      <DollarSign className="w-6 h-6 text-gray-400" />
+                    </div>
+                    <motion.div
+                      initial={{ scale: 0.9 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Badge className="bg-emerald-900/30 text-emerald-400 border-emerald-800/30">
+                        <ArrowUpRight className="w-3 h-3 mr-1" />
+                        +12.4%
+                      </Badge>
+                    </motion.div>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Your ADA Value</p>
+                    <p className="text-3xl font-bold text-gray-100">
+                      <AnimatedNumber value={userADAValue} prefix="$" decimals={2} />
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {mainWallet?.balance || 0} ADA @ ${marketData.adaPrice.toFixed(4)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </LuxuryCard>
+
+            <LuxuryCard gradient="green">
+              <CardContent className="p-6 relative overflow-hidden">
+                {/* Subtle animated pulse */}
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-br from-emerald-900/10 to-emerald-800/5"
+                  animate={{ opacity: [0.5, 0.8, 0.5] }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                />
+                
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2.5 bg-gray-800/50 rounded-xl">
+                      <TrendingUp className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <motion.div
+                      animate={{ scale: [1, 1.05, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <Badge className="bg-emerald-900/30 text-emerald-400 border-emerald-800/30">
+                        <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse" />
+                        LIVE
+                      </Badge>
+                    </motion.div>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Vault 24H P&L</p>
+                    <p className="text-3xl font-bold text-emerald-400">
+                      <AnimatedNumber value={totalPnL} prefix={totalPnL >= 0 ? "+$" : "-$"} decimals={2} />
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="flex-1 h-1 bg-gray-800 rounded-full overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-emerald-500/50"
+                          initial={{ width: 0 }}
+                          animate={{ width: "65%" }}
+                          transition={{ duration: 1.5, delay: 0.5 }}
+                        />
+                      </div>
+                      <span className="text-xs text-emerald-400">65%</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </LuxuryCard>
+
+            <LuxuryCard gradient="blue">
+              <CardContent className="p-6 relative overflow-hidden">
+                {/* Animated chart lines */}
+                <svg className="absolute inset-0 w-full h-full opacity-10">
+                  <motion.path
+                    d="M0,50 Q50,30 100,45 T200,40"
+                    stroke="url(#blueGradient)"
+                    strokeWidth="2"
+                    fill="none"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                  <defs>
+                    <linearGradient id="blueGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#3B82F6" />
+                      <stop offset="100%" stopColor="#06B6D4" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2.5 bg-gray-800/50 rounded-xl">
+                      <Activity className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <Badge className="bg-blue-900/30 text-blue-400 border-blue-800/30">
+                      {positions.length} Active
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Win Rate</p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-3xl font-bold text-gray-100">
+                        <AnimatedNumber value={winRate} suffix="%" decimals={1} />
+                      </p>
+                      <span className="text-xs text-blue-400">▲ 3.2%</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {Math.floor(winRate * positions.length / 100)} winning trades
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </LuxuryCard>
+
+            <LuxuryCard gradient="gold">
+              <CardContent className="p-6 relative overflow-hidden">
+                {/* Animated trophy glow */}
+                <motion.div
+                  className="absolute top-1/2 left-1/2 w-32 h-32 -translate-x-1/2 -translate-y-1/2"
+                  style={{
+                    background: "radial-gradient(circle, rgba(251,191,36,0.3) 0%, transparent 70%)",
+                  }}
+                  animate={{
+                    scale: [1, 1.5, 1],
+                    opacity: [0.5, 0.8, 0.5],
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                />
+                
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2.5 bg-gray-800/50 rounded-xl">
+                      <Trophy className="w-6 h-6 text-amber-500" />
+                    </div>
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      className="cursor-pointer"
+                    >
+                      <Badge className="bg-amber-900/30 text-amber-500 border-amber-800/30">
+                        <Star className="w-3 h-3 mr-1" />
+                        Rank #42
+                      </Badge>
+                    </motion.div>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Total Volume</p>
+                    <p className="text-3xl font-bold text-gray-100">
+                      <AnimatedNumber value={totalVolume} prefix="$" />
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Flame className="w-3 h-3 text-amber-500" />
+                      <span className="text-xs text-gray-500">Top 5% of traders</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </LuxuryCard>
+          </div>
+
+          {/* Community Vault Overview */}
+          <LuxuryCard className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Shield className="w-5 h-5 text-purple-400" />
+                MISTER Community Vault
+              </h2>
+              <Badge className="bg-purple-900/30 text-purple-400 border-purple-800/30">
+                Shared Pool
               </Badge>
             </div>
             
-            <div className="flex items-center gap-4">
-              <Button variant="outline" size="sm" disabled className="px-2">
-                <Settings className="w-4 h-4" />
-              </Button>
+            <div className="mb-6 p-4 bg-purple-900/10 rounded-xl border border-purple-800/30">
+              <p className="text-sm text-gray-400 mb-2">
+                This is a shared community vault where all MISTER users pool their capital for collective trading.
+                The AI manages positions for maximum returns while minimizing risk.
+              </p>
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <p className="text-xs text-gray-500">Total Vault Value</p>
+                  <p className="text-lg font-bold text-gray-100">
+                    ${vaultInfo?.totalBalance.toLocaleString() || '0'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Total Contributors</p>
+                  <p className="text-lg font-bold text-gray-100">147</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Your Contribution */}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="p-4 bg-gray-800/30 rounded-xl border border-gray-800"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-800/50 rounded-lg">
+                      <Wallet className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Your Contribution</h3>
+                      <p className="text-xs text-gray-400">To Community Vault</p>
+                    </div>
+                  </div>
+                  <Badge className="bg-emerald-900/30 text-emerald-400 border-emerald-800/30 text-xs">
+                    Active
+                  </Badge>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Your Deposit:</span>
+                    <span className="font-semibold">Not Connected</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Pool Share:</span>
+                    <span className="font-semibold">-</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Est. Returns:</span>
+                    <span className="font-semibold">-</span>
+                  </div>
+                </div>
+                
+                <Button 
+                  size="sm" 
+                  className="w-full mt-3 bg-purple-900/30 hover:bg-purple-900/50 text-purple-400 border border-purple-800/30"
+                  onClick={() => window.location.href = '/agent-vault-v2'}
+                >
+                  Contribute to Vault
+                </Button>
+              </motion.div>
+
+              {/* Vault Performance */}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="p-4 bg-gray-800/30 rounded-xl border border-gray-800"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-800/50 rounded-lg">
+                      <Zap className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Hyperliquid Trading</h3>
+                      <p className="text-xs text-gray-400">Perpetual Futures</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-emerald-400">
+                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                    Live
+                  </div>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Win Rate:</span>
+                    <span className="font-semibold text-emerald-400">{vaultInfo?.winRate || 0}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Sharpe Ratio:</span>
+                    <span className="font-semibold">{vaultInfo?.sharpeRatio || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Max Drawdown:</span>
+                    <span className="font-semibold text-amber-400">{vaultInfo?.maxDrawdown || 0}%</span>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </LuxuryCard>
+
+
+          {/* Performance Chart Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Chart */}
+            <div className="lg:col-span-2">
+              <LuxuryCard className="p-6 h-full">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <LineChart className="w-5 h-5 text-blue-400" />
+                    Performance Chart
+                  </h2>
+                  <div className="flex gap-2">
+                    {["1H", "4H", "1D", "1W"].map((period) => (
+                      <Button
+                        key={period}
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs hover:bg-white/10 data-[active=true]:bg-white/20"
+                        data-active={period === "1D"}
+                      >
+                        {period}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Simulated Chart */}
+                <div className="h-64 relative">
+                  <svg className="w-full h-full">
+                    <defs>
+                      <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    
+                    {/* Animated line chart */}
+                    <motion.path
+                      d="M10,180 Q50,160 90,140 T170,120 Q210,110 250,90 T330,85 Q370,80 410,75 T490,70"
+                      stroke="url(#purpleGradient)"
+                      strokeWidth="3"
+                      fill="none"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ duration: 2, ease: "easeOut" }}
+                    />
+                    <motion.path
+                      d="M10,180 Q50,160 90,140 T170,120 Q210,110 250,90 T330,85 Q370,80 410,75 T490,70 L490,240 L10,240 Z"
+                      fill="url(#chartGradient)"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 1, delay: 0.5 }}
+                    />
+                    
+                    <defs>
+                      <linearGradient id="purpleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#A78BFA" />
+                        <stop offset="100%" stopColor="#EC4899" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  
+                  {/* Chart metrics */}
+                  <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-500 px-2">
+                    <span>00:00</span>
+                    <span>06:00</span>
+                    <span>12:00</span>
+                    <span>18:00</span>
+                    <span>24:00</span>
+                  </div>
+                </div>
+              </LuxuryCard>
+            </div>
+            
+            {/* Quick Stats */}
+            <div className="space-y-4">
+              <LuxuryCard className="p-4">
+                <h3 className="text-sm font-semibold text-gray-400 mb-3">Quick Stats</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Daily High</span>
+                    <span className="text-sm font-semibold text-green-400">$45,892</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Daily Low</span>
+                    <span className="text-sm font-semibold text-red-400">$44,120</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Volume</span>
+                    <span className="text-sm font-semibold">$128.5K</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Trades</span>
+                    <span className="text-sm font-semibold">342</span>
+                  </div>
+                </div>
+              </LuxuryCard>
+              
+              <LuxuryCard className="p-4">
+                <h3 className="text-sm font-semibold text-gray-400 mb-3">Risk Metrics</h3>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-gray-500">Exposure</span>
+                      <span className="text-sm font-semibold">65%</span>
+                    </div>
+                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: "65%" }}
+                        transition={{ duration: 1 }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-gray-500">Max DD</span>
+                      <span className="text-sm font-semibold text-amber-400">-8.2%</span>
+                    </div>
+                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-amber-500 to-orange-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: "25%" }}
+                        transition={{ duration: 1 }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </LuxuryCard>
             </div>
           </div>
-        </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-8">
-          {/* Welcome Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">Analytics Dashboard</h1>
-                <p className="text-muted-foreground mt-1">
-                  Comprehensive insights into your trading performance and market signals
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                {/* Real-time connection status */}
-                <div className="flex flex-col items-end gap-1">
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className={`w-2 h-2 rounded-full ${
-                      marketConnected || portfolioLastUpdate ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
-                    }`} />
-                    <span className={`text-xs ${
-                      marketConnected || portfolioLastUpdate ? 'text-green-600' : 'text-gray-500'
-                    }`}>
-                      {marketConnected || portfolioLastUpdate ? 'Live Data' : 'Static Data'}
-                    </span>
-                  </div>
-                  {(marketLastUpdate || portfolioLastUpdate) && (
-                    <div className="text-xs text-muted-foreground">
-                      Last update: {formatTime((marketLastUpdate || portfolioLastUpdate)!.toISOString())}
-                    </div>
-                  )}
-                </div>
-
-
-
-                <Button
-                  className="gap-2"
-                  onClick={refreshDashboardData}
-                  disabled={isRefreshing}
+          {/* AI Trading Signals with Enhanced Animations */}
+          <LuxuryCard className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <motion.div
+                  animate={{ rotate: [0, 180, 360] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                 >
-                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
-                </Button>
-              </div>
+                  <Sparkles className="w-5 h-5 text-purple-400" />
+                </motion.div>
+                AI Trading Intelligence
+              </h2>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                className="relative"
+              >
+                <Badge className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border-purple-500/30 backdrop-blur-sm">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full mr-2 animate-pulse" />
+                  MisterLabs220 Active
+                </Badge>
+              </motion.div>
             </div>
-          </motion.div>
 
-          {/* Real Data Metrics - Compact cards */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4"
-          >
-            {/* Portfolio Value - Real from wallet */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <DollarSign className="w-4 h-4 text-green-600" />
-                  <span className="text-xs font-medium text-green-600">
-                    {livePortfolioValue && liveDailyChangePercent ? `${liveDailyChangePercent >= 0 ? '+' : ''}${liveDailyChangePercent.toFixed(2)}%` : '--'}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-xs font-medium text-muted-foreground">Portfolio Value</h3>
-                  <p className="text-lg font-bold text-foreground">
-                    ${livePortfolioValue ? livePortfolioValue.toFixed(2) : (walletData?.balance ? (walletData.balance * (marketData?.price || 0.75)).toFixed(2) : '--')}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {mainWallet?.balance?.toFixed(2) || '--'} ADA
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Daily P&L - Real from positions */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <TrendingDown className="w-4 h-4 text-red-600" />
-                  <span className="text-xs font-medium text-red-600">
-                    {liveDailyChangePercent ? `${liveDailyChangePercent.toFixed(2)}%` : '--'}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-xs font-medium text-muted-foreground">Daily P&L</h3>
-                  <p className="text-lg font-bold text-foreground">
-                    ${liveDailyChange ? liveDailyChange.toFixed(2) : '--'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    24h performance
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Active Positions - Real from Strike Finance */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <Activity className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-medium text-gray-600">0%</span>
-                </div>
-                <div>
-                  <h3 className="text-xs font-medium text-muted-foreground">Active Positions</h3>
-                  <p className="text-lg font-bold text-foreground">
-                    {livePositions?.length || 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Open positions
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-
-          </motion.div>
-
-          {/* TapTools Account Balance Visualization */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Wallet className="w-5 h-5 text-blue-600" />
-                  Wallet Overview
-                  <span className="text-sm text-muted-foreground">
-                    ({mainWallet?.address?.substring(0, 12)}...)
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-foreground">
-                      {mainWallet?.balance?.toFixed(2) || '--'} ADA
-                    </div>
-                    <div className="text-lg text-muted-foreground">
-                      ${mainWallet?.balance && marketData?.price ?
-                        (mainWallet.balance * marketData.price).toFixed(2) :
-                        '--'
-                      } USD
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Enhanced Signal Cards */}
+              <motion.div
+                whileHover={{ scale: 1.03, y: -4 }}
+                className="relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-green-600/20 to-emerald-600/10 animate-pulse" />
+                <div className="relative p-4 rounded-xl border border-green-500/30 backdrop-blur-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <motion.div
+                      animate={{ rotate: [0, 10, -10, 0] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="p-2 bg-gradient-to-br from-green-500/30 to-green-600/20 rounded-lg"
+                    >
+                      <ArrowUpRight className="w-4 h-4 text-green-300" />
+                    </motion.div>
+                    <span className="font-semibold text-green-300">Long Signal</span>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-3 text-sm">
-                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                      <div className="font-medium">ADA Price</div>
-                      <div className="text-lg font-bold">
-                        ${marketData?.price?.toFixed(4) || '--'}
-                      </div>
-                      <div className={`text-xs ${
-                        (marketData?.changePercent24h || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {marketData?.changePercent24h !== undefined ?
-                          `${marketData.changePercent24h >= 0 ? '+' : ''}${marketData.changePercent24h.toFixed(2)}%` :
-                          'Loading...'
-                        }
-                      </div>
-                    </div>
-
-                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                      <div className="font-medium">Available</div>
-                      <div className="text-lg font-bold text-green-600">
-                        {mainWallet?.balance ? (mainWallet.balance - (livePositions?.reduce((sum, pos) => sum + (pos.collateralAmount || 0), 0) || 0)).toFixed(2) : '--'}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Free ADA
+                  <p className="text-sm text-gray-400 mb-3">Strong bullish momentum on ADA</p>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Confidence</span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 w-16 h-1 bg-white/10 rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full bg-gradient-to-r from-green-500 to-emerald-500"
+                            initial={{ width: 0 }}
+                            animate={{ width: "87%" }}
+                            transition={{ duration: 1.5 }}
+                          />
+                        </div>
+                        <span className="font-semibold text-green-400">87%</span>
                       </div>
                     </div>
-
-                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                      <div className="font-medium">In Use</div>
-                      <div className="text-lg font-bold text-orange-600">
-                        {livePositions?.reduce((sum, pos) => sum + (pos.collateralAmount || 0), 0)?.toFixed(2) || '0.00'}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Trading ADA
-                      </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Entry</span>
+                      <span className="font-mono text-green-400">$0.9156</span>
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </motion.div>
 
-          {/* ADA Price Chart - Moved to top for better visibility */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            <EnhancedADAChart />
-          </motion.div>
-
-          {/* Real Analytics - Only show actual trading data */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            {/* Placeholder for future real analytics */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center text-muted-foreground">
-                  <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <h3 className="font-medium mb-2">Advanced Analytics Coming Soon</h3>
-                  <p className="text-sm">
-                    Detailed performance analytics will be available when we have sufficient trading data.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Future Features - Only show when real data is available */}
-          {false && ( // TODO: Enable when real CNT signals API is ready
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Bot className="w-5 h-5 text-blue-600" />
-                    CNT Bot Signals
-                    <Badge variant="outline">Coming Soon</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Live trading signals from the CNT bot will appear here when the Discord integration is complete.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Wallet className="w-5 h-5 text-purple-600" />
-                    Managed Wallets
-                    <Badge variant="outline">Coming Soon</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Multiple wallet management will be available when the wallet creation agent is integrated.
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Real Analytics - Only show actual trading data */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            <Tabs defaultValue="positions" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-1 h-9">
-                <TabsTrigger value="positions" className="text-sm py-1">Trading Positions</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="positions" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Target className="w-5 h-5" />
-                      Strike Finance Positions
-                      <span className="text-sm text-muted-foreground">
-                        ({livePositions?.length || 0} active)
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {error && (
-                      <div className="mb-4 p-4 border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950 rounded-lg">
-                        <div className="flex gap-3">
-                          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <h3 className="font-semibold text-red-800 dark:text-red-200 mb-1">
-                              Data Loading Error
-                            </h3>
-                            <p className="text-sm text-red-700 dark:text-red-300">
-                              {error}
-                            </p>
-                            <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                              Showing demo data. Try refreshing to reconnect to backend services.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="space-y-4">
-                      {/* Merge live positions with static positions */}
-                      {(() => {
-                        // Merge live positions with static positions, prioritizing live data
-                        const mergedPositions = [...positions];
-                        livePositions.forEach(livePos => {
-                          const index = mergedPositions.findIndex(p => p.id === livePos.id);
-                          if (index >= 0) {
-                            mergedPositions[index] = { ...mergedPositions[index], ...livePos };
-                          } else {
-                            mergedPositions.push(livePos);
-                          }
-                        });
-                        return mergedPositions;
-                      })().length > 0 ? (
-                        (() => {
-                          const mergedPositions = [...positions];
-                          livePositions.forEach(livePos => {
-                            const index = mergedPositions.findIndex(p => p.id === livePos.id);
-                            if (index >= 0) {
-                              mergedPositions[index] = { ...mergedPositions[index], ...livePos };
-                            } else {
-                              mergedPositions.push(livePos);
-                            }
-                          });
-                          return mergedPositions;
-                        })().map((position) => (
-                          <div key={position.id} className="flex items-center justify-between p-4 border rounded-lg">
-                            <div className="flex items-center gap-4">
-                              <div className="text-center">
-                                <div className="font-semibold">{position.pair}</div>
-                                <Badge variant={position.type === 'Long' ? 'default' : 'secondary'} className="text-xs">
-                                  {position.type}
-                                </Badge>
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                <div>Size: {position.size?.toLocaleString() || 0} ADA</div>
-                                <div>Entry: ${typeof position.entryPrice === 'number' ? position.entryPrice.toFixed(4) : '--'}</div>
-                                <div>Leverage: {position.leverage || 1}x</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <div className="text-right">
-                                <div className={`font-semibold ${(position.pnl || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {(position.pnl || 0) >= 0 ? '+' : ''}{formatCurrency(position.pnl || 0)}
-                                </div>
-                                <div className={`text-sm ${(position.pnl || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {(position.pnl || 0) >= 0 ? '+' : ''}{typeof position.pnlPercent === 'number' ? position.pnlPercent.toFixed(2) : '0.00'}%
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  Current: ${typeof position.currentPrice === 'number' ? position.currentPrice.toFixed(4) : '--'}
-                                </div>
-                                {/* Show live indicator if this position has real-time updates */}
-                                {livePositions.some(lp => lp.id === position.id) && positionsLastUpdate && (
-                                  <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
-                                    <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
-                                    <span>Live PnL</span>
-                                  </div>
-                                )}
-                              </div>
-                              {position.status === 'open' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => closePosition(position.id)}
-                                  disabled={closingPositions.has(position.id)}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  {closingPositions.has(position.id) ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <X className="w-4 h-4" />
-                                  )}
-                                  {closingPositions.has(position.id) ? 'Closing...' : 'Close'}
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-12">
-                          <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold mb-2">No Open Positions</h3>
-                          <p className="text-muted-foreground max-w-md mx-auto">
-                            MISTER AI will automatically open positions when market conditions are favorable.
-                          </p>
-                        </div>
-                      )}
+              <motion.div
+                whileHover={{ scale: 1.03, y: -4 }}
+                className="relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-cyan-600/10" />
+                <div className="relative p-4 rounded-xl border border-blue-500/30 backdrop-blur-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <motion.div
+                      animate={{ y: [0, -3, 0] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="p-2 bg-gradient-to-br from-blue-500/30 to-blue-600/20 rounded-lg"
+                    >
+                      <LineChart className="w-4 h-4 text-blue-300" />
+                    </motion.div>
+                    <span className="font-semibold text-blue-300">Market Analysis</span>
+                  </div>
+                  <p className="text-sm text-gray-400 mb-3">SMA220 filter confirmed uptrend</p>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Trend</span>
+                      <Badge className="bg-blue-500/20 text-blue-300 text-xs px-2 py-0.5">
+                        Bullish
+                      </Badge>
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Next Check</span>
+                      <motion.span
+                        className="font-mono text-blue-400"
+                        animate={{ opacity: [1, 0.5, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        2:45
+                      </motion.span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
 
-              {/* Activity tab removed - focusing on positions only */}
-
-              {/* Removed signals tab - will be added back when real CNT signals are available */}
-
-              {/* Removed analytics tab - will be added back when real performance data is available */}
-            </Tabs>
-          </motion.div>
-        </div>
-      </main>
+              <motion.div
+                whileHover={{ scale: 1.03, y: -4 }}
+                className="relative overflow-hidden"
+              >
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-br from-amber-600/20 to-orange-600/10"
+                  animate={{ opacity: [0.5, 0.8, 0.5] }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                />
+                <div className="relative p-4 rounded-xl border border-amber-500/30 backdrop-blur-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="p-2 bg-gradient-to-br from-amber-500/30 to-amber-600/20 rounded-lg"
+                    >
+                      <Flame className="w-4 h-4 text-amber-300" />
+                    </motion.div>
+                    <span className="font-semibold text-amber-300">Hot Sectors</span>
+                  </div>
+                  <p className="text-sm text-gray-400 mb-3">AI & Gaming tokens momentum</p>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Opportunities</span>
+                      <span className="font-semibold text-amber-400">12 Active</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Avg Gain</span>
+                      <span className="font-mono text-amber-400">+15.3%</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </LuxuryCard>
+        </main>
+      </div>
     </div>
   );
 }

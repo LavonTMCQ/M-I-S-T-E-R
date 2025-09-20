@@ -7,10 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Activity, Bot, Brain, User, Zap, Settings, Loader2, Vault, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
-import { ManualTradingInterface } from '@/components/trading/ManualTradingInterface';
 import { TradingChart } from '@/components/trading/TradingChart';
+import { CollapsibleChart } from '@/components/trading/CollapsibleChart';
 import { AITradingChat } from '@/components/trading/AITradingChat';
-import { PositionsSummary } from '@/components/trading/PositionsSummary';
 import { MarketInfoBar } from '@/components/trading/MarketInfoBar';
 import { MisterLogo } from '@/components/ui/mister-logo';
 import { useRequireAuth } from '@/contexts/AuthContext';
@@ -19,6 +18,8 @@ import { useUserIdentity } from '@/hooks/useUserIdentity';
 import { USER_STORAGE_KEYS } from '@/lib/utils/userStorage';
 import { useSignalExecution } from '@/hooks/useSignalExecution';
 import SignalCard from '@/components/trading/SignalCard';
+import { AlgorithmSignalsDashboard } from '@/components/AlgorithmSignalsDashboard';
+import { MisterLabs220Dashboard } from '@/components/trading/MisterLabs220Dashboard';
 
 interface WalletRegistrationInfo {
   walletAddress: string;
@@ -159,7 +160,7 @@ export default function TradingPage() {
   // Register wallet when authenticated
   useEffect(() => {
     if (auth.user && mainWallet) {
-      // Register wallet for direct trading
+      // Register wallet for direct trading (with 5-second timeout)
       registerWalletForTrading({
         walletAddress: mainWallet.address,
         stakeAddress: mainWallet.stakeAddress,
@@ -172,19 +173,30 @@ export default function TradingPage() {
 
   const registerWalletForTrading = async (walletInfo: WalletRegistrationInfo) => {
     try {
+      // Add timeout to prevent 76-second cold start delays
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
       const response = await fetch('https://bridge-server-cjs-production.up.railway.app/api/wallet/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(walletInfo)
+        body: JSON.stringify(walletInfo),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         console.log('✅ Wallet registered for trading');
       }
-    } catch (error) {
-      console.error('❌ Failed to register wallet for trading:', error);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('⏱️ Wallet registration skipped (server cold start)');
+      } else {
+        console.error('❌ Failed to register wallet for trading:', error);
+      }
     }
   };
 
@@ -490,21 +502,18 @@ export default function TradingPage() {
   }, [vaultCredentials]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pt-8">
-      {/* Combined Header & Market Info */}
-      <div className="border-b bg-gradient-to-r from-card via-card/95 to-card flex-shrink-0 shadow-sm">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      {/* Simple Header */}
+      <div className="border-b bg-background/95 backdrop-blur-sm flex-shrink-0">
         <div className="container mx-auto px-4">
-          {/* Top Header Row */}
-          <div className="flex items-center justify-between py-3 border-b border-border/50">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between py-3">
+            <div className="flex items-center gap-3">
               {/* MISTER Logo on the left */}
-              <MisterLogo size="lg" />
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                  Trading
-                </h1>
-                <Badge variant="outline" className="flex items-center gap-1 bg-primary/5 border-primary/20 text-primary">
-                  <Activity className="h-3 w-3" />
+              <MisterLogo size="md" />
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold">Trading</h1>
+                <Badge variant="outline" className="text-xs">
+                  <Activity className="h-3 w-3 mr-1" />
                   Live Trading
                 </Badge>
               </div>
@@ -584,22 +593,17 @@ export default function TradingPage() {
               </div>
             </div>
           </div>
-
-          {/* Market Info Row */}
-          <div className="py-3">
-            <MarketInfoBar marketData={marketData} />
-          </div>
         </div>
       </div>
 
       {/* Main Trading Interface */}
-      <div className="container mx-auto px-4 py-4 flex-1">
-        <div className="grid grid-cols-12 gap-4" style={{ minHeight: 'calc(100vh - 16rem)' }}>
+      <div className="container mx-auto px-4 py-3 flex-1 overflow-hidden">
+        <div className="grid grid-cols-12 gap-4 h-full">
 
-          {/* Left Panel - Trading Controls */}
-          <div className="col-span-3 flex flex-col gap-4" style={{ height: 'calc(100vh - 16rem)' }}>
-            {vaultMode ? (
-              /* NEW: Agent Vault Interface */
+          {/* Left Panel - Only show for Agent Vault */}
+          {vaultMode && (
+            <div className="col-span-3 flex flex-col gap-4 h-full">
+              {/* Agent Vault Interface */}
               <Card className="h-full shadow-lg border-border/50 bg-gradient-to-br from-card to-card/95">
                 <CardHeader className="pb-3 border-b border-border/30">
                   <CardTitle className="flex items-center space-x-2">
@@ -774,7 +778,12 @@ export default function TradingPage() {
                   )}
                 </CardContent>
               </Card>
-            ) : signalMode ? (
+            </div>
+          )}
+          
+          {/* Left Panel - Signal Mode */}
+          {signalMode && (
+            <div className="col-span-3 flex flex-col gap-4 h-full">
               /* NEW: Signal Trading Interface */
               <Card className="h-full shadow-lg border-border/50 bg-gradient-to-br from-card to-card/95">
                 <CardHeader className="pb-3 border-b border-border/30">
@@ -862,49 +871,20 @@ export default function TradingPage() {
                   </div>
                 </CardContent>
               </Card>
-            ) : (
-              /* Manual Trading Interface */
-              <>
-                <div className="flex-1 min-h-0">
-                  <ManualTradingInterface
-                    walletAddress={walletData.address}
-                    walletType="connected"
-                    balance={walletData.balance}
-                    currentPrice={marketData.price}
-                  />
-                </div>
+            </div>
+          )}
 
-                {/* Positions Summary - Fixed Height */}
-                <div className="flex-shrink-0">
-                  <PositionsSummary />
-                </div>
-              </>
-            )}
-          </div>
+          {/* Center Panel - Chart and Algorithm Dashboard */}
+          <div className={`${vaultMode || signalMode ? 'col-span-6' : 'col-span-9'} flex flex-col gap-4`}>
+            {/* Collapsible TradingView Chart */}
+            <CollapsibleChart marketData={marketData} />
 
-          {/* Center Panel - Chart */}
-          <div className="col-span-6">
-            <Card
-              className="shadow-lg border-border/50 bg-gradient-to-br from-card to-card/95 overflow-hidden"
-              style={{ height: 'calc(100vh - 16rem)' }}
-            >
-              <CardContent className="p-0 h-full relative">
-                {/* Chart container with professional edges */}
-                <div className="h-full relative">
-                  <TradingChart />
-
-                  {/* Professional corner accents */}
-                  <div className="absolute top-0 left-0 w-8 h-8 border-l-2 border-t-2 border-primary/20 rounded-tl-lg"></div>
-                  <div className="absolute top-0 right-0 w-8 h-8 border-r-2 border-t-2 border-primary/20 rounded-tr-lg"></div>
-                  <div className="absolute bottom-0 left-0 w-8 h-8 border-l-2 border-b-2 border-primary/20 rounded-bl-lg"></div>
-                  <div className="absolute bottom-0 right-0 w-8 h-8 border-r-2 border-b-2 border-primary/20 rounded-br-lg"></div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Algorithm Dashboard - MisterLabs220 Live Trading */}
+            <MisterLabs220Dashboard />
           </div>
 
           {/* Right Panel - AI Chat */}
-          <div className="col-span-3" style={{ maxHeight: 'calc(100vh - 16rem)', overflowY: 'auto' }}>
+          <div className="col-span-3 h-full overflow-hidden flex flex-col">
             {/* Signal Activity Panel (when in signal mode) */}
             {signalMode && (
               <Card className="mb-4">
@@ -952,78 +932,29 @@ export default function TradingPage() {
             )}
 
             {/* AI Trading Chat */}
-            <div style={{ height: signalMode ? 'calc(100vh - 22rem)' : 'calc(100vh - 16rem)' }}>
+            <div className="flex-1 overflow-hidden">
               <AITradingChat />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Professional Footer */}
-      <div className="relative mt-8">
-        {/* Gradient separator */}
-        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
-
-        {/* Main footer */}
-        <div className="bg-gradient-to-r from-card/95 via-card to-card/95 backdrop-blur-md border-t border-border/50 shadow-lg">
-          <div className="container mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              {/* Left section */}
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-sm"></div>
-                  <span className="text-sm font-medium text-foreground">Live Trading</span>
-                </div>
-
-                <div className="h-4 w-px bg-border/50"></div>
-
-                <span className="text-sm text-muted-foreground">© 2025 MISTER Trading</span>
-
-                {signalMode && (
-                  <>
-                    <div className="h-4 w-px bg-border/50"></div>
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-3 h-3 text-blue-500" />
-                      <span className="text-sm font-medium text-blue-600">Signal Mode Active</span>
-                    </div>
-                  </>
-                )}
-
-                {vaultMode && (
-                  <>
-                    <div className="h-4 w-px bg-border/50"></div>
-                    <div className="flex items-center gap-2">
-                      <Vault className="w-3 h-3 text-orange-500" />
-                      <span className="text-sm font-medium text-orange-600">Agent Vault Active</span>
-                      {networkInfo?.network === 'mainnet' && (
-                        <span className="text-xs text-red-600 font-semibold">MAINNET</span>
-                      )}
-                    </div>
-                  </>
-                )}
+      {/* Compact Footer */}
+      <div className="border-t bg-background/95 backdrop-blur-sm mt-4">
+        <div className="container mx-auto px-4 py-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                <span>Live Trading</span>
               </div>
-
-              {/* Right section */}
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                  <span>Updated {currentTime}</span>
-                </div>
-
-                <div className="h-4 w-px bg-border/50"></div>
-
-                <Badge
-                  variant="outline"
-                  className="text-xs font-medium bg-primary/5 border-primary/20 text-primary hover:bg-primary/10 transition-colors"
-                >
-                  v1.0.0
-                </Badge>
-              </div>
+              <span>© 2025 MISTER Trading</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span>Updated {currentTime}</span>
+              <Badge variant="outline" className="text-[10px] h-5">v1.0.0</Badge>
             </div>
           </div>
-
-          {/* Bottom gradient edge */}
-          <div className="h-px bg-gradient-to-r from-transparent via-border/30 to-transparent"></div>
         </div>
       </div>
     </div>

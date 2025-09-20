@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { Navigation } from "@/components/navigation";
-import { WalletHeader } from "@/components/WalletHeader";
-import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { FloatingDock } from "@/components/ui/floating-dock";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { WalletProvider } from "@/contexts/WalletContext";
@@ -57,12 +55,10 @@ export default function RootLayout({
           <WalletProvider>
             <PositionsProvider>
               <AuthProvider>
-                <Navigation />
-                <WalletHeader />
-                {children}
-                <div className="container mx-auto px-6 pb-8">
-                  <Breadcrumbs />
-                </div>
+                <main className="pb-24 min-h-screen">
+                  {children}
+                </main>
+                <FloatingDock />
               </AuthProvider>
             </PositionsProvider>
           </WalletProvider>

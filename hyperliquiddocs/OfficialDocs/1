@@ -1,0 +1,316 @@
+Of course. This is the next logical step in your integration plan. Building smart contracts on HyperEVM is a powerful way to create trustless, automated trading strategies. This guide provides deep documentation on the architecture, key concepts, and a practical, step-by-step example of building a vault contract.
+
+-----
+
+### **Deep Documentation: Building Smart Contracts on Hyperliquid's HyperEVM**
+
+**Disclaimer:** Smart contract development carries significant risk. This guide is for educational purposes. Always perform a comprehensive audit of your contracts before deploying them with real funds.
+
+#### **Prerequisites**
+
+  * **Solidity:** Intermediate understanding of Solidity, including interfaces, inheritance, and token standards (ERC-20).
+  * **EVM Development Environment:** Experience with tools like Foundry or Hardhat. **Foundry is highly recommended** for its speed and testing capabilities.
+  * **Understanding of Perpetual Futures:** Knowledge of concepts like leverage, margin, P\&L, and funding rates.
+
+-----
+
+### **Section 1: The Core Mental Model - How HyperEVM Works**
+
+You cannot build directly on the Hyperliquid L1; it's a purpose-built chain for the order book. Instead, you build on **HyperEVM**, a parallel, EVM-compatible chain. The magic that connects them is a set of **Precompiled Contracts**.
+
+A **Precompile** is a special type of smart contract whose address contains native, highly optimized code executed by the chain itself, rather than standard EVM bytecode. They act as a high-speed bridge, allowing your HyperEVM contracts to give instructions to the L1.
+
+**The Interaction Flow:**
+
+Your smart contract on HyperEVM doesn't hold a position directly. Instead, it acts as a controller for its own L1 margin account.
+
+1.  **Your Vault Contract (HyperEVM):** This is the contract you write and deploy. It holds user funds (e.g., USDC) and contains your trading logic.
+2.  **Precompile Bridge:** Your vault calls functions on the precompile addresses. For example, to place a trade, it calls the `Exchange` precompile.
+3.  **Hyperliquid L1:** The precompile translates your call into a native L1 action. The trade is executed, and the resulting position is held in your vault contract's own L1 margin account.
+
+<!-- end list -->
+
+```plaintext
++--------------------------------+       +-------------------------+       +----------------------+
+|       Your Keeper Bot          |------>| Your Vault Contract     |------>|   Precompiled        |
+| (Off-chain, triggers trades)   |       | (On HyperEVM, holds USDC|       |   Contracts (Bridge) |
++--------------------------------+       |  and contains logic)    |       +----------------------+
+                                         +-------------------------+                  |
+                                                     | (Deposit/Withdraw)             | (Place Order/Withdraw L1)
+                                                     |                                V
+                                         +-------------------------+       +----------------------+
+                                         |         User            |       | Your Vault's L1      |
+                                         | (Deposits/Withdraws USDC)|       | Margin Account       |
+                                         +-------------------------+       | (Holds position/coll)|
+                                                                           +----------------------+
+```
+
+-----
+
+### **Section 2: The Key Precompiles - Your API Reference**
+
+These are the essential precompiles you will interact with. You will define them as interfaces in your Solidity code.
+
+**Official Precompile Addresses (Mainnet & Testnet):**
+
+  * **Exchange:** `0x0000000000000000000000000000000000000001`
+  * **Vault:** `0x0000000000000000000000000000000000000002`
+  * **Oracle:** `0x0000000000000000000000000000000000000003`
+
+#### **A. Exchange Precompile (`0x...01`)**
+
+Used for all trading actions.
+
+**Interface (`IExchange.sol`):**
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+interface IExchange {
+    struct Order {
+        address asset;      // Address of the asset to trade (e.g., WBTC)
+        bool is_buy;        // True for buy, false for sell
+        uint64 limit_px;    // Limit price (as a u64 with 8 decimals)
+        uint64 sz;          // Size of the order (as a u64 with 8 decimals)
+        bool reduce_only;   // True if the order should only reduce a position
+    }
+
+    // Places an order on the L1. The cloid (Client Order ID) can be used
+    // to track the order, but is optional for simple cases.
+    function place_order(address, Order calldata, uint128 cloid) external;
+
+    // Cancels an order on the L1.
+    function cancel_order(address, uint128 cloid) external;
+}
+```
+
+#### **B. Vault Precompile (`0x...02`)**
+
+Used for moving funds *between L1 margin accounts* or *from the L1 to HyperEVM*.
+
+**Interface (`IVault.sol`):**
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+interface IVault {
+    // Withdraws funds from your contract's L1 margin account to its
+    // HyperEVM address, making the funds usable by the contract's logic (e.g., for transfers).
+    function withdraw(address, uint64) external;
+
+    // Transfers funds from your contract's L1 margin account to another
+    // user's L1 margin account. This is a fast, on-chain settlement.
+    function transfer(address, address, uint64) external;
+}
+```
+
+-----
+
+### **Section 3: Example - Building a Basic Trading Vault**
+
+Here is a complete, annotated example of a basic vault contract.
+
+**Goal:**
+
+  * Users can `deposit` and `withdraw` an accepted ERC-20 token (e.g., USDC).
+  * A designated `keeper` address can execute trades on behalf of the vault.
+  * The `keeper` can withdraw realized profits from the L1 margin account back into the vault contract.
+
+#### **File: `interfaces/IPrecompiles.sol`**
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+interface IExchange {
+    struct Order {
+        address asset;
+        bool is_buy;
+        uint64 limit_px;
+        uint64 sz;
+        bool reduce_only;
+    }
+    function place_order(address asset, Order calldata order, uint128 cloid) external;
+    function cancel_order(address asset, uint128 cloid) external;
+}
+
+interface IVault {
+    function withdraw(address token, uint64 amount) external;
+}
+
+interface IERC20 {
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+}
+```
+
+#### **File: `BasicVault.sol`**
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "./interfaces/IPrecompiles.sol";
+
+contract BasicVault {
+    // --- State Variables ---
+    address public immutable owner;
+    address public keeper;
+    IERC20 public immutable acceptedToken; // e.g., USDC address
+
+    mapping(address => uint256) public balances;
+
+    // --- Precompile Addresses ---
+    IExchange private constant EXCHANGE = IExchange(0x0000000000000000000000000000000000000001);
+    IVault private constant VAULT = IVault(0x0000000000000000000000000000000000000002);
+
+    // --- Events ---
+    event Deposited(address indexed user, uint256 amount);
+    event Withdrawn(address indexed user, uint256 amount);
+    event TradeExecuted(address asset, bool isBuy, uint64 size, uint64 limitPrice);
+    event KeeperChanged(address indexed newKeeper);
+
+    // --- Modifiers ---
+    modifier onlyKeeper() {
+        require(msg.sender == keeper, "BasicVault: Not the keeper");
+        _;
+    }
+
+    // --- Constructor ---
+    constructor(address _keeper, address _acceptedToken) {
+        owner = msg.sender;
+        keeper = _keeper;
+        acceptedToken = IERC20(_acceptedToken);
+    }
+
+    // --- Core Functions: User-Facing ---
+
+    /**
+     * @notice Allows a user to deposit acceptedToken into the vault.
+     * User must first approve this contract to spend their tokens.
+     */
+    function deposit(uint256 amount) external {
+        require(amount > 0, "BasicVault: Amount must be > 0");
+        uint256 initialBalance = acceptedToken.balanceOf(address(this));
+        
+        // Pull tokens from user to this contract
+        acceptedToken.transferFrom(msg.sender, address(this), amount);
+        
+        uint256 finalBalance = acceptedToken.balanceOf(address(this));
+        uint256 receivedAmount = finalBalance - initialBalance; // More robust than using `amount`
+
+        balances[msg.sender] += receivedAmount;
+        emit Deposited(msg.sender, receivedAmount);
+    }
+
+    /**
+     * @notice Allows a user to withdraw their share of the acceptedToken.
+     */
+    function withdraw(uint256 amount) external {
+        require(amount > 0, "BasicVault: Amount must be > 0");
+        uint256 userBalance = balances[msg.sender];
+        require(userBalance >= amount, "BasicVault: Insufficient balance");
+
+        balances[msg.sender] -= amount;
+        
+        // Send tokens from this contract back to the user
+        bool success = acceptedToken.transfer(msg.sender, amount);
+        require(success, "BasicVault: Transfer failed");
+
+        emit Withdrawn(msg.sender, amount);
+    }
+
+    // --- Core Functions: Keeper-Facing ---
+
+    /**
+     * @notice Executed by the keeper to place a trade on the L1.
+     * @param asset The address of the asset to trade (e.g., WBTC, WETH).
+     * @param isBuy True for a long, false for a short.
+     * @param sizeUsd The size of the position in USD value, with 8 decimals.
+     * @param limitPrice The limit price for the order, with 8 decimals.
+     * @param cloid A unique client order ID for tracking. Can be a simple counter.
+     */
+    function executeTrade(address asset, bool isBuy, uint64 sizeUsd, uint64 limitPrice, uint128 cloid) external onlyKeeper {
+        IExchange.Order memory order = IExchange.Order({
+            asset: asset,
+            is_buy: isBuy,
+            limit_px: limitPrice,
+            sz: sizeUsd,
+            reduce_only: false
+        });
+
+        // This call bridges to the L1 and places the trade in this contract's L1 margin account.
+        EXCHANGE.place_order(asset, order, cloid);
+
+        emit TradeExecuted(asset, isBuy, sizeUsd, limitPrice);
+    }
+
+    /**
+     * @notice Executed by the keeper to pull funds from the L1 margin account
+     * back into this HyperEVM contract's token balance. This is how you realize profits.
+     * @param amount The amount of acceptedToken to withdraw from L1, with 8 decimals.
+     */
+    function pullFromL1(uint64 amount) external onlyKeeper {
+        // This call instructs the vault to move funds from its L1 margin account
+        // to its address on the HyperEVM chain.
+        VAULT.withdraw(address(acceptedToken), amount);
+    }
+
+    // --- Admin Functions ---
+    function setKeeper(address _newKeeper) external {
+        require(msg.sender == owner, "BasicVault: Not the owner");
+        keeper = _newKeeper;
+        emit KeeperChanged(_newKeeper);
+    }
+}
+```
+
+-----
+
+### **Section 4: Official Resources & Next Steps**
+
+#### **Official GitHub Repositories**
+
+The primary source for examples and core contract information is the official Hyperliquid GitHub organization.
+
+  * **Main Organization:** [**github.com/hyperliquid-dex**](https://github.com/hyperliquid-dex)
+  * **Example Vaults Repository:** This is the most valuable resource for practical examples. It contains implementations of various vault strategies.
+      * **Link:** [**github.com/hyperliquid-dex/hyperliquid-vaults**](https://www.google.com/search?q=https://github.com/hyperliquid-dex/hyperliquid-vaults)
+      * **What to look for:** Browse the `contracts` folder to see how they structure their vaults, handle P\&L accounting, and manage fees.
+
+#### **Official Documentation**
+
+The official docs have a dedicated section for smart contract development.
+
+  * **Developer Docs:** [**docs.hyperliquid.xyz/developers/smart-contracts**](https://www.google.com/search?q=https://docs.hyperliquid.xyz/developers/smart-contracts)
+  * **Key Pages to Read:**
+      * **Introduction:** Reinforces the mental model.
+      * **Precompiles:** The official, detailed API reference for all precompile functions.
+      * **Quick Start:** A guide to setting up your environment to connect to the Hyperliquid testnet.
+
+#### **Your Implementation Plan (Phase 4)**
+
+1.  **Environment Setup:**
+
+      * Install Foundry.
+      * Configure your `foundry.toml` file to include the Hyperliquid testnet RPC endpoint and your deployer private key (use environment variables with `dotenv` for security).
+
+2.  **Deploy & Test:**
+
+      * Copy the `BasicVault.sol` and interface files into a new Foundry project.
+      * Write a deployment script using `forge script`.
+      * Deploy the vault to the Hyperliquid testnet, passing your keeper bot's address and the testnet USDC address to the constructor.
+
+3.  **Keeper Bot Development:**
+
+      * Build your off-chain keeper bot (in Python or TypeScript).
+      * This bot will use a library like `ethers.js` or `web3.py` to connect to the Hyperliquid testnet RPC.
+      * Implement the logic to call the `executeTrade` and `pullFromL1` functions on your deployed vault contract based on your AI signals.
+
+4.  **Iterate:**
+
+      * Start with simple market orders.
+      * Build more complex logic for P\&L calculation, fee management, and user balance accounting within your vault contract, using the official examples as a reference.

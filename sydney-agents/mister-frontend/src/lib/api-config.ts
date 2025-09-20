@@ -28,8 +28,14 @@ const API_CONFIG: Record<string, ApiConfig> = {
 // Get current environment
 const env = process.env.NODE_ENV || 'development';
 
-// Export the configuration for the current environment
-export const apiConfig = API_CONFIG[env];
+// Export the configuration for the current environment with env overrides
+const baseConfig = API_CONFIG[env];
+export const apiConfig: ApiConfig = {
+  MASTRA_API_URL: process.env.NEXT_PUBLIC_MASTRA_API_URL || baseConfig.MASTRA_API_URL,
+  MISTER_API_URL: process.env.NEXT_PUBLIC_MISTER_API_URL || baseConfig.MISTER_API_URL,
+  STRIKE_API_URL: process.env.NEXT_PUBLIC_STRIKE_API_URL || baseConfig.STRIKE_API_URL,
+  CNT_API_URL: process.env.NEXT_PUBLIC_CNT_API_URL || baseConfig.CNT_API_URL,
+};
 
 // Export individual URLs for convenience
 export const {

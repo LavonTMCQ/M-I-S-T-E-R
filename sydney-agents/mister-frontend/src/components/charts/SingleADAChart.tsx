@@ -49,9 +49,7 @@ export function SingleADAChart({
 
     // Professional trading configuration matching your target design
     script.innerHTML = JSON.stringify({
-      "autosize": false,
-      "width": "100%",
-      "height": height,
+      "autosize": true,
       "symbol": "BINANCE:ADAUSD",
       "interval": timeframe,
       "timezone": "Etc/UTC",

@@ -1,0 +1,613 @@
+
+I'll first get a high-level view of the mister-frontend directory structure and ask the codebase indexer where the key integrations and pages are defined so I can open the right files next.
+
+
+Next, I'll open key files and directories in mister-frontend to map pages, API configs, wallet/Strike/Discord integrations, and env/Next.js settings.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Task kickoff and plan
+I’ll produce a complete audit of the mister-frontend by:
+- Mapping the architecture and all production integrations
+- Doing a page-by-page analysis (Landing, Trading, Backtesting)
+- Enumerating API endpoints, env/config, and critical file connections
+- Producing a replication checklist and a data flow diagram
+- Calling out any missing pieces or mock wiring that would block full functionality
+
+Below is the full audit and documentation you can hand to a senior agent to clone and replicate the system.
+
+---
+
+## 1) System Architecture Analysis
+
+### Frontend to Production Services
+- Core framework: Next.js 15 App Router (src/app)
+- API routing: server routes in src/app/api
+- Primary production services referenced:
+  - Mastra Cloud (hosted agent endpoints): https://substantial-scarce-magazin.mastra.cloud
+  - Strike Bridge Server (Railway): https://strike-bridge-server-production.up.railway.app
+  - Alternate bridge (env/scripts): https://bridge-server-cjs-production.up.railway.app
+  - Cardano service (Railway): https://friendly-reprieve-production.up.railway.app
+  - CNT Trading API (Railway): https://cnt-trading-api-production.up.railway.app
+  - MisterLabs220 Algo service (Railway): https://misterlabs220-production.up.railway.app and wss://misterlabs220-production.up.railway.app/ws
+  - Blockfrost (Cardano): mainnet/testnet endpoints proxied via Next rewrites
+
+Key config file for endpoints:
+- Found in "sydney-agents/mister-frontend/src/lib/api-config.ts"
+````ts path=sydney-agents/mister-frontend/src/lib/api-config.ts mode=EXCERPT
+const API_CONFIG = {
+  development: { STRIKE_API_URL: 'https://substantial-scarce-magazin.mastra.cloud' },
+  production:  { STRIKE_API_URL: 'https://strike-bridge-server-production.up.railway.app' }
+};
+export const { MASTRA_API_URL, MISTER_API_URL, STRIKE_API_URL, CNT_API_URL } = API_CONFIG[env];
+````
+
+- Strike direct API proxy for client-side read ops:
+  - Found in "sydney-agents/mister-frontend/src/lib/api/strike-proxy.ts"
+````ts path=sydney-agents/mister-frontend/src/lib/api/strike-proxy.ts mode=EXCERPT
+const PROXY_BASE_URL = 'https://friendly-reprieve-production.up.railway.app/api/strike';
+export const strikeApi = { getPositions: (a:string)=>makeProxyCall(`/perpetuals/getPositions?address=${a}`) };
+````
+
+- Next server routes for Strike (server-to-server, no CORS):
+  - Trade: "sydney-agents/mister-frontend/src/app/api/strike/trade/route.ts"
+  - Positions: "sydney-agents/mister-frontend/src/app/api/strike/positions/route.ts"
+
+- Cardano local server routes (CBOR build/sign/submit) using Mesh + Blockfrost:
+  - Found in "sydney-agents/mister-frontend/src/app/api/cardano/*"
+  - Next rewrites for Blockfrost are configured in next.config.ts (no CORS on client)
+````ts path=sydney-agents/mister-frontend/next.config.ts mode=EXCERPT
+async rewrites() { return [
+  { source: '/api/blockfrost/:path*', destination: 'https://cardano-mainnet.blockfrost.io/api/v0/:path*' }
+]; }
+````
+
+### Production Strike Trading Agent integration
+Two integration paths are present:
+- Client-side read-only via Railway proxy
+  - strike-proxy.ts → friendly-reprieve-production.up.railway.app/api/strike → app.strikefinance.org
+- Server-side execution via StrikeFinanceApiClient
+  - API route /api/strike/trade → StrikeFinanceApiClient executes against app.strikefinance.org
+
+The “bridge server” role is to mediate Strike API (CORS, auth and stability). In production config, STRIKE_API_URL points to strike-bridge-server-production.up.railway.app. Scripts and docs also reference bridge-server-cjs-production.up.railway.app. Both appear to be or have been used as the production bridge.
+
+### Data flow: frontend → bridge → Strike Agent → execution
+- User triggers execution (Trading page UI)
+- UI calls Next API route:
+  - POST /api/strike/trade with action/open/close, side, size, leverage
+- API route instantiates StrikeFinanceApiClient:
+  - Validates and calls app.strikefinance.org (or bridge/proxy as configured)
+  - Returns execution prep result (transaction CBOR or synthetic execution metadata)
+- Wallet integration handles signing or the system triggers automated execution per agent mode
+- DiscordNotifier can emit notifications
+- Positions read via:
+  - Server route /api/strike/positions (server fetch to app.strikefinance.org)
+  - Or client route via strike-proxy to Railway proxy
+
+---
+
+## 2) Page-by-Page Analysis
+
+### Landing Page
+- Path: "sydney-agents/mister-frontend/src/app/page.tsx"
+- Purpose: Marketing + immediate wallet connection entry to /trading
+- Wallet flow:
+  - Prefers Vespr if available; falls back to nami/eternl/flint
+  - Uses WalletContext.connectWallet (no signature required)
+- On success: redirects to /trading
+
+````tsx path=sydney-agents/mister-frontend/src/app/page.tsx mode=EXCERPT
+if (window.cardano?.vespr) {
+  const success = await connectWallet('vespr');
+  if (success) window.location.href = '/trading';
+}
+````
+
+### Trading Page
+- Path: "sydney-agents/mister-frontend/src/app/trading/page.tsx"
+- Left/Center panels:
+  - CollapsibleChart → TradingView/Lightweight chart wrapper with Kraken data
+  - MisterLabs220Dashboard → connects to MisterLabs220 service for live algorithm status
+- Right panel:
+  - AI chat and execution history
+- One-click execution workflow:
+  - High-level system is exposed via services/one-click-execution
+  - Strike integration wiring has a mock index in services/strike-finance/index.ts but full real client exists in StrikeFinanceClient.ts and OneClickExecutionService.ts
+  - Server execution endpoint: POST /api/strike/trade
+- Wallet integration:
+  - WalletContext connects and persists mainWallet (payment + stake address), resolves handle via /api/address/*, and keeps real balance in sync
+  - Cardano transactions are built via API routes under /api/cardano/* using Mesh + Blockfrost; Vespr signing supported per prior fixes
+- Real-time data:
+  - Kraken OHLC via /api/kraken/ohlc (server fetch to Kraken)
+  - MisterLabs220 WebSocket: wss://misterlabs220-production.up.railway.app/ws
+
+### Backtesting Page
+- Code scaffolding and docs indicate a backtest UI expected at /backtest-results with chart population logic, but the directory is empty:
+  - "sydney-agents/mister-frontend/src/app/backtest-results" exists but is empty
+  - CHART_POPULATION_GUIDE.md (same directory root) references a page implementation that isn’t present now
+- Current chart components exist (components/charts/* and components/trading/*), and a chart-demo page exists
+- A separate service “sydney-agents/backtesting-service” holds a Python Flask service with real-data backtesting endpoints designed to feed the UI
+
+Conclusion for backtesting:
+- Frontend wiring for an end-to-end backtesting page is not currently in this repo (missing page implementation)
+- Charts and guides are present; the backend provider exists under “sydney-agents/backtesting-service”; integration endpoints and client code would need to be (re)wired
+
+---
+
+## 3) Key Integration Points
+
+### API endpoints and Railway/hosted connections
+- Centralized config:
+  - src/lib/api-config.ts (env-based)
+- Strike direct and proxied:
+  - Client-side proxy: src/lib/api/strike-proxy.ts → friendly-reprieve-production.up.railway.app/api/strike → app.strikefinance.org
+  - Server routes:
+    - /api/strike/trade → StrikeFinanceApiClient (exec/open/close)
+    - /api/strike/positions → direct fetch to app.strikefinance.org
+- Cardano Mesh/Blockfrost:
+  - /api/cardano/simple-transaction, /build-*, /sign-*, /submit-*
+  - next.config.ts rewrites Blockfrost API to avoid CORS for browser calls (if any)
+- Kraken data:
+  - /api/kraken/ohlc → fetch from Kraken, normalize and return OHLC + summary
+- MisterLabs220 Algo (live signals/status):
+  - src/services/misterlabs220/misterlabs220Service.ts → HTTPS/WS to Railway service
+
+### Wallet connection flow and authentication
+- WalletContext.tsx drives:
+  - Connect (no signature); gather stake/payment addresses via CIP-30
+  - Normalize stake address with addressUtils; resolve handle via /api/address/{stake}/handles
+  - Fetch real balance via /api/address/{payment}/balance
+  - Uses payment address for Strike trades; persists wallet info in user-scoped storage
+````ts path=sydney-agents/mister-frontend/src/contexts/WalletContext.tsx mode=EXCERPT
+const addressResponse = await fetch(`${blockfrostUrl}/accounts/${normalizedStakeAddr}/addresses`, { headers:{project_id:apiKey}});
+const bech32PaymentAddr = addresses[0].address;
+````
+
+- Cardano wallet adapter: src/wallets/adapters/CardanoWalletAdapter.ts (CIP-30)
+
+### Strike Finance API integration
+- Execution path for server-side:
+  - POST /api/strike/trade → StrikeFinanceApiClient.executeTrade or .closePosition
+  - Client class: src/services/strike-finance/StrikeFinanceClient.ts
+    - Validates request, performs API call to app.strikefinance.org, returns execution summary
+- One-click orchestration:
+  - src/services/strike-finance/OneClickExecutionService.ts:
+    - Pre-execution validation: balance, limits, confidence threshold
+    - Executes via StrikeFinanceClient
+    - Optionally notifies Discord
+    - Tracks execution history in-memory
+- Note: src/services/strike-finance/index.ts currently exports a MockStrikeFinanceService for quick wiring—this is a known mock layer. Use OneClickExecutionService + StrikeFinanceClient for real execution.
+
+### Real-time data sources
+- Kraken OHLC via server route (no client CORS issues)
+- MisterLabs220 via WebSocket (wss://misterlabs220-production.up.railway.app/ws)
+
+### Discord integration
+- src/services/discord/DiscordNotifier.ts:
+  - Reads NEXT_PUBLIC_DISCORD_WEBHOOK_URL or localStorage
+  - Sends rich embeds to live Discord webhook on signal generation, execution, updates, daily summary
+
+---
+
+## 4) Critical Files and Connections
+
+- API base configuration:
+  - "sydney-agents/mister-frontend/src/lib/api-config.ts" (Mastra/Strike/CNT per env)
+- Strike client/proxy:
+  - Client execution: "src/services/strike-finance/StrikeFinanceClient.ts"
+  - Proxied read endpoints: "src/lib/api/strike-proxy.ts"
+  - Next API (server side):
+    - "/api/strike/trade" → execution
+    - "/api/strike/positions" → positions fetch
+- Wallet and address resolution:
+  - "src/contexts/WalletContext.tsx" (stake/payment addresses, handle resolution, balance)
+  - "src/wallets/adapters/CardanoWalletAdapter.ts" (CIP-30)
+- Cardano transactions (CBOR):
+  - "src/app/api/cardano/*" (Mesh + Blockfrost)
+- Kraken data route:
+  - "src/app/api/kraken/ohlc/route.ts"
+- MisterLabs220:
+  - "src/services/misterlabs220/misterlabs220Service.ts" (WS + REST client)
+- Discord:
+  - "src/services/discord/DiscordNotifier.ts"
+- Next config (proxy rewrites / WASM support):
+  - "sydney-agents/mister-frontend/next.config.ts"
+- Production endpoint references in docs/scripts:
+  - start-dev.sh, DEPLOYMENT_READY.md, set-vercel-env.sh
+
+---
+
+## 5) Production Dependencies (must be running)
+- Mastra Cloud agent endpoint: https://substantial-scarce-magazin.mastra.cloud
+- Strike Bridge Server: https://strike-bridge-server-production.up.railway.app (or bridge-server-cjs-production.up.railway.app per docs/scripts)
+- Cardano service proxy: https://friendly-reprieve-production.up.railway.app
+- CNT Trading API: https://cnt-trading-api-production.up.railway.app
+- MisterLabs220 Algo service: https://misterlabs220-production.up.railway.app (+ WS)
+- Blockfrost API project IDs (mainnet/testnet)
+- Discord Webhook URL configured
+- Note: Backtesting service (Python Flask) lives in sydney-agents/backtesting-service (separate service expected to be running to provide real backtest data if/when the backtesting page is implemented)
+
+Hardcoded production URLs in code/docs:
+- "sydney-agents/mister-frontend/src/lib/api-config.ts" (Mastra, Strike bridge, CNT)
+- "sydney-agents/mister-frontend/src/lib/api/strike-proxy.ts" (friendly-reprieve-production)
+- "sydney-agents/mister-frontend/src/services/misterlabs220/misterlabs220Service.ts" (misterlabs220-production, WS)
+- "sydney-agents/mister-frontend/DEPLOYMENT_READY.md", "set-vercel-env.sh", "start-dev.sh" (explicit production endpoints)
+
+Railway-specific configs:
+- Database host/port/name/user in DEPLOYMENT_READY.md (used for backend services where applicable)
+- Several scripts reference Railway endpoints and Vercel env variable setup
+
+---
+
+## API Endpoint Mapping (summary)
+
+- Frontend server routes (Next.js):
+  - /api/strike/trade (POST/GET): executes trade or previews. Uses StrikeFinanceApiClient (server side)
+  - /api/strike/positions (GET): lists positions for address (server-to-Strike)
+  - /api/kraken/ohlc (GET/POST): fetch/process OHLC for ADA/USD
+  - /api/cardano/*: build/sign/submit Cardano transactions using Mesh + Blockfrost
+  - /api/address/* (not fully enumerated above): handle and balance lookups used by WalletContext (e.g., /api/address/{stake}/handles, /api/address/{payment}/balance)
+
+- Client-side Strike API proxy (for read-only, avoid CORS):
+  - src/lib/api/strike-proxy.ts → friendly-reprieve-production.up.railway.app/api/strike → app.strikefinance.org
+
+- External services:
+  - Strike: https://app.strikefinance.org/api/perpetuals/*
+  - MisterLabs220: https://misterlabs220-production.up.railway.app (+ wss)
+  - Kraken: https://api.kraken.com/0/public/OHLC
+  - Blockfrost (proxied): https://cardano-mainnet.blockfrost.io/api/v0/*
+
+---
+
+## Data Flow Diagram
+High-level data flow from UI to services and back.
+
+- Frontend Trading Execution Path
+- Positions/Market Data Path
+- Algo Live Signals Path
+- Cardano Tx Path
+- Discord Notifications
+
+I can render this as an interactive diagram if you want. Here’s the concise diagram text:
+
+- UI (Trading page) → Next API /api/strike/trade → StrikeFinanceApiClient → app.strikefinance.org (or Bridge) → result → UI
+- UI (Positions) → Next API /api/strike/positions → app.strikefinance.org → positions → UI
+- UI (Chart) → Next API /api/kraken/ohlc → Kraken → OHLC → UI
+- UI (Algo dashboard) → wss://misterlabs220-production.up.railway.app/ws
+- UI (Build/Sign Tx) → /api/cardano/* → Blockfrost
+- Execution events → DiscordNotifier → Discord Webhook
+
+If you want a rendered version, I’ll include it next turn upon confirmation.
+
+---
+
+## Configuration Requirements for Replication
+
+Create .env.local in mister-frontend with:
+
+- From DEPLOYMENT_READY.md (Found in "sydney-agents/mister-frontend/DEPLOYMENT_READY.md"):
+  - NEXT_PUBLIC_CARDANO_SERVICE_URL=https://friendly-reprieve-production.up.railway.app
+  - CARDANO_SERVICE_URL=https://friendly-reprieve-production.up.railway.app
+  - NEXT_PUBLIC_API_URL=https://bridge-server-cjs-production.up.railway.app
+  - NEXT_PUBLIC_MASTRA_API_URL=https://substantial-scarce-magazin.mastra.cloud
+  - NEXT_PUBLIC_CNT_API_URL=https://cnt-trading-api-production.up.railway.app
+  - NEXT_PUBLIC_STRIKE_API_URL=https://bridge-server-cjs-production.up.railway.app
+  - NEXT_PUBLIC_BLOCKFROST_PROJECT_ID=mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu
+  - BLOCKFROST_PROJECT_ID=mainnetKDR7gGfvHy85Mqr4nYtfjoXq7fX8R1Bu
+  - Optional (for MisterLabs220): NEXT_PUBLIC_ALGO_API_URL, NEXT_PUBLIC_ALGO_WS_URL
+  - Optional Discord: NEXT_PUBLIC_DISCORD_WEBHOOK_URL
+
+Ensure the production services above are reachable and healthy.
+
+---
+
+## Component Hierarchy and Data Flow (key)
+- Landing: src/app/page.tsx → useWallet → connectWallet → redirect /trading
+- Trading:
+  - CollapsibleChart → TradingChart → charts (uses Kraken via API route)
+  - MisterLabs220Dashboard → misterlabs220Service (REST + WS)
+  - Execution actions → one-click execution services or directly Next API /api/strike/trade
+  - WalletContext → payment/stake addresses, handle resolution, balance refresh
+- Discord:
+  - DiscordNotifier is available for signal/execution events
+
+---
+
+## Utility Functions of Interest
+- WalletContext.tsx
+  - Normalizes addresses (via addressUtils), resolves handles, fetches payment address from Blockfrost, persists state
+- StrikeFinanceClient.ts
+  - Validations, error handling, retry, request translation for open/close, balance checks (approximate), positions mapping
+- OneClickExecutionService.ts
+  - Pre-execution validation, execution orchestration, history, optional Discord notifications
+- strike-proxy.ts
+  - Client-side wrapper to the Railway proxy for read endpoints to bypass CORS
+
+---
+
+## Missing Pieces or Potential Gaps
+- Backtesting UI page under /backtest-results is missing; docs/charts indicate intended implementation but the directory is empty. To restore:
+  - Recreate page wiring per CHART_POPULATION_GUIDE.md and use sydney-agents/backtesting-service as the provider for real results.
+- Strike integration selection:
+  - src/services/strike-finance/index.ts currently exports a mock. For production, wire the UI to OneClickExecutionService + StrikeFinanceClient or to the server route /api/strike/trade.
+- Bridge server consistency:
+  - Code references both strike-bridge-server-production and bridge-server-cjs-production in docs; align NEXT_PUBLIC_API_URL/NEXT_PUBLIC_STRIKE_API_URL to the canonical Bridge URL actually deployed.
+- Ensure NEXT_PUBLIC_DISCORD_WEBHOOK_URL is set if notifications are required from the frontend context.
+
+---
+
+## Replication Steps (condensed)
+1) Prereqs:
+   - Confirm the production services are live (Mastra Cloud, Strike Bridge, Cardano service, CNT API, MisterLabs220, Blockfrost keys).
+2) Configure mister-frontend:
+   - Create .env.local with the variables listed above.
+   - Install deps and run: npm install && npm run dev
+3) Wallet:
+   - Connect Vespr or supported CIP-30 wallet on Landing. WalletContext will fetch handle and balance.
+4) Trading:
+   - Open /trading, expand chart (Kraken), watch MisterLabs220 dashboard (WS).
+   - Execute trades via UI hooked to /api/strike/trade (server), or import and use OneClickExecutionService if wiring for one-click.
+5) Backtesting (optional):
+   - Start sydney-agents/backtesting-service Flask app, wire frontend page /backtest-results with chart components per CHART_POPULATION_GUIDE.md.
+
+---
+
+## Small, high-signal code excerpts
+
+- Strike server execution entrypoint
+  - Found in "sydney-agents/mister-frontend/src/app/api/strike/trade/route.ts"
+````ts path=sydney-agents/mister-frontend/src/app/api/strike/trade/route.ts mode=EXCERPT
+const strikeFinanceClient = new StrikeFinanceApiClient();
+if (action === 'open') {
+  result = await strikeFinanceClient.executeTrade({ wallet_address, side, size, leverage, ... });
+} else {
+  result = await strikeFinanceClient.closePosition(positionId || '');
+}
+````
+
+- Kraken data route
+  - Found in "sydney-agents/mister-frontend/src/app/api/kraken/ohlc/route.ts"
+````ts path=sydney-agents/mister-frontend/src/app/api/kraken/ohlc/route.ts mode=EXCERPT
+const url = `https://api.kraken.com/0/public/OHLC?pair=ADAUSD&interval=${krakenInterval}&since=${since}`;
+const data: KrakenOHLCResponse = await (await fetch(url)).json();
+return NextResponse.json({ success: true, data: { ohlc, latestPrice, ... }});
+````
+
+- MisterLabs220 production URLs
+  - Found in "sydney-agents/mister-frontend/src/services/misterlabs220/misterlabs220Service.ts"
+````ts path=sydney-agents/mister-frontend/src/services/misterlabs220/misterlabs220Service.ts mode=EXCERPT
+this.baseUrl = process.env.NEXT_PUBLIC_ALGO_API_URL || 'https://misterlabs220-production.up.railway.app';
+this.wsUrl = process.env.NEXT_PUBLIC_ALGO_WS_URL || 'wss://misterlabs220-production.up.railway.app/ws';
+````
+
+---
+
+## Clarifying questions
+- Which Bridge URL is canonical in production: strike-bridge-server-production.up.railway.app or bridge-server-cjs-production.up.railway.app? I’ll align envs to one.
+- For one-click execution in production, do you prefer routing UI actions exclusively through the Next API route (/api/strike/trade) or directly wiring the OneClickExecutionService client in the UI?
+- For the backtesting page: should I scaffold the missing /backtest-results page now using the existing chart components and the Python backtesting-service as the data source?
+- Do you want Discord notifications triggered from frontend (DiscordNotifier with NEXT_PUBLIC_DISCORD_WEBHOOK_URL) or from the backend/bridge server only?
+
+
+
+
+
+
+PART 2
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Summary of actions I took
+- Tested both candidate Strike Bridge URLs and confirmed the canonical, production‑active server
+- Updated production config and docs to use the correct bridge URL consistently
+- Replaced mock Strike Finance service wiring with the real One‑Click Execution Service
+- Scaffolded the missing /backtest-results page with real backtest invocation and chart display
+- Wrote a complete replication guide with setup, dependencies, services, and verification steps
+
+---
+
+## Task 1 — Bridge Server URL Investigation
+
+### Tests performed (live)
+- GET https://strike-bridge-server-production.up.railway.app/health → 404 “Application not found”
+- GET https://strike-bridge-server-production.up.railway.app/ → 404 “Application not found”
+- GET https://bridge-server-cjs-production.up.railway.app/health → OK; JSON: service “MISTER API Bridge Server”
+- GET https://bridge-server-cjs-production.up.railway.app/ → OK; JSON lists available endpoints (includes /api/strike/health, /api/strike/trade, etc.)
+- GET https://strike-bridge-server-production.up.railway.app/api/strike/health → 404 “Application not found”
+- GET https://bridge-server-cjs-production.up.railway.app/api/strike/health → OK; health payload with “operational” status
+
+Conclusion:
+- Canonical, active production bridge is Option B: bridge-server-cjs-production.up.railway.app
+- Option A appears deprecated/inactive
+
+Changes made:
+- Updated production STRIKE_API_URL in api-config.ts (production) to the CJS bridge
+- Aligned docs to point to the same canonical URL
+
+Code excerpt (updated):
+````ts path=sydney-agents/mister-frontend/src/lib/api-config.ts mode=EXCERPT
+production: {
+  MASTRA_API_URL: 'https://substantial-scarce-magazin.mastra.cloud',
+  MISTER_API_URL: 'https://substantial-scarce-magazin.mastra.cloud',
+  STRIKE_API_URL: 'https://bridge-server-cjs-production.up.railway.app',
+  CNT_API_URL: 'https://cnt-trading-api-production.up.railway.app',
+}
+````
+
+Docs excerpt (updated):
+````md path=docs/production-deployment/railway-deployment-guide.md mode=EXCERPT
+STRIKE_API_URL: 'https://bridge-server-cjs-production.up.railway.app',
+...
+curl https://bridge-server-cjs-production.up.railway.app/health
+````
+
+Notes:
+- DEPLOYMENT_READY.md and CLAUDE.md already used the CJS bridge; no change needed there.
+- The guide now consistently uses the CJS bridge everywhere.
+
+---
+
+## Task 2 — Strike Finance Execution Architecture Decision
+
+I evaluated two approaches:
+
+Option A: Server-side execution via Next.js API routes
+- Flow: UI → POST /api/strike/trade → StrikeFinanceApiClient → Strike (via Bridge)
+- Security
+  - Pros: No client secrets; centralized validation, throttling, and logging server-side. Avoids CORS issues. Easier to enforce risk controls (min/max size, checks).
+  - Cons: Slightly more server complexity; you need to keep API route maintained.
+- CORS/Auth
+  - Pros: Server-to-server calls bypass browser CORS. Easy to attach auth headers if needed.
+- Error handling & UX
+  - Pros: Unified error normalization from the API route; can include additional context for UI.
+- Fit with codebase
+  - Strong fit: Next API routes already exist for trade and positions; client code already follows this pattern.
+
+Option B: Client-side execution via OneClickExecutionService (direct)
+- Flow: UI → OneClickExecutionService → Strike (direct/bridge)
+- Security
+  - Cons: Exposes endpoints to client, more surface for misuse; harder to hide any sensitive headers (if introduced later).
+- CORS/Auth
+  - Cons: Must manage CORS properly; any auth keys stored client-side are risky.
+- Error handling & UX
+  - Pros: Direct UI ownership of errors; but duplication across clients is likely.
+- Fit with codebase
+  - Service exists, but overall system favors server-side routing.
+
+Recommendation:
+- Use Option A (Server-side Next.js API routes) as the production standard for executing trades.
+  - It centralizes control, avoids CORS & leakage of implementation details, and aligns with the current architecture.
+  - Keep OneClickExecutionService in the client for orchestration/validation UX, but call the server route for final execution.
+
+Code changes needed (completed/minimal):
+- Ensure production API config uses the canonical bridge URL (done)
+- Ensure client wiring no longer relies on a mock service (done; see Task 3)
+- UI actions should post to /api/strike/trade (already supported)
+
+---
+
+## Task 3 — Complete Replication Guide and Missing Components
+
+### 3.1 Fix Strike Integration (replace mock with real)
+I removed the mock execution path and wired the public entry points to the real One-Click Execution Service.
+
+Updated file:
+- Found in "sydney-agents/mister-frontend/src/services/strike-finance/index.ts"
+````ts path=sydney-agents/mister-frontend/src/services/strike-finance/index.ts mode=EXCERPT
+import { OneClickExecutionService, ... getOneClickExecutionService as getRealOneClick } from './OneClickExecutionService';
+...
+export async function initializeStrikeFinanceIntegration(config?: any) {
+  const executionService = initOneClick(config);
+  ...
+  return { executionService, transactionTracker, integrationManager: { executeSignal: ... } };
+}
+````
+
+OneClickExecutionService is already production-ready and uses StrikeFinanceApiClient internally.
+
+### 3.2 Scaffold missing /backtest-results page
+New page: "sydney-agents/mister-frontend/src/app/backtest-results/page.tsx"
+- Uses existing charts (TradingViewChart)
+- Calls the bridge endpoint to run the ADA Custom Algorithm backtest: POST /api/backtest/ada-custom-algorithm
+- Renders candles and a concise trades list (LONG/SHORT; entry/exit)
+
+Excerpt:
+````tsx path=sydney-agents/mister-frontend/src/app/backtest-results/page.tsx mode=EXCERPT
+const res = await fetch(`${BRIDGE_BASE}/api/backtest/ada-custom-algorithm`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ strategy: "ADA Custom Algorithm", timeframe, symbol }),
+});
+````
+
+Note: If you deploy the Python backtesting service (sydney-agents/backtesting-service) separately, update BRIDGE_BASE to that URL or add a Next.js API proxy for it.
+
+### 3.3 Environment configuration (exact)
+Use this .env.local (verified canonical URLs):
+- Found in "sydney-agents/mister-frontend/REPLICATION_GUIDE.md"
+
+Excerpt:
+````md path=sydney-agents/mister-frontend/REPLICATION_GUIDE.md mode=EXCERPT
+NEXT_PUBLIC_API_URL=https://bridge-server-cjs-production.up.railway.app
+NEXT_PUBLIC_STRIKE_API_URL=https://bridge-server-cjs-production.up.railway.app
+NEXT_PUBLIC_MASTRA_API_URL=https://substantial-scarce-magazin.mastra.cloud
+````
+
+### 3.4 Dependency installation
+From sydney-agents/mister-frontend:
+- pnpm install (or npm install)
+- Run: pnpm dev (or npm run dev)
+
+### 3.5 Service dependencies
+- Mastra Cloud, Strike Bridge, Cardano service, CNT Trading API, MisterLabs220 Algo, Blockfrost
+- Optional: Discord webhook
+
+### 3.6 Testing verification
+- Health checks:
+  - GET https://bridge-server-cjs-production.up.railway.app/health
+  - GET https://bridge-server-cjs-production.up.railway.app/api/strike/health
+- UI:
+  - /trading shows live charts (Kraken OHLC)
+  - Execute test trade via UI → /api/strike/trade
+  - /backtest-results runs ADA backtest and renders chart/trades
+
+A complete, copy‑ready guide has been added:
+- Found in "sydney-agents/mister-frontend/REPLICATION_GUIDE.md"
+
+---
+
+## What changed in the repository
+- api-config.ts (prod STRIKE_API_URL → canonical bridge)
+- docs/production-deployment/railway-deployment-guide.md (updated references and curl tests)
+- src/services/strike-finance/index.ts (mock → production OneClick wiring)
+- New page: src/app/backtest-results/page.tsx
+- New doc: REPLICATION_GUIDE.md
+
+---
+
+## Follow-ups and clarifications
+- Confirm this canonical bridge URL is final: https://bridge-server-cjs-production.up.railway.app (I set it everywhere).
+- Would you like me to render a visual data-flow diagram for the replication doc?
+- For backtesting, do you prefer calling the bridge’s endpoint or the Python backtesting service directly? I can add a server route proxy and env‑switch if desired.

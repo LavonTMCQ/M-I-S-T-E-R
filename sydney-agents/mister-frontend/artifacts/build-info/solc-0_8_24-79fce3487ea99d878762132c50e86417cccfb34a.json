@@ -1,0 +1,40 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_24-79fce3487ea99d878762132c50e86417cccfb34a",
+  "solcVersion": "0.8.24",
+  "solcLongVersion": "0.8.24+commit.e11b9ed9",
+  "userSourceNameMap": {
+    "src/contracts/hyperevm/MinimalVault.sol": "project/src/contracts/hyperevm/MinimalVault.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "shanghai",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": [],
+      "viaIR": true
+    },
+    "sources": {
+      "project/src/contracts/hyperevm/MinimalVault.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.19;\n\n/**\n * @title MinimalVault\n * @notice Ultra-minimal vault for HyperEVM's 2M gas limit\n * @dev Stripped down to absolute essentials for deployment\n */\ncontract MinimalVault {\n    address public owner;\n    address public aiAgent;\n    mapping(address => uint256) public balances;\n    \n    uint256 public totalDeposits;\n    bool public tradingAuthorized;\n    \n    event Deposit(address indexed user, uint256 amount);\n    event Withdraw(address indexed user, uint256 amount);\n    event TradeAuthorized(uint256 amount);\n    event TradeExecuted(bool success);\n    \n    modifier onlyOwner() {\n        require(msg.sender == owner, \"Not owner\");\n        _;\n    }\n    \n    modifier onlyAI() {\n        require(msg.sender == aiAgent, \"Not AI\");\n        _;\n    }\n    \n    constructor(address _aiAgent) {\n        owner = msg.sender;\n        aiAgent = _aiAgent;\n    }\n    \n    // Deposit HYPE\n    function deposit() external payable {\n        require(msg.value > 0, \"Zero deposit\");\n        balances[msg.sender] += msg.value;\n        totalDeposits += msg.value;\n        emit Deposit(msg.sender, msg.value);\n    }\n    \n    // Withdraw HYPE\n    function withdraw(uint256 amount) external {\n        require(balances[msg.sender] >= amount, \"Insufficient balance\");\n        balances[msg.sender] -= amount;\n        totalDeposits -= amount;\n        \n        (bool success, ) = msg.sender.call{value: amount}(\"\");\n        require(success, \"Transfer failed\");\n        emit Withdraw(msg.sender, amount);\n    }\n    \n    // AI authorizes trade\n    function authorizeTrade(uint256 amount) external onlyAI {\n        require(amount <= totalDeposits, \"Exceeds deposits\");\n        tradingAuthorized = true;\n        emit TradeAuthorized(amount);\n    }\n    \n    // Execute authorized trade\n    function executeTrade(address target, bytes calldata data) external onlyOwner {\n        require(tradingAuthorized, \"Not authorized\");\n        tradingAuthorized = false;\n        \n        (bool success, ) = target.call(data);\n        emit TradeExecuted(success);\n    }\n    \n    // Emergency withdrawal by owner\n    function emergencyWithdraw() external onlyOwner {\n        payable(owner).transfer(address(this).balance);\n    }\n    \n    // Update AI agent\n    function updateAI(address newAI) external onlyOwner {\n        aiAgent = newAI;\n    }\n    \n    receive() external payable {}\n}"
+      }
+    }
+  }
+}

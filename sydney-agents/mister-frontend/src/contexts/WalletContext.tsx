@@ -303,10 +303,30 @@ export function WalletProvider({ children }: WalletProviderProps) {
    */
   const refreshStoredWalletData = async (storedWallet: MainWalletInfo) => {
     try {
-      if (!storedWallet.stakeAddress) return;
+      if (!storedWallet.stakeAddress && !storedWallet.address) return;
 
       console.log('🔄 Refreshing stored wallet data...');
-      // Use payment address for balance (not stake address) to get only connected wallet balance
+      console.log('🔄 Current cached balance:', storedWallet.balance, 'ADA');
+      
+      // Fetch fresh balance directly from API
+      const timestamp = Date.now();
+      const balanceResponse = await fetch(`/api/address/${storedWallet.address}/balance?t=${timestamp}&force=true`, {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        }
+      });
+      
+      let freshBalance = storedWallet.balance;
+      if (balanceResponse.ok) {
+        const balanceData = await balanceResponse.json();
+        if (balanceData.success && balanceData.balance !== undefined) {
+          freshBalance = balanceData.balance;
+          console.log('💰 Fresh balance from API:', freshBalance, 'ADA');
+        }
+      }
+      
+      // Also get wallet info for handle
       const walletInfo = await getWalletInfo(storedWallet.address, true); // Force refresh using payment address
 
       // Get correct payment address from Blockfrost API using stake address
@@ -357,16 +377,21 @@ export function WalletProvider({ children }: WalletProviderProps) {
       const updatedWallet: MainWalletInfo = {
         ...storedWallet,
         address: correctPaymentAddr, // Update with correct payment address
-        balance: walletInfo.balance,
+        balance: freshBalance, // Use the fresh balance from API
         handle: walletInfo.handle,
         displayName: walletInfo.displayName
       };
 
+      console.log('🔄 [WalletContext] Updating wallet state:');
+      console.log('  - Old balance:', storedWallet.balance);
+      console.log('  - New balance:', freshBalance);
+      console.log('  - Full updated wallet:', updatedWallet);
+      
       setMainWallet(updatedWallet);
       const walletStorage = getWalletStorage();
       walletStorage.setItem('mainWallet', JSON.stringify(updatedWallet));
 
-      console.log('✅ Wallet data refreshed');
+      console.log('✅ [WalletContext] Wallet data refreshed and saved to localStorage');
     } catch (error) {
       console.error('❌ Failed to refresh wallet data:', error);
     }
@@ -389,11 +414,21 @@ export function WalletProvider({ children }: WalletProviderProps) {
    * Refresh current wallet data
    */
   const refreshWalletData = async () => {
-    if (!mainWallet) return;
+    console.log('🔄 [WalletContext] refreshWalletData called');
+    console.log('🔄 [WalletContext] Current mainWallet:', mainWallet);
+    
+    if (!mainWallet) {
+      console.log('⚠️ [WalletContext] No mainWallet to refresh');
+      return;
+    }
     
     setIsLoading(true);
     try {
+      console.log('🔄 [WalletContext] Calling refreshStoredWalletData...');
       await refreshStoredWalletData(mainWallet);
+      console.log('✅ [WalletContext] refreshStoredWalletData completed');
+    } catch (error) {
+      console.error('❌ [WalletContext] Error in refreshWalletData:', error);
     } finally {
       setIsLoading(false);
     }

@@ -1,0 +1,212 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "uint32",
+        "name": "index",
+        "type": "uint32"
+      }
+    ],
+    "name": "oraclePx",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint32",
+        "name": "index",
+        "type": "uint32"
+      }
+    ],
+    "name": "spotMeta",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "uint32",
+            "name": "index",
+            "type": "uint32"
+          },
+          {
+            "internalType": "string",
+            "name": "tokenAddress",
+            "type": "string"
+          },
+          {
+            "internalType": "uint8",
+            "name": "szDecimals",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "weiDecimals",
+            "type": "uint8"
+          }
+        ],
+        "internalType": "struct L1Read.SpotMeta",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint32",
+        "name": "index",
+        "type": "uint32"
+      }
+    ],
+    "name": "perpAssetInfo",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "uint8",
+            "name": "szDecimals",
+            "type": "uint8"
+          }
+        ],
+        "internalType": "struct L1Read.PerpAssetInfo",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint32",
+        "name": "perpIndex",
+        "type": "uint32"
+      }
+    ],
+    "name": "getUserPosition",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "int256",
+            "name": "szi",
+            "type": "int256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "entryPx",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "mtm",
+            "type": "uint256"
+          },
+          {
+            "internalType": "int256",
+            "name": "pnl",
+            "type": "int256"
+          },
+          {
+            "internalType": "int256",
+            "name": "funding",
+            "type": "int256"
+          }
+        ],
+        "internalType": "struct L1Read.UserPosition",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint32",
+        "name": "perpIndex",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maintenanceMarginRate",
+        "type": "uint256"
+      }
+    ],
+    "name": "checkLiquidationRisk",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "atRisk",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "marginRatio",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint32[]",
+        "name": "perpIndices",
+        "type": "uint32[]"
+      },
+      {
+        "internalType": "uint32[]",
+        "name": "spotIndices",
+        "type": "uint32[]"
+      }
+    ],
+    "name": "getPortfolioValue",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "totalValue",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

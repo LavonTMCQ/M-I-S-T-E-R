@@ -1,0 +1,19 @@
+{
+  "network": "hyperevm_mainnet",
+  "chainId": 999,
+  "timestamp": "2025-08-23T23:39:51.482Z",
+  "deployer": "0x8B25b3c7CDB6d38C82BC0460cc7902168B705A74",
+  "vaultAddress": "0xdF07eed27B805cceFcd0cD00C184B91336588d86",
+  "txHash": "0x7366deaa6ff621a678d6b0a3b1095bb7020ea30e4cf5578ec2fdca79ef0a7458",
+  "blockNumber": 11935647,
+  "gasUsed": "458098",
+  "status": "success",
+  "pythonBotConfig": {
+    "vault_address": "0xdF07eed27B805cceFcd0cD00C184B91336588d86",
+    "ai_agent": "0x8B25b3c7CDB6d38C82BC0460cc7902168B705A74",
+    "owner": "0x8B25b3c7CDB6d38C82BC0460cc7902168B705A74",
+    "chain_id": 999,
+    "rpc_url": "https://rpc.hyperliquid.xyz/evm",
+    "private_key": "YOUR_PRIVATE_KEY_HERE"
+  }
+}

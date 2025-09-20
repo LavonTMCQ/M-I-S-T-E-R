@@ -1,0 +1,11 @@
+{
+  "network": "hyperevm_testnet",
+  "deployer": "0x8B25b3c7CDB6d38C82BC0460cc7902168B705A74",
+  "contracts": {
+    "AIAgentVault": "To be deployed",
+    "VaultFactory": "To be deployed",
+    "L1Read": "To be deployed"
+  },
+  "status": "Ready for deployment",
+  "notes": "Using main wallet with Mock USDC on testnet"
+}
